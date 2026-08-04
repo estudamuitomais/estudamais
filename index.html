@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estuda+ | Quiz inteligente</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="enhancements.css" />
+    <link rel="stylesheet" href="curriculum.css" />
+    <link rel="stylesheet" href="study-features.css" />
+    <link rel="stylesheet" href="quiz-modes.css" />
+    <link rel="stylesheet" href="journey-layout.css" />
+    <link rel="stylesheet" href="phase-path.css" />
+    <link rel="stylesheet" href="subject-selection.css" />
+    <link rel="stylesheet" href="back-navigation.css" />
+    <link rel="stylesheet" href="modern-refresh.css" />
+    <link rel="stylesheet" href="duolingo-inspired.css" />
+    <link rel="stylesheet" href="assessment-sources.css" />
+    <link rel="stylesheet" href="adventure-refresh.css" />
+    <link rel="stylesheet" href="auth-modern.css" />
+    <link rel="stylesheet" href="study-upgrade.css" />
+    <link rel="stylesheet" href="auth-fix.css" />
+    <link rel="stylesheet" href="stellar-layout.css" />
+    <link rel="stylesheet" href="duolingo-learn-layout.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-panel">
+        <div class="brand"><span class="brand-mark">✦</span> Estuda<span>+</span></div>
+        <nav class="side-menu" aria-label="Menu principal">
+          <button type="button" data-side-nav="subjects"><span>⌂</span><b>Início</b></button>
+          <button type="button" data-side-nav="trail"><span>★</span><b>Aprender</b></button>
+          <button type="button" data-side-nav="review"><span>↻</span><b>Revisar</b></button>
+          <button type="button" data-side-nav="profile"><span>☺</span><b>Perfil</b></button>
+        </nav>
+        <div class="hero-copy">
+          <span class="eyebrow">APRENDA JOGANDO</span>
+          <h1>Estudar pode ser uma <em>aventura.</em></h1>
+          <p>Crie seu desafio, responda questões comentadas e veja sua evolução a cada acerto.</p>
+        </div>
+        <div class="mascot" aria-hidden="true">
+          <div class="spark s1">✦</div><div class="spark s2">✦</div>
+          <div class="book"><span>?</span></div>
+          <div class="face"><i></i><i></i><b>⌣</b></div>
+        </div>
+        <div class="hero-footer"><span>10 questões por rodada</span><span>•</span><span>Seu progresso fica salvo</span></div>
+      </section>
+
+      <section class="content-panel">
+        <div id="auth-screen" class="screen active auth-screen">
+          <section class="auth-card">
+            <span class="eyebrow">BEM-VINDO AO ESTUDA+</span>
+            <h2 id="auth-title">Uma aventura de estudos começa aqui.</h2>
+            <p id="auth-subtitle" class="subtitle">Crie sua conta para salvar fases, medalhas e evolução.</p>
+            <div id="auth-switch" class="auth-switch" role="tablist" aria-label="Acesso à conta"><button id="show-login" class="auth-tab selected" type="button" role="tab" aria-controls="login-form" aria-selected="true">Entrar</button><button id="show-register" class="auth-tab" type="button" role="tab" aria-controls="register-form" aria-selected="false">Criar conta</button></div>
+            <form id="login-form" class="auth-form">
+              <label>E-mail<input id="login-email" type="email" autocomplete="email" required placeholder="voce@email.com" /></label>
+              <label>Senha<span class="password-field"><input id="login-password" type="password" autocomplete="current-password" required placeholder="Sua senha" /><button class="password-toggle" type="button" data-password-target="login-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
+              <div class="auth-form-links"><button id="show-recovery" class="auth-link" type="button">Esqueci minha senha</button></div>
+              <button class="start-button" type="submit">Entrar na aventura <span>→</span></button>
+            </form>
+            <form id="register-form" class="auth-form" hidden>
+              <label>Como quer ser chamado?<input id="register-name" autocomplete="name" required placeholder="Seu nome ou apelido" /></label>
+              <label>E-mail<input id="register-email" type="email" autocomplete="email" required placeholder="voce@email.com" /></label>
+              <label>Senha<span class="password-field"><input id="register-password" type="password" autocomplete="new-password" minlength="6" required placeholder="Pelo menos 6 caracteres" /><button class="password-toggle" type="button" data-password-target="register-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
+              <button class="start-button" type="submit">Criar minha conta <span>→</span></button>
+            </form>
+            <form id="recovery-form" class="auth-form" hidden>
+              <div class="auth-mode-intro"><strong>Vamos recuperar seu acesso</strong><span>Digite o e-mail usado no cadastro. Você receberá um link seguro para criar outra senha.</span></div>
+              <label>E-mail da conta<input id="recovery-email" type="email" autocomplete="email" required placeholder="voce@email.com" /></label>
+              <button class="start-button" type="submit">Enviar link de recuperação <span>→</span></button>
+              <button class="auth-back" type="button" data-auth-back>← Voltar para entrar</button>
+            </form>
+            <form id="new-password-form" class="auth-form" hidden>
+              <div class="auth-mode-intro"><strong>Crie uma nova senha</strong><span>Use pelo menos 6 caracteres e não compartilhe sua senha com outras pessoas.</span></div>
+              <label>Nova senha<span class="password-field"><input id="new-password" type="password" autocomplete="new-password" minlength="6" required placeholder="Pelo menos 6 caracteres" /><button class="password-toggle" type="button" data-password-target="new-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
+              <label>Confirmar nova senha<span class="password-field"><input id="confirm-new-password" type="password" autocomplete="new-password" minlength="6" required placeholder="Digite novamente" /><button class="password-toggle" type="button" data-password-target="confirm-new-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
+              <button class="start-button" type="submit">Salvar nova senha <span>✓</span></button>
+            </form>
+            <p id="auth-notice" class="auth-notice" role="status"></p>
+            <small class="auth-footnote">Conta protegida pelo Supabase. Seu progresso é salvo neste dispositivo e sincronizado com sua conta.</small>
+          </section>
+        </div>
+
+        <div id="subject-screen" class="screen subject-screen">
+          <div class="subject-welcome"><span class="eyebrow">ESTUDA+ AVENTURA</span><h2>Qual matéria vamos explorar?</h2><p class="subtitle">Escolha uma matéria para montar sua trilha de estudos.</p></div>
+          <section class="subject-year-card" aria-label="Escolha do ano escolar">
+            <div><span>PRIMEIRO PASSO</span><strong>Em qual ano você está?</strong><small>As matérias e questões serão organizadas para essa etapa.</small></div>
+            <label>Ano escolar<select id="subject-school-year" aria-label="Ano escolar na escolha de matéria"></select></label>
+          </section>
+          <div class="subject-grid" id="subject-grid">
+            <button class="subject-card math" data-subject="Matemática" type="button"><span class="subject-art"><img src="assets/math.svg" alt="" /></span><strong>Matemática</strong><small>Números e lógica</small><i>→</i></button>
+            <button class="subject-card portuguese" data-subject="Português" type="button"><span class="subject-art"><img src="assets/portuguese.svg" alt="" /></span><strong>Português</strong><small>Textos e linguagem</small><i>→</i></button>
+            <button class="subject-card history" data-subject="História" type="button"><span class="subject-art"><img src="assets/history.svg" alt="" /></span><strong>História</strong><small>Tempo e sociedade</small><i>→</i></button>
+            <button class="subject-card geography" data-subject="Geografia" type="button"><span class="subject-art"><img src="assets/geography.svg" alt="" /></span><strong>Geografia</strong><small>Mundo e lugares</small><i>→</i></button>
+            <button class="subject-card biology" data-subject="Biologia" type="button"><span class="subject-art"><img src="assets/biology.svg" alt="" /></span><strong>Biologia</strong><small>Vida e natureza</small><i>→</i></button>
+            <button class="subject-card physics" data-subject="Física" type="button"><span class="subject-art"><img src="assets/physics.svg" alt="" /></span><strong>Física</strong><small>Forças e energia</small><i>→</i></button>
+            <button class="subject-card chemistry" data-subject="Química" type="button"><span class="subject-art"><img src="assets/chemistry.svg" alt="" /></span><strong>Química</strong><small>Matéria e reações</small><i>→</i></button>
+          </div>
+        </div>
+
+        <div id="setup-screen" class="screen">
+          <div class="duo-topbar"><div class="setup-actions"><button id="back-to-subjects" class="back-subjects" type="button">← Matérias</button><button id="open-dashboard" class="profile-mini"><span id="top-avatar">🧑‍🚀</span><b id="top-name">Explorador</b></button></div><div class="duo-stats"><span>🔥 <b id="streak-days">1</b></span><span>♥ <b id="energy-count">5</b></span><span>✦ <b id="gem-count">0</b></span></div></div>
+          <section id="adventure-overview" hidden>
+            <section class="journey-intro"><span class="unit-label">SUA AVENTURA</span><h2>Hora de seguir<br><em>sua trilha.</em></h2><p>Olá, <strong id="avatar-name">Explorador</strong>! Conclua cada fase com pelo menos 70% de acertos.</p></section>
+            <section id="phase-map" class="lesson-path" aria-label="Trilha de fases"></section>
+            <div class="topline create-line"><span class="step-pill">OUTRA AVENTURA</span><button id="toggle-creator" class="text-button" type="button">Trocar assunto</button></div>
+          </section>
+          <div id="lesson-creator">
+          <section class="study-brief" aria-label="Seu plano de estudos">
+            <div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2 class="creator-title">Escolha o assunto</h2><p class="subtitle">Defina o tema e avance na sua trilha personalizada.</p></div>
+            <button id="start-enem-sim" class="enem-shortcut" type="button"><span>⌁</span><b>Simulado Enem</b><small>10 questões · modo prova</small></button>
+          </section>
+          <section class="daily-mission" aria-label="Missão diária">
+            <div class="mission-icon">🎯</div><div><strong>Missão de hoje</strong><span id="mission-copy">Responda 5 questões</span><div class="mini-progress"><i id="mission-progress"></i></div></div><b id="mission-count">0/5</b>
+          </section>
+          <section class="study-snapshot" aria-label="Orientações de estudo">
+            <article class="snapshot-card theme-card"><span>✨ Tema da semana</span><strong id="weekly-theme-title">Desafio da semana</strong><p id="weekly-theme-copy">Uma ideia curta para conectar o estudo à vida real.</p></article>
+            <article class="snapshot-card plan-mini"><span>🎯 Meta semanal</span><strong id="weekly-goal-copy">0/50 questões</strong><i><b id="weekly-goal-progress"></b></i><button id="edit-weekly-goal" type="button">Ajustar meta</button></article>
+          </section>
+          <div class="quick-tools"><button id="review-errors" type="button">📘 Revisar caderno de erros</button><button id="toggle-accessibility" type="button">Aa Acessibilidade</button></div>
+          <form id="quiz-form">
+            <div class="form-grid">
+              <label>Matéria
+                <select id="subject" required>
+                  <option value="">Selecione uma matéria</option>
+                  <option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option>
+                </select>
+              </label>
+              <label>Ano escolar
+                <select id="school-year" required></select>
+              </label>
+              <label>Assunto
+                <input id="topic" required placeholder="Ex.: compras, espaço, frações..." />
+              </label>
+              <label>Sistema de ensino
+                <select id="curriculum">
+                  <option value="BNCC">BNCC (referência nacional)</option>
+                  <option value="Base Enem/Inep">Base Enem/Inep (questões públicas)</option>
+                  <option value="AZ">Sistema AZ — modo de estudo</option>
+                  <option value="COC">Sistema COC — modo de estudo</option>
+                  <option value="Anglo">Sistema Anglo — modo de estudo</option>
+                  <option value="SAS">Sistema SAS — modo de estudo</option>
+                  <option value="Personalizado">Material próprio / personalizado</option>
+                </select>
+              </label>
+            </div>
+            <div id="topic-examples" class="topic-examples" aria-label="Sugestões de assunto"></div>
+            <p id="school-year-hint" class="school-year-hint">As questões serão selecionadas de acordo com o ano escolar.</p>
+            <p id="curriculum-hint" class="curriculum-hint">Baseado nas habilidades gerais da BNCC para a etapa selecionada.</p>
+            <fieldset>
+              <legend>Dificuldade</legend>
+              <div class="choice-row difficulty" id="difficulty">
+                <button type="button" class="choice selected" data-value="Fácil"><span class="dot green"></span> Fácil</button>
+                <button type="button" class="choice" data-value="Médio"><span class="dot yellow"></span> Médio</button>
+                <button type="button" class="choice" data-value="Difícil"><span class="dot red"></span> Difícil</button>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Formato do desafio</legend>
+              <div class="choice-row" id="quiz-mode">
+                <button type="button" class="choice selected" data-value="Guiado">Quiz guiado</button>
+                <button type="button" class="choice" data-value="Prova">Modo prova</button>
+                <button type="button" class="choice" data-value="Misto">Desafio misto</button>
+              </div>
+            </fieldset>
+            <button class="start-button" type="submit">Ver minha trilha <span>→</span></button>
+          </form>
+          </div>
+          <aside class="learn-rail" aria-label="Resumo da jornada">
+            <section class="rail-card rail-streak">
+              <div class="rail-card-title"><strong>Sequência</strong><button type="button" data-side-nav="profile">VER PERFIL</button></div>
+              <div class="streak-summary"><span>🔥</span><div><b id="rail-streak-days">1 dia</b><small>Continue assim!</small></div></div>
+              <div class="week-dots" aria-label="Dias de estudo"><i class="done">S</i><i class="done">T</i><i class="today">Q</i><i>Q</i><i>S</i><i>S</i><i>D</i></div>
+            </section>
+            <section class="rail-card rail-quest">
+              <div class="rail-card-title"><strong>Missão diária</strong><span>+20 XP</span></div>
+              <div class="quest-row"><span>🎯</span><div><b id="rail-mission-copy">Responda 5 questões</b><div class="rail-progress"><i id="rail-mission-progress"></i></div><small id="rail-mission-count">0/5</small></div></div>
+            </section>
+            <section class="rail-card rail-progress-card">
+              <div class="rail-card-title"><strong>Progresso semanal</strong><span>XP</span></div>
+              <div class="weekly-ring"><b id="rail-weekly-value">0</b><small>questões</small></div>
+              <div class="rail-progress wide"><i id="rail-weekly-progress"></i></div>
+              <p id="rail-weekly-copy">Comece com uma lição curta hoje.</p>
+            </section>
+            <button class="rail-review-button" type="button" data-side-nav="review"><span>📘</span><div><b>Revisões inteligentes</b><small><strong id="rail-review-count">0</strong> atividades para hoje</small></div><i>›</i></button>
+          </aside>
+        </div>
+
+        <div id="quiz-screen" class="screen">
+          <header class="quiz-header"><button id="leave-quiz" class="icon-button" aria-label="Voltar">←</button><div><span id="question-counter">Questão 1 de 10</span><div class="progress"><i id="progress-bar"></i></div></div><button id="listen-question" class="listen-button" type="button">🔊 Ouvir</button><div class="score"><small>PONTOS</small><strong id="score">0</strong> ✦</div></header>
+          <div class="quiz-meta"><div class="quiz-tag" id="quiz-tag"></div><div id="quiz-skill" class="quiz-skill">Habilidade em foco</div></div>
+          <h2 id="question-text"></h2>
+          <div class="question-tools"><button id="save-question" type="button">♡ Salvar</button><button id="mark-difficult" type="button">⚑ Marcar para revisar</button></div>
+          <div id="answers" class="answers"></div>
+          <section id="feedback" class="feedback" hidden></section>
+          <div id="achievement-toast" class="achievement-toast" hidden></div>
+          <button id="next-question" class="start-button" hidden>Próxima questão <span>→</span></button>
+        </div>
+
+        <div id="result-screen" class="screen result-screen">
+          <div class="trophy">🏆</div><span class="eyebrow">DESAFIO CONCLUÍDO</span>
+          <h2 id="result-title">Mandou muito bem!</h2>
+          <p id="result-message" class="subtitle"></p>
+          <div id="phase-result" class="phase-result"></div>
+          <div class="result-score"><strong id="final-score">0</strong><span>pontos</span></div>
+          <div class="result-stats"><div><strong id="correct-count">0</strong><span>acertos</span></div><div><strong>10</strong><span>questões</span></div></div>
+          <button id="restart" class="start-button">Novo desafio <span>↻</span></button>
+          <button id="result-home" class="result-home" type="button">Voltar às matérias</button>
+        </div>
+
+        <div id="dashboard-screen" class="screen dashboard-screen">
+          <header class="dashboard-header"><button id="close-dashboard" class="icon-button" aria-label="Voltar">←</button><div><span class="eyebrow">MEU ESPAÇO</span><h2>Minha jornada</h2></div></header>
+          <section class="profile-card">
+            <div id="profile-avatar" class="profile-avatar">🧑‍🚀</div><div><strong id="profile-name">Explorador</strong><span id="profile-points">0 pontos acumulados</span></div><button id="logout-user" class="logout-button" type="button">Sair</button>
+          </section>
+          <section class="dashboard-stats" aria-label="Resumo de desempenho"><article><span>PRECISÃO</span><strong id="accuracy-stat">—</strong><small>acertos gerais</small></article><article><span>REVISÕES</span><strong id="due-review-stat">0</strong><small>para hoje</small></article><article><span>SEMANA</span><strong id="weekly-stat">0</strong><small>questões feitas</small></article></section>
+          <section class="focus-card"><div><span class="eyebrow">PLANO ENEM</span><strong>Ritmo consistente vence a pressa.</strong><p id="focus-goal-copy">Faça um pouco por dia e use os erros para decidir o que revisar.</p></div><button id="open-review-from-dashboard" type="button">Ver revisões</button></section>
+          <h3>Escolha seu avatar</h3>
+          <div id="avatar-picker" class="avatar-picker"></div>
+          <h3>Itens desbloqueáveis</h3>
+          <div id="rewards-list" class="rewards-list"></div>
+          <h3>Meu progresso</h3>
+          <section id="subject-progress" class="subject-progress"></section>
+          <h3>Para adultos e professores</h3>
+          <section class="review-card"><p>Assuntos com mais erros nesta conta:</p><div id="review-list"></div><small>Os dados são privados e acompanham o estudante quando ele entra na conta.</small></section>
+          <h3>Plano da semana</h3>
+          <section class="plan-card"><div id="week-picker" class="week-picker"></div><label>Meta por dia <select id="daily-minutes"><option value="10">10 minutos</option><option value="20">20 minutos</option><option value="30">30 minutos</option></select></label><button id="save-plan" class="small-action" type="button">Salvar plano</button></section>
+          <section class="ranking-card"><strong>Meu recorde</strong><span id="personal-ranking">Complete sua primeira rodada para criar seu recorde.</span></section>
+          <h3>Caderno de erros</h3>
+          <section class="notebook-card"><div id="error-notebook"></div><button id="practice-notebook" class="small-action" type="button">Praticar erros</button></section>
+          <h3>Itens que você marcou</h3>
+          <section id="saved-questions" class="saved-questions"></section>
+          <h3>Acessibilidade</h3>
+          <section class="accessibility-card"><button class="access-control" data-access="font">A+ Texto maior</button><button class="access-control" data-access="contrast">◐ Alto contraste</button><button class="access-control" data-access="calm">☁ Menos estímulos</button></section>
+          <h3>Área do professor</h3>
+          <section class="teacher-card"><p>Adicione um tema ou orientação da turma para acompanhar nesta conta.</p><input id="teacher-material-title" placeholder="Tema ou lista (ex.: Frações - unidade 2)" /><textarea id="teacher-material-note" placeholder="Orientação de estudo ou habilidade a revisar"></textarea><button id="save-teacher-material" class="small-action" type="button">Salvar orientação</button><div id="teacher-material-list"></div></section>
+        </div>
+
+        <div id="review-screen" class="screen review-screen">
+          <header class="dashboard-header"><button id="close-review" class="icon-button" aria-label="Voltar">←</button><div><span class="eyebrow">REVISÃO INTELIGENTE</span><h2>Hora de fortalecer</h2></div></header>
+          <p class="subtitle">Os erros voltam no momento certo para você praticar, não apenas reler.</p>
+          <section class="review-steps" aria-label="Etapas da revisão espaçada"><span class="active">1 dia</span><i></i><span>3 dias</span><i></i><span>7 dias</span></section>
+          <section class="review-highlight"><div><span>REVISÕES PARA HOJE</span><strong id="review-due-count">0</strong><small>questões ou temas aguardando prática</small></div><button id="practice-due" class="start-button" type="button">Praticar agora <span>→</span></button></section>
+          <h3>Fila de revisão</h3>
+          <section id="review-queue" class="review-queue"></section>
+          <h3>Favoritos e desafios</h3>
+          <section id="review-saved-list" class="review-queue"></section>
+        </div>
+      </section>
+    </main>
+    <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
+      <button type="button" data-nav="trail"><span>⌁</span>Trilha</button>
+      <button type="button" data-nav="review"><span>↻</span>Revisar<b id="nav-review-badge" hidden>0</b></button>
+      <button type="button" data-nav="profile"><span>☺</span>Perfil</button>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="grade-content.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
