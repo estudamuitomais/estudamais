@@ -8,6 +8,8 @@ const supabaseClient = globalThis.supabase?.createClient(supabaseUrl, supabasePu
 let activeSupabaseUser = null;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
+const createNavigationSessionId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+let navigationSessionId = createNavigationSessionId();
 let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
 const gradeContent = window.EstudaGradeContent;
 const questionEngine = window.EstudaQuestionExpansion;
@@ -247,7 +249,7 @@ async function activateUser(user) {
   if (profileError || !profile) {
     console.warn('Não foi possível reconciliar o histórico antes de iniciar:', profileError?.message || 'perfil ausente');
     activeSupabaseUser = null;
-    show('auth-screen');
+    show('auth-screen', { historyMode: 'reset' });
     showAuthNotice('Não foi possível sincronizar seu histórico agora. Por segurança, o quiz não foi iniciado para evitar questões repetidas. Verifique a conexão e tente entrar novamente.', true);
     return false;
   }
@@ -255,7 +257,7 @@ async function activateUser(user) {
   if (historyError) {
     console.warn('Não foi possível carregar o histórico atômico de questões:', historyError.message);
     activeSupabaseUser = null;
-    show('auth-screen');
+    show('auth-screen', { historyMode: 'reset' });
     showAuthNotice('Não foi possível conferir as questões já utilizadas. Por segurança, tente entrar novamente antes de iniciar o quiz.', true);
     return false;
   }
@@ -273,7 +275,7 @@ async function activateUser(user) {
   state.totalPoints = Math.max(state.totalPoints || 0, profile?.points || 0);
   setSchoolYear(state.schoolYear, false);
   saveState();
-  updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen');
+  updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen', { historyMode: 'reset' });
   return true;
 }
 async function registerUser(event) {
@@ -356,9 +358,9 @@ async function logoutUser() {
   activeSupabaseUser = null;
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
-  setAuthMode('login');
+  questions = []; current = 0; currentPhase = 1; resultAction = 'home'; hits = 0; score = 0; roundStreak = 0;
+  setAuthMode('login', { historyMode: 'reset' });
   showAuthNotice('Você saiu com segurança. Até a próxima aventura!');
-  show('auth-screen');
 }
 const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
@@ -723,20 +725,83 @@ el('subject').addEventListener('change', () => { renderTopicExamples(); renderPh
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
-function show(id) {
+const appScreenIds = new Set(['auth-screen', 'subject-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen']);
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('a11y-calm');
+function activeScreenId() { return document.querySelector('.screen.active')?.id || 'auth-screen'; }
+function screenNavigationKey(id) {
+  if (id === 'subject-screen') return 'subjects';
+  if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
+  if (id === 'review-screen') return 'review';
+  if (id === 'dashboard-screen') return 'profile';
+  return '';
+}
+function updateScreenHistory(id, mode = 'push', extra = {}) {
+  if (!window.history?.replaceState) return;
+  try {
+    if (mode === 'reset') navigationSessionId = createNavigationSessionId();
+    const currentState = window.history.state || {};
+    const sameSession = currentState.estudaNavigationSession === navigationSessionId;
+    const currentDepth = sameSession && Number.isFinite(currentState.estudaDepth) ? currentState.estudaDepth : 0;
+    const nextDepth = mode === 'reset' ? 0 : mode === 'push' ? currentDepth + 1 : currentDepth;
+    const nextState = { ...currentState, estudaScreen: id, estudaDepth: nextDepth, estudaNavigationSession: navigationSessionId, estudaUserId: activeSupabaseUser?.id || null, estudaModal: null, ...extra };
+    window.history[mode === 'push' ? 'pushState' : 'replaceState'](nextState, document.title);
+  } catch (error) { console.warn('Histórico de navegação indisponível:', error); }
+}
+function historyStateIsCurrent(historyState = window.history?.state) {
+  return historyState?.estudaNavigationSession === navigationSessionId && (historyState?.estudaUserId || null) === (activeSupabaseUser?.id || null);
+}
+function resetViewport(id, focusHeading = true) {
+  requestAnimationFrame(() => {
+    const screen = el(id);
+    if (!screen?.classList.contains('active')) return;
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    if (!focusHeading) return;
+    const heading = [...screen.querySelectorAll('h1, h2')].find((item) => !item.closest('[hidden]'));
+    if (!heading) return;
+    if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+    heading.focus({ preventScroll: true });
+  });
+}
+function show(id, options = {}) {
+  if (!appScreenIds.has(id) || !el(id)) return;
+  const previousId = activeScreenId();
+  const historyMode = options.historyMode || (previousId === id ? 'replace' : 'push');
+  const focusedElement = document.activeElement;
+  if (focusedElement && !el(id).contains(focusedElement)) focusedElement.blur?.();
   document.querySelectorAll('.screen').forEach((screen) => screen.classList.remove('active'));
   el(id).classList.add('active');
   document.body.dataset.screen = id;
+  const activeNavigation = screenNavigationKey(id);
   const nav = el('app-nav');
   if (nav) {
-    nav.hidden = ['auth-screen', 'subject-screen', 'quiz-screen', 'result-screen'].includes(id);
-    nav.querySelectorAll('button').forEach((button) => button.classList.toggle('active', (id === 'setup-screen' && button.dataset.nav === 'trail') || (id === 'review-screen' && button.dataset.nav === 'review') || (id === 'dashboard-screen' && button.dataset.nav === 'profile')));
+    nav.hidden = ['auth-screen', 'quiz-screen'].includes(id);
+    nav.querySelectorAll('button').forEach((button) => {
+      const active = button.dataset.nav === activeNavigation;
+      button.classList.toggle('active', active);
+      if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+    });
   }
-  const activeSide = id === 'subject-screen' ? 'subjects' : id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen' ? 'trail' : id === 'review-screen' ? 'review' : id === 'dashboard-screen' ? 'profile' : '';
-  document.querySelectorAll('.side-menu [data-side-nav]').forEach((button) => button.classList.toggle('active', button.dataset.sideNav === activeSide));
+  document.querySelectorAll('.side-menu [data-side-nav]').forEach((button) => {
+    const active = button.dataset.sideNav === activeNavigation;
+    button.classList.toggle('active', active);
+    if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
+  });
+  const sideMenu = document.querySelector('.side-menu');
+  if (sideMenu) {
+    if (id === 'quiz-screen') sideMenu.setAttribute('inert', ''); else sideMenu.removeAttribute('inert');
+  }
+  if (options.historyMode !== 'none') updateScreenHistory(id, historyMode);
+  if (options.resetScroll !== false) resetViewport(id, options.focusHeading !== false);
 }
-function goToSubjects() { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen'); }
-function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); }
+function navigateBack(fallback = 'setup-screen') {
+  const depth = Number(window.history?.state?.estudaDepth || 0);
+  if (historyStateIsCurrent() && depth > 0) window.history.back();
+  else show(fallback, { historyMode: 'reset' });
+}
+function goToSubjects(options = {}) { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
+function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); resetViewport('setup-screen'); }
 function openReview() { renderReviewScreen(); show('review-screen'); }
 function setChoice(groupId, value) { const group = el(groupId); if (!group) return; group.querySelectorAll('.choice').forEach((button) => button.classList.toggle('selected', button.dataset.value === value)); if (groupId === 'difficulty') difficulty = value; else quizMode = value; }
 function startEnemSimulation() { setSchoolYear('3EM'); el('subject').value = el('subject').value || 'Matemática'; el('topic').value = el('topic').value || 'proporcionalidade e porcentagem'; el('curriculum').value = 'Base Enem/Inep'; curriculum = 'Base Enem/Inep'; setChoice('difficulty', 'Médio'); setChoice('quiz-mode', 'Prova'); el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderTopicExamples(); openAdventure(); }
@@ -761,11 +826,12 @@ async function begin(phaseOverride) {
   }
   setQuestionBankStatus();
   questions.forEach((question) => { question.subject = subject; question.topic = topic; question.curriculum = curriculum; question.schoolYear = schoolYear; question.phase = currentPhase; const axis = curriculum === 'Base Enem/Inep' ? ` Eixo Enem trabalhado: ${enemAxes[subject]}.` : ''; question.note = `${question.note} Ano escolar: ${schoolYearLabel()}. Orientação da trilha: ${curriculumDescriptions[curriculum]}${axis}`; });
-  show('quiz-screen'); renderQuestion();
+  show('quiz-screen', { historyMode: activeScreenId() === 'result-screen' ? 'replace' : undefined }); renderQuestion();
 }
 function refreshQuestionTools(question) { const save = el('save-question'), difficult = el('mark-difficult'); save.classList.toggle('active', isMarked(question, 'favorite')); difficult.classList.toggle('active', isMarked(question, 'difficult')); save.textContent = isMarked(question, 'favorite') ? '♥ Salva' : '♡ Salvar'; difficult.textContent = isMarked(question, 'difficult') ? '⚑ Marcada' : '⚑ Marcar para revisar'; save.onclick = () => { saveQuestionMark(question, 'favorite'); refreshQuestionTools(question); }; difficult.onclick = () => { saveQuestionMark(question, 'difficult'); refreshQuestionTools(question); }; }
 function renderQuestion() {
   const question = questions[current];
+  resetViewport('quiz-screen');
   el('question-counter').textContent = `Questão ${current + 1} de 10`; el('progress-bar').style.width = `${(current + 1) * 10}%`; el('score').textContent = score;
   el('quiz-tag').textContent = question.origin === 'Enem' ? `Questão pública · Enem · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : question.origin === 'BNCC' ? `Prática curricular · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : question.origin === 'Autoral' ? `Questão inédita · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : `${quizMode === 'Prova' ? 'Modo prova' : question.curriculum} · ${schoolYearLabel(question.schoolYear)} · ${question.subject}`;
   el('quiz-skill').textContent = `Habilidade: ${questionSkill(question)}`; el('question-text').textContent = question.q;
@@ -775,14 +841,20 @@ function renderQuestion() {
   if (question.kind === 'order') { const picked = []; question.steps.forEach((step) => { const button = document.createElement('button'); button.className = 'answer'; button.textContent = step; button.addEventListener('click', () => { picked.push(step); button.disabled = true; button.classList.add('selected-answer'); if (picked.length === question.steps.length) completeAlternate(picked.every((item, index) => item === question.correctOrder[index]), question); }); answers.append(button); }); return; }
   question.a.forEach((text, index) => { const button = document.createElement('button'); button.className = 'answer'; button.innerHTML = `<span class="letter">${'ABCDE'[index]}</span><span>${text}</span>`; button.addEventListener('click', () => answer(index)); answers.appendChild(button); });
 }
-function completeAlternate(right, question, open) { if (open) { const text = el('open-response').value.trim(); if (!text) return; } const rewards = recordAnswer(question, right); if (right) { score += 100; hits++; } el('score').textContent = score; const feedback = el('feedback'); feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`; feedback.innerHTML = `<strong>${open ? 'Guia de resposta' : right ? '✓ Ordem correta!' : '↗ Quase lá!'}</strong>${question.note}`; if (rewards.length) showToast(rewards); el('next-question').hidden = false; el('next-question').innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>'; }
+function revealFeedback(feedback) {
+  requestAnimationFrame(() => {
+    feedback.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
+    feedback.focus({ preventScroll: true });
+  });
+}
+function completeAlternate(right, question, open) { if (open) { const text = el('open-response').value.trim(); if (!text) return; } const rewards = recordAnswer(question, right); if (right) { score += 100; hits++; } el('score').textContent = score; const feedback = el('feedback'); feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`; feedback.innerHTML = `<strong>${open ? 'Guia de resposta' : right ? '✓ Ordem correta!' : '↗ Quase lá!'}</strong>${question.note}`; if (rewards.length) showToast(rewards); el('next-question').hidden = false; el('next-question').innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>'; revealFeedback(feedback); }
 function showFeedback(question, right, rewards, selectedIndex) {
   const feedback = el('feedback'), source = question.source || curriculumSources[question.curriculum]; feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`;
   const optionComment = question.optionNotes?.[selectedIndex];
   feedback.innerHTML = `<strong>${right ? '✓ Resposta correta!' : '↗ Quase lá!'}</strong>${optionComment ? `<p class="option-correction">${escapeHTML(optionComment)}</p>` : question.note}${source ? `<a class="question-source" href="${source.url}" target="_blank" rel="noreferrer">${source.label}</a>` : ''}<div class="feedback-actions"><button type="button" data-explain="essential">Essencial</button><button type="button" data-explain="steps">Passo a passo</button><button type="button" data-explain="deeper">Aprofundar</button><button type="button" class="similar-action">Nova rodada inédita</button></div><p class="explanation-extra" hidden></p>`;
   const detail = feedback.querySelector('.explanation-extra'); const explanations = { essential: question.note, steps: `1. Identifique os dados e o que foi pedido. 2. Escolha a relação adequada. 3. Resolva sem pular etapas. 4. Confira se a resposta é coerente. Aplicando isso aqui: ${question.note}`, deeper: `Habilidade em foco: ${questionSkill(question)}. Tente criar um exemplo novo sobre ${topicForEntry(question)} e explique por que cada alternativa incorreta não resolve o problema.` };
   feedback.querySelectorAll('[data-explain]').forEach((button) => button.addEventListener('click', () => { feedback.querySelectorAll('[data-explain]').forEach((item) => item.classList.remove('selected')); button.classList.add('selected'); detail.hidden = false; detail.textContent = explanations[button.dataset.explain]; }));
-  feedback.querySelector('.similar-action').addEventListener('click', () => begin(currentPhase)); if (rewards.length) showToast(rewards);
+  feedback.querySelector('.similar-action').addEventListener('click', () => begin(currentPhase)); if (rewards.length) showToast(rewards); revealFeedback(feedback);
 }
 function answer(index) {
   const question = questions[current], right = index === question.correct;
@@ -792,28 +864,34 @@ function answer(index) {
   const next = el('next-question'); next.hidden = false; next.innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>';
 }
 el('quiz-form').addEventListener('submit', (event) => { event.preventDefault(); openAdventure(); });
-el('next-question').addEventListener('click', () => { if (current === 9) { const route = currentRoute(); const progress = getPhaseProgress(route); const passed = hits >= 7; state.rounds++; state.bestScore = Math.max(state.bestScore, score); if (passed) { progress.completed = Math.max(progress.completed, currentPhase); state.phaseProgress[route.key] = progress; resultAction = currentPhase < 4 ? 'nextPhase' : 'home'; } else { resultAction = 'retry'; } const earned = checkAchievements(); saveState(); el('final-score').textContent = score; el('correct-count').textContent = hits; el('result-title').textContent = passed ? `Fase ${currentPhase} concluída!` : `Fase ${currentPhase}: tente novamente`; el('phase-result').textContent = passed ? `Você acertou ${hits}/10 e liberou ${currentPhase < 4 ? `a fase ${currentPhase + 1}` : 'toda a trilha'}!` : `Você acertou ${hits}/10. São necessários 7 acertos para avançar.`; el('result-message').textContent = passed ? 'Excelente trabalho: avance para a próxima etapa da trilha.' : 'Revise as explicações, pratique os erros e tente esta fase de novo.'; el('restart').innerHTML = passed && currentPhase < 4 ? 'Ir para a próxima fase <span>→</span>' : passed ? 'Escolher nova trilha <span>↻</span>' : 'Refazer esta fase <span>↻</span>'; if (earned.length) setTimeout(() => showToast(earned), 0); renderPhaseMap(); show('result-screen'); } else { current++; renderQuestion(); } });
-el('restart').addEventListener('click', () => { updateMission(); if (resultAction === 'nextPhase') begin(currentPhase + 1); else if (resultAction === 'retry') begin(currentPhase); else { renderPhaseMap(); show('setup-screen'); } }); el('leave-quiz').addEventListener('click', () => { updateMission(); renderPhaseMap(); show('setup-screen'); });
-el('open-dashboard').addEventListener('click', () => { renderDashboard(); show('dashboard-screen'); }); el('close-dashboard').addEventListener('click', () => { updateMission(); show('setup-screen'); });
+el('next-question').addEventListener('click', () => { if (current === 9) { const route = currentRoute(); const progress = getPhaseProgress(route); const passed = hits >= 7; state.rounds++; state.bestScore = Math.max(state.bestScore, score); if (passed) { progress.completed = Math.max(progress.completed, currentPhase); state.phaseProgress[route.key] = progress; resultAction = currentPhase < 4 ? 'nextPhase' : 'home'; } else { resultAction = 'retry'; } const earned = checkAchievements(); saveState(); el('final-score').textContent = score; el('correct-count').textContent = hits; el('result-title').textContent = passed ? `Fase ${currentPhase} concluída!` : `Fase ${currentPhase}: tente novamente`; el('phase-result').textContent = passed ? `Você acertou ${hits}/10 e liberou ${currentPhase < 4 ? `a fase ${currentPhase + 1}` : 'toda a trilha'}!` : `Você acertou ${hits}/10. São necessários 7 acertos para avançar.`; el('result-message').textContent = passed ? 'Excelente trabalho: avance para a próxima etapa da trilha.' : 'Revise as explicações, pratique os erros e tente esta fase de novo.'; el('restart').innerHTML = passed && currentPhase < 4 ? 'Ir para a próxima fase <span>→</span>' : passed ? 'Escolher nova trilha <span>↻</span>' : 'Refazer esta fase <span>↻</span>'; if (earned.length) setTimeout(() => showToast(earned), 0); renderPhaseMap(); show('result-screen', { historyMode: 'replace' }); } else { current++; renderQuestion(); } });
+el('restart').addEventListener('click', () => { updateMission(); if (resultAction === 'nextPhase') begin(currentPhase + 1); else if (resultAction === 'retry') begin(currentPhase); else { renderPhaseMap(); show('setup-screen', { historyMode: 'replace' }); } }); el('leave-quiz').addEventListener('click', () => { updateMission(); renderPhaseMap(); navigateBack('setup-screen'); });
+el('open-dashboard').addEventListener('click', () => { renderDashboard(); show('dashboard-screen'); }); el('close-dashboard').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('save-plan').addEventListener('click', () => { state.plan.minutes = el('daily-minutes').value; saveState(); });
 el('practice-notebook').addEventListener('click', openReview);
 el('review-errors').addEventListener('click', openReview);
-el('close-review').addEventListener('click', () => { updateMission(); show('setup-screen'); });
+el('close-review').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
-function openWeeklyGoalModal() {
+function openWeeklyGoalModal(options = {}) {
   const modal = el('weekly-goal-modal'), input = el('weekly-goal-input');
   weeklyGoalReturnFocus = document.activeElement;
   input.value = String(state.weekly?.goal || 50);
   el('weekly-goal-error').textContent = '';
   modal.hidden = false;
   document.body.classList.add('modal-open');
+  document.querySelector('.app-shell')?.setAttribute('inert', '');
+  el('app-nav')?.setAttribute('inert', '');
+  if (!options.fromHistory) updateScreenHistory(activeScreenId(), 'push', { estudaModal: 'weekly-goal' });
   setTimeout(() => { input.focus(); input.select(); }, 0);
 }
-function closeWeeklyGoalModal() {
+function closeWeeklyGoalModal(options = {}) {
+  if (!options.fromHistory && historyStateIsCurrent() && window.history.state?.estudaModal === 'weekly-goal') { window.history.back(); return; }
   el('weekly-goal-modal').hidden = true;
   document.body.classList.remove('modal-open');
+  document.querySelector('.app-shell')?.removeAttribute('inert');
+  el('app-nav')?.removeAttribute('inert');
   weeklyGoalReturnFocus?.focus?.();
 }
 el('edit-weekly-goal').addEventListener('click', openWeeklyGoalModal);
@@ -835,7 +913,12 @@ document.addEventListener('keydown', (event) => {
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 });
-el('app-nav').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => { if (button.dataset.nav === 'trail') show('setup-screen'); else if (button.dataset.nav === 'review') openReview(); else { renderDashboard(); show('dashboard-screen'); } }));
+el('app-nav').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
+  if (button.dataset.nav === 'subjects') goToSubjects();
+  else if (button.dataset.nav === 'trail') show('setup-screen');
+  else if (button.dataset.nav === 'review') openReview();
+  else { renderDashboard(); show('dashboard-screen'); }
+}));
 document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEventListener('click', () => {
   const destination = button.dataset.sideNav;
   if (destination === 'subjects') goToSubjects();
@@ -851,7 +934,32 @@ el('save-teacher-material').addEventListener('click', () => { const title = el('
 el('toggle-creator').addEventListener('click', () => { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; });
 document.querySelectorAll('.subject-card').forEach((card) => card.addEventListener('click', () => { const subject = card.dataset.subject; el('subject').value = subject; el('topic').value = ''; el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; renderTopicExamples(); renderPhaseMap(); show('setup-screen'); }));
 el('back-to-subjects').addEventListener('click', goToSubjects);
-el('result-home').addEventListener('click', goToSubjects);
+el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'replace' }));
+window.addEventListener('popstate', (event) => {
+  const modal = el('weekly-goal-modal');
+  if (!modal.hidden && event.state?.estudaModal !== 'weekly-goal') { closeWeeklyGoalModal({ fromHistory: true }); return; }
+  if (!historyStateIsCurrent(event.state)) {
+    show(activeSupabaseUser ? 'subject-screen' : 'auth-screen', { historyMode: 'reset' });
+    return;
+  }
+  if (event.state?.estudaModal === 'weekly-goal') { if (modal.hidden) openWeeklyGoalModal({ fromHistory: true }); return; }
+  const requested = event.state?.estudaScreen;
+  const fallback = activeSupabaseUser ? 'subject-screen' : 'auth-screen';
+  const transientReady = requested === 'quiz-screen' ? questions.length === 10 && current < questions.length : requested === 'result-screen' ? questions.length === 10 && current === 9 : true;
+  const destination = appScreenIds.has(requested) && transientReady && (activeSupabaseUser || requested === 'auth-screen') ? requested : fallback;
+  if (destination === 'dashboard-screen') renderDashboard();
+  if (destination === 'review-screen') renderReviewScreen();
+  if (destination === 'setup-screen' || destination === 'subject-screen') renderPhaseMap();
+  show(destination, { historyMode: 'none' });
+});
+function syncVirtualKeyboard() {
+  const activeTag = document.activeElement?.tagName;
+  const editing = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+  document.body.classList.toggle('keyboard-open', editing && window.matchMedia('(max-width: 1024px)').matches);
+}
+window.visualViewport?.addEventListener('resize', syncVirtualKeyboard);
+document.addEventListener('focusin', syncVirtualKeyboard);
+document.addEventListener('focusout', () => setTimeout(syncVirtualKeyboard, 0));
 function resetPasswordVisibility() {
   document.querySelectorAll('[data-password-target]').forEach((button) => {
     const input = el(button.dataset.passwordTarget);
@@ -861,7 +969,7 @@ function resetPasswordVisibility() {
     const icon = button.querySelector('[aria-hidden="true"]'); if (icon) icon.textContent = '👁';
   });
 }
-function setAuthMode(mode) {
+function setAuthMode(mode, navigationOptions = {}) {
   const forms = { login: 'login-form', register: 'register-form', recovery: 'recovery-form', reset: 'new-password-form' };
   if (!forms[mode]) mode = 'login';
   Object.entries(forms).forEach(([name, id]) => { el(id).hidden = name !== mode; });
@@ -881,7 +989,7 @@ function setAuthMode(mode) {
   if (mode === 'recovery') el('recovery-email').value = el('login-email').value.trim();
   resetPasswordVisibility();
   showAuthNotice('');
-  show('auth-screen');
+  show('auth-screen', { ...navigationOptions, focusHeading: false });
   const focusTargets = { login: 'login-email', register: 'register-name', recovery: 'recovery-email', reset: 'new-password' };
   setTimeout(() => el(focusTargets[mode])?.focus(), 0);
 }
@@ -926,4 +1034,5 @@ async function initializeApp() {
   }
   if (data.session?.user) await activateUser(data.session.user);
 }
+updateScreenHistory('auth-screen', 'reset');
 initializeApp();
