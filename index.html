@@ -3,28 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6d28d9" />
     <title>Estuda+ | Quiz inteligente</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="enhancements.css" />
-    <link rel="stylesheet" href="curriculum.css" />
-    <link rel="stylesheet" href="study-features.css" />
-    <link rel="stylesheet" href="quiz-modes.css" />
-    <link rel="stylesheet" href="journey-layout.css" />
-    <link rel="stylesheet" href="phase-path.css" />
-    <link rel="stylesheet" href="subject-selection.css" />
-    <link rel="stylesheet" href="back-navigation.css" />
-    <link rel="stylesheet" href="modern-refresh.css" />
-    <link rel="stylesheet" href="duolingo-inspired.css" />
-    <link rel="stylesheet" href="assessment-sources.css" />
-    <link rel="stylesheet" href="adventure-refresh.css" />
-    <link rel="stylesheet" href="auth-modern.css" />
-    <link rel="stylesheet" href="study-upgrade.css" />
-    <link rel="stylesheet" href="auth-fix.css" />
     <link rel="stylesheet" href="stellar-layout.css" />
     <link rel="stylesheet" href="duolingo-learn-layout.css" />
+    <link rel="stylesheet" href="purple-modern-theme.css" />
   </head>
   <body>
     <main class="app-shell">
@@ -92,13 +79,13 @@
             <label>Ano escolar<select id="subject-school-year" aria-label="Ano escolar na escolha de matéria"></select></label>
           </section>
           <div class="subject-grid" id="subject-grid">
-            <button class="subject-card math" data-subject="Matemática" type="button"><span class="subject-art"><img src="assets/math.svg" alt="" /></span><strong>Matemática</strong><small>Números e lógica</small><i>→</i></button>
-            <button class="subject-card portuguese" data-subject="Português" type="button"><span class="subject-art"><img src="assets/portuguese.svg" alt="" /></span><strong>Português</strong><small>Textos e linguagem</small><i>→</i></button>
-            <button class="subject-card history" data-subject="História" type="button"><span class="subject-art"><img src="assets/history.svg" alt="" /></span><strong>História</strong><small>Tempo e sociedade</small><i>→</i></button>
-            <button class="subject-card geography" data-subject="Geografia" type="button"><span class="subject-art"><img src="assets/geography.svg" alt="" /></span><strong>Geografia</strong><small>Mundo e lugares</small><i>→</i></button>
-            <button class="subject-card biology" data-subject="Biologia" type="button"><span class="subject-art"><img src="assets/biology.svg" alt="" /></span><strong>Biologia</strong><small>Vida e natureza</small><i>→</i></button>
-            <button class="subject-card physics" data-subject="Física" type="button"><span class="subject-art"><img src="assets/physics.svg" alt="" /></span><strong>Física</strong><small>Forças e energia</small><i>→</i></button>
-            <button class="subject-card chemistry" data-subject="Química" type="button"><span class="subject-art"><img src="assets/chemistry.svg" alt="" /></span><strong>Química</strong><small>Matéria e reações</small><i>→</i></button>
+            <button class="subject-card math" data-subject="Matemática" type="button"><span class="subject-art" aria-hidden="true">➗</span><strong>Matemática</strong><small>Números e lógica</small><i>→</i></button>
+            <button class="subject-card portuguese" data-subject="Português" type="button"><span class="subject-art" aria-hidden="true">📖</span><strong>Português</strong><small>Textos e linguagem</small><i>→</i></button>
+            <button class="subject-card history" data-subject="História" type="button"><span class="subject-art" aria-hidden="true">🏛️</span><strong>História</strong><small>Tempo e sociedade</small><i>→</i></button>
+            <button class="subject-card geography" data-subject="Geografia" type="button"><span class="subject-art" aria-hidden="true">🌎</span><strong>Geografia</strong><small>Mundo e lugares</small><i>→</i></button>
+            <button class="subject-card biology" data-subject="Biologia" type="button"><span class="subject-art" aria-hidden="true">🧬</span><strong>Biologia</strong><small>Vida e natureza</small><i>→</i></button>
+            <button class="subject-card physics" data-subject="Física" type="button"><span class="subject-art" aria-hidden="true">⚛️</span><strong>Física</strong><small>Forças e energia</small><i>→</i></button>
+            <button class="subject-card chemistry" data-subject="Química" type="button"><span class="subject-art" aria-hidden="true">🧪</span><strong>Química</strong><small>Matéria e reações</small><i>→</i></button>
           </div>
         </div>
 
@@ -107,11 +94,11 @@
           <section id="adventure-overview" hidden>
             <section class="journey-intro"><span class="unit-label">SUA AVENTURA</span><h2>Hora de seguir<br><em>sua trilha.</em></h2><p>Olá, <strong id="avatar-name">Explorador</strong>! Conclua cada fase com pelo menos 70% de acertos.</p></section>
             <section id="phase-map" class="lesson-path" aria-label="Trilha de fases"></section>
-            <div class="topline create-line"><span class="step-pill">OUTRA AVENTURA</span><button id="toggle-creator" class="text-button" type="button">Trocar assunto</button></div>
+            <div class="topline create-line"><span class="step-pill">OUTRA AVENTURA</span><button id="toggle-creator" class="text-button" type="button">Alterar trilha</button></div>
           </section>
           <div id="lesson-creator">
           <section class="study-brief" aria-label="Seu plano de estudos">
-            <div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2 class="creator-title">Escolha o assunto</h2><p class="subtitle">Defina o tema e avance na sua trilha personalizada.</p></div>
+            <div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2 class="creator-title">Configure sua trilha</h2><p class="subtitle">Escolha os detalhes abaixo. O assunto é opcional: sem ele, faremos uma revisão geral da matéria.</p></div>
             <button id="start-enem-sim" class="enem-shortcut" type="button"><span>⌁</span><b>Simulado Enem</b><small>10 questões · modo prova</small></button>
           </section>
           <section class="daily-mission" aria-label="Missão diária">
@@ -133,8 +120,9 @@
               <label>Ano escolar
                 <select id="school-year" required></select>
               </label>
-              <label>Assunto
-                <input id="topic" required placeholder="Ex.: compras, espaço, frações..." />
+              <label>Assunto <span class="optional-tag">Opcional</span>
+                <input id="topic" placeholder="Deixe em branco para uma revisão geral" aria-describedby="topic-auto-hint" />
+                <small id="topic-auto-hint" class="input-help">Se ficar vazio, o app seleciona uma revisão adequada à matéria e ao ano.</small>
               </label>
               <label>Sistema de ensino
                 <select id="curriculum">
@@ -252,6 +240,24 @@
         </div>
       </section>
     </main>
+    <div id="weekly-goal-modal" class="modal-backdrop" hidden>
+      <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="weekly-goal-title" aria-describedby="weekly-goal-description">
+        <button class="modal-close" type="button" data-close-weekly-goal aria-label="Fechar">×</button>
+        <span class="modal-icon" aria-hidden="true">🎯</span>
+        <span class="eyebrow">META PERSONALIZADA</span>
+        <h2 id="weekly-goal-title">Quanto você quer avançar?</h2>
+        <p id="weekly-goal-description">Escolha uma meta entre 5 e 500 questões para esta semana.</p>
+        <form id="weekly-goal-form" class="modal-form">
+          <label for="weekly-goal-input">Questões na semana</label>
+          <input id="weekly-goal-input" type="number" inputmode="numeric" min="5" max="500" step="1" required />
+          <p id="weekly-goal-error" class="modal-error" role="alert"></p>
+          <div class="modal-actions">
+            <button class="modal-secondary" type="button" data-close-weekly-goal>Cancelar</button>
+            <button class="start-button" type="submit">Salvar meta <span>✓</span></button>
+          </div>
+        </form>
+      </section>
+    </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
       <button type="button" data-nav="trail"><span>⌁</span>Trilha</button>
       <button type="button" data-nav="review"><span>↻</span>Revisar<b id="nav-review-badge" hidden>0</b></button>

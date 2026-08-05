@@ -7,6 +7,7 @@ const supabaseClient = globalThis.supabase?.createClient(supabaseUrl, supabasePu
 });
 let activeSupabaseUser = null;
 let remoteSaveTimer = null;
+let weeklyGoalReturnFocus = null;
 let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
 const gradeContent = window.EstudaGradeContent;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
@@ -60,7 +61,7 @@ const weeklyThemes = [
   { title: 'Cidade que se transforma', copy: 'Conecte mapas, história, ambiente e escolhas das pessoas no mesmo desafio.' },
   { title: 'Comunicação que convence', copy: 'Leia com atenção: tese, evidência e intenção mudam a força de um texto.' }
 ];
-const subjectAssets = { Matemática: 'assets/math.svg', Português: 'assets/portuguese.svg', História: 'assets/history.svg', Geografia: 'assets/geography.svg', Biologia: 'assets/biology.svg', Física: 'assets/physics.svg', Química: 'assets/chemistry.svg' };
+const subjectIcons = { Matemática: '➗', Português: '📖', História: '🏛️', Geografia: '🌎', Biologia: '🧬', Física: '⚛️', Química: '🧪' };
 const phaseNames = ['Fundamentos', 'Aplicação', 'Raciocínio', 'Missão final'];
 const learningBank = [
   ['Qual atitude ajuda mais a aprender {topic}?', ['Ignorar dúvidas', 'Resolver exemplos e explicar o raciocínio', 'Decorar uma resposta pronta', 'Pular as etapas', 'Estudar só na véspera'], 1, 'Praticar e explicar com suas palavras fortalece a compreensão e mostra o que ainda precisa ser revisado.'],
@@ -296,19 +297,46 @@ const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
 const unique = (items) => [...new Set(items)];
 function isUnlocked(avatar) { return state.totalPoints >= avatar.cost; }
 function selectedAvatar() { return avatars.find((avatar) => avatar.icon === state.avatar) || avatars[0]; }
-function contextFor(topic) { const lower = topic.toLowerCase(); return contexts.find((item) => item.keys.some((key) => lower.includes(key))) || contexts[random(0, contexts.length - 1)]; }
-function routeKey(subject = el('subject')?.value || 'Matemática', topic = el('topic')?.value.trim() || 'operações', system = el('curriculum')?.value || curriculum, year = el('school-year')?.value || schoolYear) { return `${year}|${system}|${subject}|${topic.toLowerCase()}`; }
-function currentRoute() { const subject = el('subject')?.value || 'Matemática'; const topic = el('topic')?.value.trim() || 'operações'; const system = el('curriculum')?.value || curriculum; const year = el('school-year')?.value || schoolYear; return { subject, topic, system, year, yearLabel: schoolYearLabel(year), key: routeKey(subject, topic, system, year) }; }
+function contextFor(topic) { const lower = String(topic || '').toLocaleLowerCase('pt-BR'); return contexts.find((item) => item.keys.some((key) => lower.includes(key))) || contexts[random(0, contexts.length - 1)]; }
+function defaultTopicFor(subject = 'Matemática', year = schoolYear) {
+  const profile = schoolYearProfile(year);
+  return `Revisão geral de ${subject} — ${profile.short}`;
+}
+function resolveTopic(subject = 'Matemática', year = schoolYear, rawTopic = '') { return String(rawTopic ?? '').trim() || defaultTopicFor(subject, year); }
+function normalizedTopicKey(rawTopic = '') {
+  const topic = String(rawTopic ?? '').trim();
+  if (!topic) return '__geral__';
+  return topic.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ');
+}
+function topicForEntry(entry = {}) { return resolveTopic(entry.subject || 'Matemática', entry.schoolYear || schoolYear, entry.topic); }
+function escapeHTML(value = '') { return String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character]); }
+function routeKey(subject = el('subject')?.value || 'Matemática', topicKey = normalizedTopicKey(el('topic')?.value), system = el('curriculum')?.value || curriculum, year = el('school-year')?.value || schoolYear) { return `${year}|${system}|${subject}|${topicKey}`; }
+function currentRoute() {
+  const subject = el('subject')?.value || 'Matemática';
+  const rawTopic = el('topic')?.value || '';
+  const system = el('curriculum')?.value || curriculum;
+  const year = el('school-year')?.value || schoolYear;
+  const topic = resolveTopic(subject, year, rawTopic);
+  const topicKey = normalizedTopicKey(rawTopic);
+  return { subject, topic, topicKey, system, year, yearLabel: schoolYearLabel(year), key: routeKey(subject, topicKey, system, year) };
+}
 function getPhaseProgress(route = currentRoute()) { state.phaseProgress ||= {}; return state.phaseProgress[route.key] || { completed: 0 }; }
-function questionKey(question) { return `${question.schoolYear || schoolYear}|${question.subject || ''}|${question.topic || ''}|${question.q || ''}`.slice(0, 440); }
+function questionKey(question) { return `${question.schoolYear || schoolYear}|${question.subject || ''}|${topicForEntry(question)}|${question.q || ''}`.slice(0, 440); }
 function questionSkill(question) { const subjectSkills = { Matemática: 'Resolver e modelar situações', Português: 'Ler, inferir e argumentar', História: 'Analisar fontes e processos', Geografia: 'Interpretar espaço e dados', Biologia: 'Investigar fenômenos da vida', Física: 'Modelar grandezas e unidades', Química: 'Relacionar matéria e transformação' }; return question.skill || subjectSkills[question.subject] || 'Aplicar o conhecimento'; }
 function currentTheme() { return weeklyThemes[(new Date().getDay() + new Date().getMonth()) % weeklyThemes.length]; }
 function dueReviews() { return state.notebook.filter((entry) => entry.nextReview <= today()); }
-function saveQuestionMark(question, mark) { const key = questionKey(question); let entry = state.savedQuestions.find((item) => item.key === key); if (!entry) { entry = { key, q: question.q, subject: question.subject, topic: question.topic, schoolYear: question.schoolYear || schoolYear, note: question.note, favorite: false, difficult: false, savedAt: today() }; state.savedQuestions.unshift(entry); } entry[mark] = !entry[mark]; if (!entry.favorite && !entry.difficult) state.savedQuestions = state.savedQuestions.filter((item) => item !== entry); state.savedQuestions = state.savedQuestions.slice(0, 40); saveState(); return entry?.[mark] || false; }
+function saveQuestionMark(question, mark) { const key = questionKey(question); let entry = state.savedQuestions.find((item) => item.key === key); if (!entry) { entry = { key, q: question.q, subject: question.subject, topic: topicForEntry(question), schoolYear: question.schoolYear || schoolYear, note: question.note, favorite: false, difficult: false, savedAt: today() }; state.savedQuestions.unshift(entry); } entry[mark] = !entry[mark]; if (!entry.favorite && !entry.difficult) state.savedQuestions = state.savedQuestions.filter((item) => item !== entry); state.savedQuestions = state.savedQuestions.slice(0, 40); saveState(); return entry?.[mark] || false; }
 function isMarked(question, mark) { return !!state.savedQuestions.find((item) => item.key === questionKey(question))?.[mark]; }
-function scheduleReview(question) { const key = questionKey(question); const existing = state.notebook.find((entry) => entry.key === key); if (existing) { existing.nextReview = futureDate(1); existing.step = 0; return; } state.notebook.unshift({ key, subject: question.subject, topic: question.topic, schoolYear: question.schoolYear || schoolYear, question: question.q, note: question.note, nextReview: futureDate(1), step: 0 }); state.notebook = state.notebook.slice(0, 30); }
-function renderPhaseMap() { const route = currentRoute(); const progress = getPhaseProgress(route); const map = el('phase-map'); if (!map) return; map.innerHTML = '<div class="path-line"></div>'; const label = document.createElement('div'); label.className = 'phase-map-label'; label.textContent = `${route.subject} · ${route.yearLabel} · ${route.topic || 'seu tema'} · 4 fases`; map.append(label); phaseNames.forEach((name, index) => { const number = index + 1; const complete = number <= progress.completed; const unlocked = number <= progress.completed + 1; const button = document.createElement('button'); button.type = 'button'; button.className = `lesson-node phase-node ${complete ? 'completed' : ''} ${unlocked ? 'unlocked' : 'locked-node'} ${number === progress.completed + 1 ? 'current' : ''}`; button.disabled = !unlocked; const image = subjectAssets[route.subject] || subjectAssets.Matemática; button.innerHTML = `<img class="phase-illustration" src="${image}" alt="${route.subject}"/><span class="phase-number">${complete ? '★' : unlocked ? number : '🔒'}</span><small>Fase ${number}</small>`; button.title = `${name}: ${complete ? 'concluída' : unlocked ? 'disponível' : 'bloqueada'}`; button.addEventListener('click', () => { if (!unlocked) return; currentPhase = number; begin(number); }); map.append(button); }); }
-function renderTopicExamples() { const subject = el('subject').value; const box = el('topic-examples'); if (!box) return; box.innerHTML = ''; const label = document.createElement('span'); const profile = schoolYearProfile(); const preposition = profile.stage === 'Médio' ? 'na' : 'no'; label.textContent = subject ? `Sugestões para ${subject} ${preposition} ${profile.short}:` : 'Escolha uma matéria para ver sugestões de assunto.'; box.append(label); const suggestions = gradeContent.suggestions(subject, schoolYear, subjectExamples[subject]); suggestions.forEach((topic) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'topic-chip'; button.textContent = topic; button.addEventListener('click', () => { el('topic').value = topic; renderPhaseMap(); }); box.append(button); }); }
+function scheduleReview(question) { const key = questionKey(question); const existing = state.notebook.find((entry) => entry.key === key); if (existing) { existing.nextReview = futureDate(1); existing.step = 0; return; } state.notebook.unshift({ key, subject: question.subject, topic: topicForEntry(question), schoolYear: question.schoolYear || schoolYear, question: question.q, note: question.note, nextReview: futureDate(1), step: 0 }); state.notebook = state.notebook.slice(0, 30); }
+function renderPhaseMap() { const route = currentRoute(); const progress = getPhaseProgress(route); const map = el('phase-map'); if (!map) return; map.innerHTML = '<div class="path-line"></div>'; const label = document.createElement('div'); label.className = 'phase-map-label'; label.textContent = `${route.subject} · ${route.yearLabel} · ${route.topic} · 4 fases`; map.append(label); phaseNames.forEach((name, index) => { const number = index + 1; const complete = number <= progress.completed; const unlocked = number <= progress.completed + 1; const button = document.createElement('button'); button.type = 'button'; button.className = `lesson-node phase-node ${complete ? 'completed' : ''} ${unlocked ? 'unlocked' : 'locked-node'} ${number === progress.completed + 1 ? 'current' : ''}`; button.disabled = !unlocked; const icon = subjectIcons[route.subject] || subjectIcons.Matemática; button.innerHTML = `<span class="phase-illustration" aria-hidden="true">${icon}</span><span class="phase-number">${complete ? '★' : unlocked ? number : '🔒'}</span><small>Fase ${number}</small>`; button.title = `${name}: ${complete ? 'concluída' : unlocked ? 'disponível' : 'bloqueada'}`; button.addEventListener('click', () => { if (!unlocked) return; currentPhase = number; begin(number); }); map.append(button); }); }
+function renderTopicExamples() { const subject = el('subject').value; const box = el('topic-examples'); if (!box) return; box.innerHTML = ''; const label = document.createElement('span'); const profile = schoolYearProfile(); const preposition = profile.stage === 'Médio' ? 'na' : 'no'; label.textContent = subject ? `Sugestões opcionais para ${subject} ${preposition} ${profile.short}:` : 'Escolha uma matéria para ver sugestões opcionais.'; box.append(label); const suggestions = gradeContent.suggestions(subject, schoolYear, subjectExamples[subject]); suggestions.forEach((topic) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'topic-chip'; button.textContent = topic; button.addEventListener('click', () => { el('topic').value = topic; renderPhaseMap(); updateTopicHint(); }); box.append(button); }); updateTopicHint(); }
+function updateTopicHint() {
+  const hint = el('topic-auto-hint');
+  if (!hint) return;
+  const subject = el('subject')?.value || 'Matemática';
+  const rawTopic = el('topic')?.value || '';
+  hint.textContent = rawTopic.trim() ? `Tema selecionado: ${rawTopic.trim()}.` : `Sem assunto específico: usaremos ${defaultTopicFor(subject, schoolYear).toLocaleLowerCase('pt-BR')}.`;
+}
 
 function numericQuestion(text, result, explanation) {
   const offsets = shuffle([-10, -5, -3, -2, -1, 1, 2, 3, 5, 10]);
@@ -485,10 +513,50 @@ function renderDashboard() {
   el('personal-ranking').textContent = state.rounds ? `Seu melhor resultado é ${state.bestScore} pontos em ${state.rounds} desafio${state.rounds > 1 ? 's' : ''}.` : 'Complete sua primeira rodada para criar seu recorde.';
 }
 function renderPlan() { const picker = el('week-picker'); picker.innerHTML = ''; ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach((day, index) => { const button = document.createElement('button'); button.type = 'button'; button.className = `day-button ${state.plan.days.includes(String(index)) ? 'selected' : ''}`; button.textContent = day; button.addEventListener('click', () => { const key = String(index); state.plan.days = state.plan.days.includes(key) ? state.plan.days.filter((item) => item !== key) : [...state.plan.days, key]; saveState(); renderPlan(); }); picker.append(button); }); el('daily-minutes').value = state.plan.minutes; }
-function renderNotebook() { const box = el('error-notebook'); box.innerHTML = ''; const entries = state.notebook.slice(0, 4); if (!entries.length) { box.innerHTML = '<div class="empty-review">Seu caderno aparecerá aqui quando houver uma questão para revisar.</div>'; return; } entries.forEach((entry) => { const row = document.createElement('div'); row.className = 'notebook-entry'; const title = document.createElement('span'); title.textContent = `${entry.subject}: ${entry.topic} · ${schoolYearLabel(entry.schoolYear || '6EF')}`; const date = document.createElement('span'); date.textContent = entry.nextReview <= today() ? 'Revisar hoje' : `Revisar em ${entry.nextReview.split('-').reverse().slice(0, 2).join('/')}`; row.append(title, date); box.append(row); }); }
-function renderSavedQuestions() { const box = el('saved-questions'); if (!box) return; box.innerHTML = ''; const entries = state.savedQuestions.filter((item) => item.favorite || item.difficult).slice(0, 6); if (!entries.length) { box.innerHTML = '<div class="empty-review">Marque uma questão como favorita ou difícil durante o quiz para encontrá-la aqui.</div>'; return; } entries.forEach((entry) => { const row = document.createElement('article'); row.className = 'saved-entry'; row.innerHTML = `<div class="saved-icon">${entry.favorite ? '♥' : '⚑'}</div><div><strong>${entry.q}</strong><small>${entry.subject} · ${schoolYearLabel(entry.schoolYear || '6EF')} · ${entry.topic} · ${entry.difficult ? 'revisar com atenção' : 'favorita'}</small></div><button type="button" aria-label="Remover item salvo">×</button>`; row.querySelector('button').addEventListener('click', () => { state.savedQuestions = state.savedQuestions.filter((item) => item.key !== entry.key); saveState(); renderSavedQuestions(); updateStudySnapshot(); }); box.append(row); }); }
-function renderReviewScreen() { const due = dueReviews(); el('review-due-count').textContent = due.length; const queue = el('review-queue'); queue.innerHTML = ''; const entries = [...due, ...state.notebook.filter((entry) => entry.nextReview > today())].slice(0, 10); if (!entries.length) queue.innerHTML = '<article class="review-item-card empty">Você está em dia. Continue praticando novos assuntos!</article>'; entries.forEach((entry) => { const row = document.createElement('article'); row.className = 'review-item-card'; const date = entry.nextReview <= today() ? 'HOJE' : entry.nextReview.split('-').reverse().slice(0, 2).join('/'); row.innerHTML = `<div class="review-date">${date}</div><div><strong>${entry.subject}: ${entry.topic}</strong><span>${entry.step === 2 ? 'Revisão final' : entry.step === 1 ? 'Segunda revisão' : 'Primeira revisão'}</span></div><button type="button">Praticar</button>`; row.querySelector('button').addEventListener('click', () => startReview(entry)); queue.append(row); }); const saved = el('review-saved-list'); saved.innerHTML = ''; const savedItems = state.savedQuestions.filter((item) => item.favorite || item.difficult).slice(0, 8); if (!savedItems.length) saved.innerHTML = '<article class="review-item-card empty">Seus favoritos e questões difíceis aparecerão aqui.</article>'; savedItems.forEach((entry) => { const row = document.createElement('article'); row.className = 'review-item-card'; row.innerHTML = `<div class="review-date">${entry.favorite ? '♥' : '⚑'}</div><div><strong>${entry.subject}: ${entry.topic}</strong><span>${entry.difficult ? 'Questão marcada como difícil' : 'Questão favorita'}</span></div><button type="button">Treinar</button>`; row.querySelector('button').addEventListener('click', () => startReview(entry)); saved.append(row); }); updateStudySnapshot(); }
-function startReview(entry) { const queued = state.notebook.find((item) => item.key === entry.key); if (queued) { const intervals = [3, 7, 14]; queued.step = Math.min((queued.step || 0) + 1, 2); queued.nextReview = futureDate(intervals[queued.step] || 14); state.reviewCount++; saveState(); } if (entry.schoolYear) setSchoolYear(entry.schoolYear); el('subject').value = entry.subject; el('topic').value = entry.topic; renderTopicExamples(); renderPhaseMap(); updateMission(); currentPhase = 1; begin(1); }
+function renderNotebook() {
+  const box = el('error-notebook'); box.innerHTML = '';
+  const entries = state.notebook.slice(0, 4);
+  if (!entries.length) { box.innerHTML = '<div class="empty-review">Seu caderno aparecerá aqui quando houver uma questão para revisar.</div>'; return; }
+  entries.forEach((entry) => {
+    const row = document.createElement('div'); row.className = 'notebook-entry';
+    const title = document.createElement('span'); title.textContent = `${entry.subject || 'Matéria'}: ${topicForEntry(entry)} · ${schoolYearLabel(entry.schoolYear || '6EF')}`;
+    const date = document.createElement('span'); date.textContent = entry.nextReview <= today() ? 'Revisar hoje' : `Revisar em ${entry.nextReview.split('-').reverse().slice(0, 2).join('/')}`;
+    row.append(title, date); box.append(row);
+  });
+}
+function renderSavedQuestions() {
+  const box = el('saved-questions'); if (!box) return; box.innerHTML = '';
+  const entries = state.savedQuestions.filter((item) => item.favorite || item.difficult).slice(0, 6);
+  if (!entries.length) { box.innerHTML = '<div class="empty-review">Marque uma questão como favorita ou difícil durante o quiz para encontrá-la aqui.</div>'; return; }
+  entries.forEach((entry) => {
+    const row = document.createElement('article'); row.className = 'saved-entry';
+    row.innerHTML = `<div class="saved-icon">${entry.favorite ? '♥' : '⚑'}</div><div><strong>${escapeHTML(entry.q)}</strong><small>${escapeHTML(entry.subject || 'Matéria')} · ${schoolYearLabel(entry.schoolYear || '6EF')} · ${escapeHTML(topicForEntry(entry))} · ${entry.difficult ? 'revisar com atenção' : 'favorita'}</small></div><button type="button" aria-label="Remover item salvo">×</button>`;
+    row.querySelector('button').addEventListener('click', () => { state.savedQuestions = state.savedQuestions.filter((item) => item.key !== entry.key); saveState(); renderSavedQuestions(); updateStudySnapshot(); });
+    box.append(row);
+  });
+}
+function renderReviewScreen() {
+  const due = dueReviews(); el('review-due-count').textContent = due.length;
+  const queue = el('review-queue'); queue.innerHTML = '';
+  const entries = [...due, ...state.notebook.filter((entry) => entry.nextReview > today())].slice(0, 10);
+  if (!entries.length) queue.innerHTML = '<article class="review-item-card empty">Você está em dia. Continue praticando novos assuntos!</article>';
+  entries.forEach((entry) => {
+    const row = document.createElement('article'); row.className = 'review-item-card';
+    const date = entry.nextReview <= today() ? 'HOJE' : entry.nextReview.split('-').reverse().slice(0, 2).join('/');
+    row.innerHTML = `<div class="review-date">${date}</div><div><strong>${escapeHTML(entry.subject || 'Matéria')}: ${escapeHTML(topicForEntry(entry))}</strong><span>${entry.step === 2 ? 'Revisão final' : entry.step === 1 ? 'Segunda revisão' : 'Primeira revisão'}</span></div><button type="button">Praticar</button>`;
+    row.querySelector('button').addEventListener('click', () => startReview(entry)); queue.append(row);
+  });
+  const saved = el('review-saved-list'); saved.innerHTML = '';
+  const savedItems = state.savedQuestions.filter((item) => item.favorite || item.difficult).slice(0, 8);
+  if (!savedItems.length) saved.innerHTML = '<article class="review-item-card empty">Seus favoritos e questões difíceis aparecerão aqui.</article>';
+  savedItems.forEach((entry) => {
+    const row = document.createElement('article'); row.className = 'review-item-card';
+    row.innerHTML = `<div class="review-date">${entry.favorite ? '♥' : '⚑'}</div><div><strong>${escapeHTML(entry.subject || 'Matéria')}: ${escapeHTML(topicForEntry(entry))}</strong><span>${entry.difficult ? 'Questão marcada como difícil' : 'Questão favorita'}</span></div><button type="button">Treinar</button>`;
+    row.querySelector('button').addEventListener('click', () => startReview(entry)); saved.append(row);
+  });
+  updateStudySnapshot();
+}
+function startReview(entry) { const queued = state.notebook.find((item) => item.key === entry.key); if (queued) { const intervals = [3, 7, 14]; queued.step = Math.min((queued.step || 0) + 1, 2); queued.nextReview = futureDate(intervals[queued.step] || 14); state.reviewCount++; saveState(); } if (entry.schoolYear) setSchoolYear(entry.schoolYear); el('subject').value = entry.subject || 'Matemática'; el('topic').value = entry.topic || ''; renderTopicExamples(); renderPhaseMap(); updateMission(); currentPhase = 1; begin(1); }
 function renderTeacherMaterials() { const list = el('teacher-material-list'); list.innerHTML = ''; state.materials.forEach((material) => { const row = document.createElement('div'); row.className = 'material-entry'; const title = document.createElement('strong'); title.textContent = material.title; const note = document.createElement('span'); note.textContent = material.note; row.append(title, note); list.append(row); }); }
 function showToast(messages) { if (!messages.length) return; const toast = el('achievement-toast'); toast.hidden = false; toast.innerHTML = `<strong>${messages[0].icon} ${messages[0].title}</strong>${messages[0].description}`; }
 function checkAchievements() { const earned = []; medals.forEach((medal) => { if (medal.test(state) && !state.medals.includes(medal.id)) { state.medals.push(medal.id); earned.push(medal); } }); return earned; }
@@ -497,7 +565,7 @@ function recordAnswer(question, right) {
   if (state.lastStudyDay !== today()) { const yesterday = futureDate(-1); state.streakDays = state.lastStudyDay === yesterday ? (state.streakDays || 0) + 1 : 1; state.lastStudyDay = today(); }
   const subject = question.subject; state.subjectStats[subject] ||= { correct: 0, total: 0 }; state.subjectStats[subject].total++; if (right) state.subjectStats[subject].correct++;
   const yearKey = question.schoolYear || schoolYear; state.yearStats[yearKey] ||= { correct: 0, total: 0 }; state.yearStats[yearKey].total++; if (right) state.yearStats[yearKey].correct++;
-  if (right) { roundStreak++; state.bestStreak = Math.max(state.bestStreak, roundStreak); } else { state.energy = Math.max(0, (state.energy ?? 5) - 1); roundStreak = 0; state.topicErrors[question.topic] = (state.topicErrors[question.topic] || 0) + 1; scheduleReview(question); }
+  if (right) { roundStreak++; state.bestStreak = Math.max(state.bestStreak, roundStreak); } else { const topic = topicForEntry(question); state.energy = Math.max(0, (state.energy ?? 5) - 1); roundStreak = 0; state.topicErrors[topic] = (state.topicErrors[topic] || 0) + 1; scheduleReview(question); }
   const earned = checkAchievements(); saveState(); updateMission(); updateHome(); return earned;
 }
 
@@ -506,10 +574,11 @@ el('curriculum').addEventListener('change', (event) => { curriculum = event.targ
 el('subject').addEventListener('change', () => { renderTopicExamples(); renderPhaseMap(); });
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
-el('topic').addEventListener('input', () => renderPhaseMap());
+el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
 function show(id) {
   document.querySelectorAll('.screen').forEach((screen) => screen.classList.remove('active'));
   el(id).classList.add('active');
+  document.body.dataset.screen = id;
   const nav = el('app-nav');
   if (nav) {
     nav.hidden = ['auth-screen', 'subject-screen', 'quiz-screen', 'result-screen'].includes(id);
@@ -519,15 +588,15 @@ function show(id) {
   document.querySelectorAll('.side-menu [data-side-nav]').forEach((button) => button.classList.toggle('active', button.dataset.sideNav === activeSide));
 }
 function goToSubjects() { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen'); }
-function openAdventure() { const subject = el('subject').value, topic = el('topic').value.trim(); if (!subject || !topic) return; curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); }
+function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); }
 function openReview() { renderReviewScreen(); show('review-screen'); }
 function setChoice(groupId, value) { const group = el(groupId); if (!group) return; group.querySelectorAll('.choice').forEach((button) => button.classList.toggle('selected', button.dataset.value === value)); if (groupId === 'difficulty') difficulty = value; else quizMode = value; }
 function startEnemSimulation() { setSchoolYear('3EM'); el('subject').value = el('subject').value || 'Matemática'; el('topic').value = el('topic').value || 'proporcionalidade e porcentagem'; el('curriculum').value = 'Base Enem/Inep'; curriculum = 'Base Enem/Inep'; setChoice('difficulty', 'Médio'); setChoice('quiz-mode', 'Prova'); el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderTopicExamples(); openAdventure(); }
 function begin(phaseOverride) {
-  const subject = el('subject').value, topic = el('topic').value.trim();
+  const route = currentRoute(), subject = route.subject, topic = route.topic;
   curriculum = el('curriculum').value;
-  if (!subject || !topic) return;
-  const route = currentRoute(), progress = getPhaseProgress(route);
+  if (!el('subject').value) { el('subject').focus(); return; }
+  const progress = getPhaseProgress(route);
   currentPhase = phaseOverride || Math.min(progress.completed + 1, 4);
   current = 0; score = 0; hits = 0; roundStreak = 0;
   questions = officialRoundFor(subject, schoolYear);
@@ -550,7 +619,7 @@ function completeAlternate(right, question, open) { if (open) { const text = el(
 function showFeedback(question, right, rewards) {
   const feedback = el('feedback'), source = question.source || curriculumSources[question.curriculum]; feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`;
   feedback.innerHTML = `<strong>${right ? '✓ Resposta correta!' : '↗ Quase lá!'}</strong>${question.note}${source ? `<a class="question-source" href="${source.url}" target="_blank" rel="noreferrer">${source.label}</a>` : ''}<div class="feedback-actions"><button type="button" data-explain="essential">Essencial</button><button type="button" data-explain="steps">Passo a passo</button><button type="button" data-explain="deeper">Aprofundar</button><button type="button" class="similar-action">Questão parecida</button></div><p class="explanation-extra" hidden></p>`;
-  const detail = feedback.querySelector('.explanation-extra'); const explanations = { essential: question.note, steps: `1. Identifique os dados e o que foi pedido. 2. Escolha a relação adequada. 3. Resolva sem pular etapas. 4. Confira se a resposta é coerente. Aplicando isso aqui: ${question.note}`, deeper: `Habilidade em foco: ${questionSkill(question)}. Tente criar um exemplo novo sobre ${question.topic} e explique por que cada alternativa incorreta não resolve o problema.` };
+  const detail = feedback.querySelector('.explanation-extra'); const explanations = { essential: question.note, steps: `1. Identifique os dados e o que foi pedido. 2. Escolha a relação adequada. 3. Resolva sem pular etapas. 4. Confira se a resposta é coerente. Aplicando isso aqui: ${question.note}`, deeper: `Habilidade em foco: ${questionSkill(question)}. Tente criar um exemplo novo sobre ${topicForEntry(question)} e explique por que cada alternativa incorreta não resolve o problema.` };
   feedback.querySelectorAll('[data-explain]').forEach((button) => button.addEventListener('click', () => { feedback.querySelectorAll('[data-explain]').forEach((item) => item.classList.remove('selected')); button.classList.add('selected'); detail.hidden = false; detail.textContent = explanations[button.dataset.explain]; }));
   feedback.querySelector('.similar-action').addEventListener('click', () => begin(currentPhase)); if (rewards.length) showToast(rewards);
 }
@@ -572,7 +641,39 @@ el('close-review').addEventListener('click', () => { updateMission(); show('setu
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
-el('edit-weekly-goal').addEventListener('click', () => { const answer = window.prompt('Quantas questões você quer fazer nesta semana?', String(state.weekly?.goal || 50)); const goal = Number(answer); if (!Number.isFinite(goal) || goal < 5 || goal > 500) return; state.weekly.goal = Math.round(goal); saveState(); updateMission(); });
+function openWeeklyGoalModal() {
+  const modal = el('weekly-goal-modal'), input = el('weekly-goal-input');
+  weeklyGoalReturnFocus = document.activeElement;
+  input.value = String(state.weekly?.goal || 50);
+  el('weekly-goal-error').textContent = '';
+  modal.hidden = false;
+  document.body.classList.add('modal-open');
+  setTimeout(() => { input.focus(); input.select(); }, 0);
+}
+function closeWeeklyGoalModal() {
+  el('weekly-goal-modal').hidden = true;
+  document.body.classList.remove('modal-open');
+  weeklyGoalReturnFocus?.focus?.();
+}
+el('edit-weekly-goal').addEventListener('click', openWeeklyGoalModal);
+document.querySelectorAll('[data-close-weekly-goal]').forEach((button) => button.addEventListener('click', closeWeeklyGoalModal));
+el('weekly-goal-modal').addEventListener('click', (event) => { if (event.target === el('weekly-goal-modal')) closeWeeklyGoalModal(); });
+el('weekly-goal-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const goal = Number(el('weekly-goal-input').value);
+  if (!Number.isFinite(goal) || goal < 5 || goal > 500) { el('weekly-goal-error').textContent = 'Digite um número entre 5 e 500.'; el('weekly-goal-input').focus(); return; }
+  state.weekly.goal = Math.round(goal); saveState(); updateMission(); closeWeeklyGoalModal();
+});
+document.addEventListener('keydown', (event) => {
+  const modal = el('weekly-goal-modal'); if (modal.hidden) return;
+  if (event.key === 'Escape') { event.preventDefault(); closeWeeklyGoalModal(); return; }
+  if (event.key !== 'Tab') return;
+  const focusable = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled])')];
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
 el('app-nav').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => { if (button.dataset.nav === 'trail') show('setup-screen'); else if (button.dataset.nav === 'review') openReview(); else { renderDashboard(); show('dashboard-screen'); } }));
 document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEventListener('click', () => {
   const destination = button.dataset.sideNav;
