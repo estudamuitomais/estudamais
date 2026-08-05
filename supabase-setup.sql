@@ -1,6 +1,8 @@
 -- Estuda+ — estrutura segura de usuários e progresso.
 -- Execute todo este arquivo no SQL Editor do projeto Supabase.
 
+begin;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   name text not null default '',
@@ -33,8 +35,23 @@ create table if not exists public.progress (
   unique (user_id, subject, topic, school_year, phase_number)
 );
 
+-- Histórico imutável de exposição às questões. As duas chaves únicas fazem a
+-- reserva do lote ser atômica, inclusive quando duas abas/dispositivos iniciam
+-- um quiz ao mesmo tempo.
+create table if not exists public.question_history (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  question_id text not null,
+  question_fingerprint text not null,
+  subject text not null default '',
+  school_year text not null default '',
+  seen_at timestamptz not null default now(),
+  primary key (user_id, question_id),
+  unique (user_id, question_fingerprint)
+);
+
 alter table public.profiles enable row level security;
 alter table public.progress enable row level security;
+alter table public.question_history enable row level security;
 
 drop policy if exists "Usuário lê o próprio perfil" on public.profiles;
 create policy "Usuário lê o próprio perfil"
@@ -53,10 +70,22 @@ on public.progress for all to authenticated
 using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 
+drop policy if exists "Usuário lê o próprio histórico de questões" on public.question_history;
+create policy "Usuário lê o próprio histórico de questões"
+on public.question_history for select to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "Usuário reserva questões no próprio histórico" on public.question_history;
+create policy "Usuário reserva questões no próprio histórico"
+on public.question_history for insert to authenticated
+with check ((select auth.uid()) = user_id);
+
 revoke all on public.profiles from anon;
 revoke all on public.progress from anon;
+revoke all on public.question_history from anon;
 grant select, update on public.profiles to authenticated;
 grant select, insert, update, delete on public.progress to authenticated;
+grant select, insert on public.question_history to authenticated;
 grant usage, select on sequence public.progress_id_seq to authenticated;
 
 create or replace function public.handle_new_user()
@@ -97,3 +126,28 @@ select
   coalesce(raw_user_meta_data ->> 'avatar', '🧑‍🚀')
 from auth.users
 on conflict (id) do nothing;
+
+-- Migra os identificadores e fingerprints gravados no JSON pelas versões
+-- anteriores. Isso evita que a atualização faça um estudante rever itens já
+-- apresentados antes da criação da tabela atômica.
+insert into public.question_history (user_id, question_id, question_fingerprint, subject, school_year)
+select p.id, old_id.value, 'legacy-id:' || md5(old_id.value), 'Histórico anterior', ''
+from public.profiles p
+cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(p.app_state -> 'seenQuestionIds') = 'array'
+    then p.app_state -> 'seenQuestionIds' else '[]'::jsonb end
+) as old_id(value)
+where nullif(btrim(old_id.value), '') is not null
+on conflict do nothing;
+
+insert into public.question_history (user_id, question_id, question_fingerprint, subject, school_year)
+select p.id, 'legacy-fingerprint:' || old_fingerprint.value, old_fingerprint.value, 'Histórico anterior', ''
+from public.profiles p
+cross join lateral jsonb_array_elements_text(
+  case when jsonb_typeof(p.app_state -> 'seenQuestionFingerprints') = 'array'
+    then p.app_state -> 'seenQuestionFingerprints' else '[]'::jsonb end
+) as old_fingerprint(value)
+where nullif(btrim(old_fingerprint.value), '') is not null
+on conflict do nothing;
+
+commit;

@@ -10,6 +10,7 @@ let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
 let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
 const gradeContent = window.EstudaGradeContent;
+const questionEngine = window.EstudaQuestionExpansion;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
 
 const avatars = [
@@ -111,8 +112,13 @@ const subjectChallengeBank = {
 function today() { return new Date().toISOString().slice(0, 10); }
 function weekKey() { const date = new Date(); const first = new Date(date.getFullYear(), 0, 1); return `${date.getFullYear()}-${Math.ceil((((date - first) / 86400000) + first.getDay() + 1) / 7)}`; }
 function futureDate(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }
-function blankState() { return { totalPoints: 0, avatar: '🧑‍🚀', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: 5, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
-function mergeState(saved) { return { ...blankState(), ...(saved || {}), subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], weekly: { ...blankState().weekly, ...(saved?.weekly || {}) } }; }
+function blankState() { return { totalPoints: 0, avatar: '🧑‍🚀', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: 5, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, questionSequences: {}, seenQuestionIds: [], seenQuestionFingerprints: [], plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
+function mergeState(saved) { return { ...blankState(), ...(saved || {}), subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], questionSequences: saved?.questionSequences && typeof saved.questionSequences === 'object' && !Array.isArray(saved.questionSequences) ? saved.questionSequences : {}, seenQuestionIds: [...new Set(Array.isArray(saved?.seenQuestionIds) ? saved.seenQuestionIds : [])], seenQuestionFingerprints: [...new Set(Array.isArray(saved?.seenQuestionFingerprints) ? saved.seenQuestionFingerprints : [])], weekly: { ...blankState().weekly, ...(saved?.weekly || {}) } }; }
+function mergeQuestionSequences(local = {}, cloud = {}) {
+  const merged = { ...local };
+  Object.entries(cloud).forEach(([key, value]) => { merged[key] = Math.max(Number(merged[key]) || 0, Number(value) || 0); });
+  return merged;
+}
 function loadState() { try { return mergeState(JSON.parse(localStorage.getItem(storageKey))); } catch { return blankState(); } }
 let state = loadState();
 schoolYear = state.schoolYear || '6EF';
@@ -170,16 +176,54 @@ function friendlyAuthError(error) {
   return 'Não foi possível concluir o acesso. Verifique sua conexão e tente novamente.';
 }
 async function fetchCloudProfile(user) {
-  if (!supabaseClient) return null;
-  const { data, error } = await supabaseClient.from('profiles').select('name, school_year, avatar, points, app_state').eq('id', user.id).maybeSingle();
-  if (error) {
-    console.warn('Sincronização aguardando a configuração da tabela profiles:', error.message);
-    return null;
+  if (!supabaseClient) return { data: null, error: new Error('Serviço de sincronização indisponível.') };
+  return supabaseClient.from('profiles').select('name, school_year, avatar, points, app_state').eq('id', user.id).maybeSingle();
+}
+async function fetchQuestionHistory(user = activeSupabaseUser) {
+  if (!user || !supabaseClient) return { data: [], error: new Error('Histórico de questões indisponível.') };
+  const rows = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabaseClient
+      .from('question_history')
+      .select('question_id, question_fingerprint, seen_at')
+      .eq('user_id', user.id)
+      .order('seen_at', { ascending: true })
+      .order('question_id', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) return { data: rows, error };
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) return { data: rows, error: null };
   }
-  return data;
+}
+function mergeReservedQuestionHistory(rows = []) {
+  state.seenQuestionIds = [...new Set([...(state.seenQuestionIds || []), ...rows.map((row) => row.question_id).filter(Boolean)])];
+  state.seenQuestionFingerprints = [...new Set([...(state.seenQuestionFingerprints || []), ...rows.map((row) => row.question_fingerprint).filter(Boolean)])];
+}
+async function reserveQuestionBatch(batch, subject, yearCode) {
+  if (!activeSupabaseUser || !supabaseClient) return { reserved: true, conflict: false, error: null };
+  const rows = [];
+  const rowIds = new Set();
+  const rowFingerprints = new Set();
+  const addRow = (questionId, questionFingerprint) => {
+    if (!questionId || !questionFingerprint || rowIds.has(questionId) || rowFingerprints.has(questionFingerprint)) return;
+    rowIds.add(questionId);
+    rowFingerprints.add(questionFingerprint);
+    rows.push({ user_id: activeSupabaseUser.id, question_id: questionId, question_fingerprint: questionFingerprint, subject, school_year: yearCode });
+  };
+  batch.forEach((question) => {
+    const currentFingerprint = questionEngine.fingerprint(question);
+    addRow(question.id, currentFingerprint);
+    (question.historyAliases?.ids || []).forEach((aliasId) => addRow(aliasId, `alias-id:${aliasId}`));
+    (question.historyAliases?.fingerprints || []).forEach((aliasFingerprint) => addRow(`alias-fingerprint:${aliasFingerprint}`, aliasFingerprint));
+  });
+  const { error } = await supabaseClient.from('question_history').insert(rows);
+  if (!error) return { reserved: true, conflict: false, error: null };
+  const conflict = String(error.code || '') === '23505' || /duplicate key|unique constraint/i.test(String(error.message || ''));
+  return { reserved: false, conflict, error };
 }
 async function syncStateToSupabase() {
-  if (!activeSupabaseUser || !supabaseClient) return;
+  if (!activeSupabaseUser || !supabaseClient) return false;
   const payload = {
     name: state.userName || activeSupabaseUser.user_metadata?.name || '',
     school_year: state.schoolYear || '6EF',
@@ -189,7 +233,8 @@ async function syncStateToSupabase() {
     updated_at: new Date().toISOString()
   };
   const { error } = await supabaseClient.from('profiles').update(payload).eq('id', activeSupabaseUser.id);
-  if (error) console.warn('Não foi possível sincronizar o progresso:', error.message);
+  if (error) { console.warn('Não foi possível sincronizar o progresso:', error.message); return false; }
+  return true;
 }
 async function activateUser(user) {
   activeSupabaseUser = user;
@@ -198,8 +243,30 @@ async function activateUser(user) {
   if (!localStorage.getItem(userStorageKey) && localStorage.getItem(legacyStorageKey)) localStorage.setItem(userStorageKey, localStorage.getItem(legacyStorageKey));
   storageKey = userStorageKey;
   const localState = loadState();
-  const profile = await fetchCloudProfile(user);
-  state = profile?.app_state && Object.keys(profile.app_state).length ? mergeState(profile.app_state) : localState;
+  const { data: profile, error: profileError } = await fetchCloudProfile(user);
+  if (profileError || !profile) {
+    console.warn('Não foi possível reconciliar o histórico antes de iniciar:', profileError?.message || 'perfil ausente');
+    activeSupabaseUser = null;
+    show('auth-screen');
+    showAuthNotice('Não foi possível sincronizar seu histórico agora. Por segurança, o quiz não foi iniciado para evitar questões repetidas. Verifique a conexão e tente entrar novamente.', true);
+    return false;
+  }
+  const { data: reservedHistory, error: historyError } = await fetchQuestionHistory(user);
+  if (historyError) {
+    console.warn('Não foi possível carregar o histórico atômico de questões:', historyError.message);
+    activeSupabaseUser = null;
+    show('auth-screen');
+    showAuthNotice('Não foi possível conferir as questões já utilizadas. Por segurança, tente entrar novamente antes de iniciar o quiz.', true);
+    return false;
+  }
+  if (profile?.app_state && Object.keys(profile.app_state).length) {
+    const cloudState = mergeState(profile.app_state);
+    state = cloudState;
+    state.seenQuestionIds = [...new Set([...(localState.seenQuestionIds || []), ...(cloudState.seenQuestionIds || [])])];
+    state.seenQuestionFingerprints = [...new Set([...(localState.seenQuestionFingerprints || []), ...(cloudState.seenQuestionFingerprints || [])])];
+    state.questionSequences = mergeQuestionSequences(localState.questionSequences, cloudState.questionSequences);
+  } else state = localState;
+  mergeReservedQuestionHistory(reservedHistory);
   state.userName = profile?.name || user.user_metadata?.name || state.userName || user.email?.split('@')[0] || 'Estudante';
   state.schoolYear = profile?.school_year || state.schoolYear || '6EF';
   state.avatar = profile?.avatar || state.avatar;
@@ -207,6 +274,7 @@ async function activateUser(user) {
   setSchoolYear(state.schoolYear, false);
   saveState();
   updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen');
+  return true;
 }
 async function registerUser(event) {
   event.preventDefault();
@@ -321,14 +389,14 @@ function currentRoute() {
   return { subject, topic, topicKey, system, year, yearLabel: schoolYearLabel(year), key: routeKey(subject, topicKey, system, year) };
 }
 function getPhaseProgress(route = currentRoute()) { state.phaseProgress ||= {}; return state.phaseProgress[route.key] || { completed: 0 }; }
-function questionKey(question) { return `${question.schoolYear || schoolYear}|${question.subject || ''}|${topicForEntry(question)}|${question.q || ''}`.slice(0, 440); }
+function questionKey(question) { return question.id || `${question.schoolYear || schoolYear}|${question.subject || ''}|${topicForEntry(question)}|${question.q || ''}`.slice(0, 440); }
 function questionSkill(question) { const subjectSkills = { Matemática: 'Resolver e modelar situações', Português: 'Ler, inferir e argumentar', História: 'Analisar fontes e processos', Geografia: 'Interpretar espaço e dados', Biologia: 'Investigar fenômenos da vida', Física: 'Modelar grandezas e unidades', Química: 'Relacionar matéria e transformação' }; return question.skill || subjectSkills[question.subject] || 'Aplicar o conhecimento'; }
 function currentTheme() { return weeklyThemes[(new Date().getDay() + new Date().getMonth()) % weeklyThemes.length]; }
 function dueReviews() { return state.notebook.filter((entry) => entry.nextReview <= today()); }
 function saveQuestionMark(question, mark) { const key = questionKey(question); let entry = state.savedQuestions.find((item) => item.key === key); if (!entry) { entry = { key, q: question.q, subject: question.subject, topic: topicForEntry(question), schoolYear: question.schoolYear || schoolYear, note: question.note, favorite: false, difficult: false, savedAt: today() }; state.savedQuestions.unshift(entry); } entry[mark] = !entry[mark]; if (!entry.favorite && !entry.difficult) state.savedQuestions = state.savedQuestions.filter((item) => item !== entry); state.savedQuestions = state.savedQuestions.slice(0, 40); saveState(); return entry?.[mark] || false; }
 function isMarked(question, mark) { return !!state.savedQuestions.find((item) => item.key === questionKey(question))?.[mark]; }
 function scheduleReview(question) { const key = questionKey(question); const existing = state.notebook.find((entry) => entry.key === key); if (existing) { existing.nextReview = futureDate(1); existing.step = 0; return; } state.notebook.unshift({ key, subject: question.subject, topic: topicForEntry(question), schoolYear: question.schoolYear || schoolYear, question: question.q, note: question.note, nextReview: futureDate(1), step: 0 }); state.notebook = state.notebook.slice(0, 30); }
-function renderPhaseMap() { const route = currentRoute(); const progress = getPhaseProgress(route); const map = el('phase-map'); if (!map) return; map.innerHTML = '<div class="path-line"></div>'; const label = document.createElement('div'); label.className = 'phase-map-label'; label.textContent = `${route.subject} · ${route.yearLabel} · ${route.topic} · 4 fases`; map.append(label); phaseNames.forEach((name, index) => { const number = index + 1; const complete = number <= progress.completed; const unlocked = number <= progress.completed + 1; const button = document.createElement('button'); button.type = 'button'; button.className = `lesson-node phase-node ${complete ? 'completed' : ''} ${unlocked ? 'unlocked' : 'locked-node'} ${number === progress.completed + 1 ? 'current' : ''}`; button.disabled = !unlocked; const icon = subjectIcons[route.subject] || subjectIcons.Matemática; button.innerHTML = `<span class="phase-illustration" aria-hidden="true">${icon}</span><span class="phase-number">${complete ? '★' : unlocked ? number : '🔒'}</span><small>Fase ${number}</small>`; button.title = `${name}: ${complete ? 'concluída' : unlocked ? 'disponível' : 'bloqueada'}`; button.addEventListener('click', () => { if (!unlocked) return; currentPhase = number; begin(number); }); map.append(button); }); }
+function renderPhaseMap() { const route = currentRoute(); const progress = getPhaseProgress(route); const map = el('phase-map'); if (!map) return; map.innerHTML = '<div class="path-line"></div>'; const label = document.createElement('div'); label.className = 'phase-map-label'; label.textContent = `${route.subject} · ${route.yearLabel} · ${route.topic} · 4 fases · questões inéditas`; map.append(label); phaseNames.forEach((name, index) => { const number = index + 1; const complete = number <= progress.completed; const unlocked = number <= progress.completed + 1; const button = document.createElement('button'); button.type = 'button'; button.className = `lesson-node phase-node ${complete ? 'completed' : ''} ${unlocked ? 'unlocked' : 'locked-node'} ${number === progress.completed + 1 ? 'current' : ''}`; button.disabled = !unlocked; const icon = subjectIcons[route.subject] || subjectIcons.Matemática; button.innerHTML = `<span class="phase-illustration" aria-hidden="true">${icon}</span><span class="phase-number">${complete ? '★' : unlocked ? number : '🔒'}</span><small>Fase ${number}</small>`; button.title = `${name}: ${complete ? 'concluída' : unlocked ? 'disponível' : 'bloqueada'}`; button.addEventListener('click', () => { if (!unlocked) return; currentPhase = number; begin(number); }); map.append(button); }); }
 function renderTopicExamples() { const subject = el('subject').value; const box = el('topic-examples'); if (!box) return; box.innerHTML = ''; const label = document.createElement('span'); const profile = schoolYearProfile(); const preposition = profile.stage === 'Médio' ? 'na' : 'no'; label.textContent = subject ? `Sugestões opcionais para ${subject} ${preposition} ${profile.short}:` : 'Escolha uma matéria para ver sugestões opcionais.'; box.append(label); const suggestions = gradeContent.suggestions(subject, schoolYear, subjectExamples[subject]); suggestions.forEach((topic) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'topic-chip'; button.textContent = topic; button.addEventListener('click', () => { el('topic').value = topic; renderPhaseMap(); updateTopicHint(); }); box.append(button); }); updateTopicHint(); }
 function updateTopicHint() {
   const hint = el('topic-auto-hint');
@@ -419,7 +487,7 @@ const officialEnem2010Source = (day, number) => ({ label: `Fonte oficial: Enem 2
 const officialEnemItem = (day, number, q, a, correct, skill, note) => ({ q, a, correct, skill, note, source: officialEnem2010Source(day, number) });
 const realEnem2010SubjectQuestions = {
   Português: [
-    officialEnemItem(2, 106, 'O folclore é retrato da cultura de um povo. Considerando a tradição, a obra que representa dança folclórica brasileira é:', ['Bumba-meu-boi.', 'Quadrilha das festas juninas.', 'Congado.', 'Balé.', 'Carnaval.'], 3, 'Reconhecer manifestações culturais', 'O balé utiliza música, bailarinos e profissionais para uma história em espetáculo; não é uma manifestação folclórica brasileira.'),
+    officialEnemItem(2, 106, 'O folclore é retrato da cultura de um povo. Considerando a tradição, qual alternativa NÃO representa uma dança folclórica brasileira?', ['Bumba-meu-boi.', 'Quadrilha das festas juninas.', 'Congado.', 'Balé.', 'Carnaval.'], 3, 'Reconhecer manifestações culturais', 'O balé utiliza música, bailarinos e profissionais para contar uma história em espetáculo, mas não é uma manifestação folclórica brasileira.'),
     officialEnemItem(2, 107, 'No verso “Cuiçá gemeu, será que era meu, quando ela passou por mim?”, a palavra “corasamborim” une “coração”, “samba” e “tamborim”. Esse recurso corresponde a:', ['estrangeirismo.', 'neologismo.', 'gíria.', 'regionalismo.', 'termo técnico.'], 1, 'Analisar formação de palavras', 'A criação de uma palavra nova pelos recursos do sistema da língua caracteriza um neologismo.'),
     officialEnemItem(2, 109, 'O chat proporciona diálogos instantâneos e interativos. Essa forma de comunicação ocorre porque:', ['possibilita diálogo sem exposição da identidade real, com uso de apelidos fictícios.', 'disponibiliza salas com assuntos pré-selecionados por autoridades.', 'seleciona conteúdos adequados à faixa etária.', 'garante a gravação das conversas.', 'limita participantes conectados.'], 0, 'Interpretar textos sobre comunicação digital', 'O texto destaca o uso de apelidos e a comunicação em tempo real, sem exigir a identidade real.'),
     officialEnemItem(2, 112, 'A notícia relata a operação do Ibama contra pesca ilegal, descrevendo redes incineradas e peixes apreendidos. Do ponto de vista de seus elementos constitutivos, a notícia:', ['apresenta argumentos contrários à pesca ilegal.', 'tem título que resume o texto.', 'informa uma ação, a finalidade e o resultado dessa ação.', 'dirige-se aos órgãos governamentais.', 'incentiva movimentos sociais.'], 2, 'Reconhecer estrutura do gênero notícia', 'A notícia apresenta o acontecimento, sua finalidade de preservação e os resultados da operação.'),
@@ -465,17 +533,97 @@ const realEnem2010SubjectQuestions = {
 function questionTextForDisplay(text) {
   return String(text).replace(/^\s*Enem\s+20\d{2}\s*,\s*\d+º\s*dia\s*,\s*questão\s+\d+\s*[.:–—-]\s*/i, '').trim();
 }
-function officialRoundFor(subject, yearCode = schoolYear) {
+function legacyQuestionPoolFor(subject, yearCode = schoolYear) {
   const profile = schoolYearProfile(yearCode);
-  if (profile.stage !== 'Médio') return gradeContent.buildFundamentalRound(subject, yearCode);
-  const bank = subject === 'Matemática' ? realEnem2010MathQuestions : realEnem2010SubjectQuestions[subject] || [];
-  const seriesIndex = Math.max(0, profile.order - 10);
-  const span = Math.min(bank.length, Math.max(3, Math.ceil(bank.length * .72)));
-  const offset = bank.length ? (seriesIndex * Math.max(1, Math.floor(bank.length / 4))) % bank.length : 0;
-  const rotated = [...bank.slice(offset), ...bank.slice(0, offset)];
-  const selected = rotated.slice(0, span);
-  const repeated = Array.from({ length: Math.ceil(10 / Math.max(selected.length, 1)) }, () => selected).flat();
-  return shuffle(repeated).slice(0, 10).map((item) => ({ ...item, q: questionTextForDisplay(item.q), a: [...item.a], origin: 'Enem', schoolYear: profile.code, source: { ...item.source } }));
+  const bank = profile.stage !== 'Médio'
+    ? gradeContent.buildFundamentalRound(subject, yearCode)
+    : subject === 'Matemática' ? realEnem2010MathQuestions : realEnem2010SubjectQuestions[subject] || [];
+  const fingerprints = new Set();
+  return bank.filter((item) => !/\bgráfico\b|representada na figura|etapas?\s+(?:I|II|III|IV)[^?]*respectivamente|ocorrem,\s*respectivamente,\s*em/i.test(item.q)).map((item) => ({
+    ...item,
+    q: questionTextForDisplay(item.q),
+    a: [...item.a],
+    origin: profile.stage === 'Médio' ? 'Enem' : 'BNCC',
+    schoolYear: profile.code,
+    source: item.source ? { ...item.source } : undefined
+  })).filter((item) => {
+    const identity = profile.stage === 'Médio' && item.source?.label ? item.source.label : `${item.q}|${item.a[item.correct]}`;
+    const fingerprint = identity.normalize('NFKC').toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ').trim();
+    if (fingerprints.has(fingerprint)) return false;
+    fingerprints.add(fingerprint);
+    return true;
+  });
+}
+async function freshRoundFor(subject, yearCode, route) {
+  if (!questionEngine?.buildRound) throw new Error('O banco de questões não foi carregado.');
+  state.questionSequences ||= {};
+  state.seenQuestionIds ||= [];
+  state.seenQuestionFingerprints ||= [];
+  try {
+    const latestStoredState = mergeState(JSON.parse(localStorage.getItem(storageKey)));
+    state.seenQuestionIds = [...new Set([...state.seenQuestionIds, ...latestStoredState.seenQuestionIds])];
+    state.seenQuestionFingerprints = [...new Set([...state.seenQuestionFingerprints, ...latestStoredState.seenQuestionFingerprints])];
+    state.questionSequences = mergeQuestionSequences(state.questionSequences, latestStoredState.questionSequences);
+  } catch { /* O estado em memória continua válido quando o armazenamento está indisponível. */ }
+  if (activeSupabaseUser && supabaseClient) {
+    const { data: latestProfile, error: latestProfileError } = await fetchCloudProfile(activeSupabaseUser);
+    if (latestProfileError || !latestProfile) throw new Error('Não foi possível conferir seu histórico na nuvem antes desta rodada. Tente novamente quando a conexão estiver estável.');
+    const latestCloudState = mergeState(latestProfile.app_state);
+    state.seenQuestionIds = [...new Set([...state.seenQuestionIds, ...latestCloudState.seenQuestionIds])];
+    state.seenQuestionFingerprints = [...new Set([...state.seenQuestionFingerprints, ...latestCloudState.seenQuestionFingerprints])];
+    state.questionSequences = mergeQuestionSequences(state.questionSequences, latestCloudState.questionSequences);
+    const { data: latestHistory, error: latestHistoryError } = await fetchQuestionHistory(activeSupabaseUser);
+    if (latestHistoryError) throw new Error('Não foi possível conferir as questões já utilizadas. Tente novamente quando a conexão estiver estável.');
+    mergeReservedQuestionHistory(latestHistory);
+  }
+  const scope = `${yearCode}|${subject}`;
+  let cursor = Number(state.questionSequences[scope]) || 0;
+  let result = null;
+  const rejectedIds = new Set();
+  const rejectedFingerprints = new Set();
+  for (let attempt = 0; attempt < 100; attempt++) {
+    result = questionEngine.buildRound({
+      subject,
+      schoolYear: yearCode,
+      topic: route.topicKey === '__geral__' ? '' : route.topic,
+      phase: currentPhase,
+      difficulty,
+      curriculum,
+      count: 10,
+      cursor,
+      seenIds: [...state.seenQuestionIds, ...rejectedIds],
+      seenFingerprints: [...state.seenQuestionFingerprints, ...rejectedFingerprints],
+      seedQuestions: legacyQuestionPoolFor(subject, yearCode)
+    });
+    if (!result || result.questions?.length !== 10) break;
+    if (!activeSupabaseUser || !supabaseClient) break;
+    const reservation = await reserveQuestionBatch(result.questions, subject, yearCode);
+    if (reservation.reserved) break;
+    if (!reservation.conflict) {
+      console.warn('Não foi possível reservar o lote de questões:', reservation.error?.message || reservation.error);
+      throw new Error('Não foi possível reservar questões inéditas na nuvem. Verifique a conexão e tente novamente.');
+    }
+    result.questions.forEach((question) => {
+      rejectedIds.add(question.id);
+      rejectedFingerprints.add(questionEngine.fingerprint(question));
+    });
+    cursor = result.nextCursor;
+    const { data: refreshedHistory, error: refreshedHistoryError } = await fetchQuestionHistory(activeSupabaseUser);
+    if (refreshedHistoryError) throw new Error('Houve uma disputa entre dispositivos e não foi possível atualizar o histórico. Tente novamente.');
+    mergeReservedQuestionHistory(refreshedHistory);
+    result = null;
+  }
+  if (!result || result.questions?.length !== 10) throw new Error('Não foi possível montar dez questões inéditas para esta rodada.');
+  state.questionSequences[scope] = result.nextCursor;
+  state.seenQuestionIds = [...new Set([...state.seenQuestionIds, ...result.questions.map((question) => question.id)])];
+  state.seenQuestionFingerprints = [...new Set([...state.seenQuestionFingerprints, ...result.questions.map((question) => questionEngine.fingerprint(question))])];
+  saveState();
+  if (activeSupabaseUser && supabaseClient) {
+    clearTimeout(remoteSaveTimer);
+    const synced = await syncStateToSupabase();
+    if (!synced) throw new Error('Não foi possível confirmar o histórico na nuvem. As questões foram reservadas neste dispositivo; tente novamente quando a conexão estiver estável.');
+  }
+  return result.questions;
 }
 
 function updateLearningRail() {
@@ -592,14 +740,26 @@ function openAdventure() { const subject = el('subject').value; if (!subject) { 
 function openReview() { renderReviewScreen(); show('review-screen'); }
 function setChoice(groupId, value) { const group = el(groupId); if (!group) return; group.querySelectorAll('.choice').forEach((button) => button.classList.toggle('selected', button.dataset.value === value)); if (groupId === 'difficulty') difficulty = value; else quizMode = value; }
 function startEnemSimulation() { setSchoolYear('3EM'); el('subject').value = el('subject').value || 'Matemática'; el('topic').value = el('topic').value || 'proporcionalidade e porcentagem'; el('curriculum').value = 'Base Enem/Inep'; curriculum = 'Base Enem/Inep'; setChoice('difficulty', 'Médio'); setChoice('quiz-mode', 'Prova'); el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderTopicExamples(); openAdventure(); }
-function begin(phaseOverride) {
+function setQuestionBankStatus(message = '', error = false) {
+  const status = el('question-bank-status'); if (!status) return;
+  status.classList.toggle('error', error);
+  status.innerHTML = error ? `<span aria-hidden="true">!</span><strong>${escapeHTML(message)}</strong>` : '<span aria-hidden="true">∞</span><strong>Banco inteligente sem repetição</strong> — centenas de exercícios por matéria e ano, com histórico salvo no seu perfil.';
+}
+async function begin(phaseOverride) {
   const route = currentRoute(), subject = route.subject, topic = route.topic;
   curriculum = el('curriculum').value;
   if (!el('subject').value) { el('subject').focus(); return; }
   const progress = getPhaseProgress(route);
   currentPhase = phaseOverride || Math.min(progress.completed + 1, 4);
   current = 0; score = 0; hits = 0; roundStreak = 0;
-  questions = officialRoundFor(subject, schoolYear);
+  try { questions = await freshRoundFor(subject, schoolYear, route); }
+  catch (error) {
+    console.error('Não foi possível iniciar uma rodada inédita:', error);
+    setQuestionBankStatus(error.message || 'Não foi possível montar a rodada inédita.', true);
+    el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('setup-screen');
+    return;
+  }
+  setQuestionBankStatus();
   questions.forEach((question) => { question.subject = subject; question.topic = topic; question.curriculum = curriculum; question.schoolYear = schoolYear; question.phase = currentPhase; const axis = curriculum === 'Base Enem/Inep' ? ` Eixo Enem trabalhado: ${enemAxes[subject]}.` : ''; question.note = `${question.note} Ano escolar: ${schoolYearLabel()}. Orientação da trilha: ${curriculumDescriptions[curriculum]}${axis}`; });
   show('quiz-screen'); renderQuestion();
 }
@@ -607,7 +767,7 @@ function refreshQuestionTools(question) { const save = el('save-question'), diff
 function renderQuestion() {
   const question = questions[current];
   el('question-counter').textContent = `Questão ${current + 1} de 10`; el('progress-bar').style.width = `${(current + 1) * 10}%`; el('score').textContent = score;
-  el('quiz-tag').textContent = question.origin === 'Enem' ? `Questão pública · Enem · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : question.origin === 'BNCC' ? `Prática curricular · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : `${quizMode === 'Prova' ? 'Modo prova' : question.curriculum} · ${schoolYearLabel(question.schoolYear)} · ${question.subject}`;
+  el('quiz-tag').textContent = question.origin === 'Enem' ? `Questão pública · Enem · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : question.origin === 'BNCC' ? `Prática curricular · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : question.origin === 'Autoral' ? `Questão inédita · ${schoolYearLabel(question.schoolYear)} · ${question.subject}` : `${quizMode === 'Prova' ? 'Modo prova' : question.curriculum} · ${schoolYearLabel(question.schoolYear)} · ${question.subject}`;
   el('quiz-skill').textContent = `Habilidade: ${questionSkill(question)}`; el('question-text').textContent = question.q;
   refreshQuestionTools(question);
   const answers = el('answers'); answers.innerHTML = ''; el('feedback').hidden = true; el('achievement-toast').hidden = true; el('next-question').hidden = true;
@@ -616,18 +776,19 @@ function renderQuestion() {
   question.a.forEach((text, index) => { const button = document.createElement('button'); button.className = 'answer'; button.innerHTML = `<span class="letter">${'ABCDE'[index]}</span><span>${text}</span>`; button.addEventListener('click', () => answer(index)); answers.appendChild(button); });
 }
 function completeAlternate(right, question, open) { if (open) { const text = el('open-response').value.trim(); if (!text) return; } const rewards = recordAnswer(question, right); if (right) { score += 100; hits++; } el('score').textContent = score; const feedback = el('feedback'); feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`; feedback.innerHTML = `<strong>${open ? 'Guia de resposta' : right ? '✓ Ordem correta!' : '↗ Quase lá!'}</strong>${question.note}`; if (rewards.length) showToast(rewards); el('next-question').hidden = false; el('next-question').innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>'; }
-function showFeedback(question, right, rewards) {
+function showFeedback(question, right, rewards, selectedIndex) {
   const feedback = el('feedback'), source = question.source || curriculumSources[question.curriculum]; feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`;
-  feedback.innerHTML = `<strong>${right ? '✓ Resposta correta!' : '↗ Quase lá!'}</strong>${question.note}${source ? `<a class="question-source" href="${source.url}" target="_blank" rel="noreferrer">${source.label}</a>` : ''}<div class="feedback-actions"><button type="button" data-explain="essential">Essencial</button><button type="button" data-explain="steps">Passo a passo</button><button type="button" data-explain="deeper">Aprofundar</button><button type="button" class="similar-action">Questão parecida</button></div><p class="explanation-extra" hidden></p>`;
+  const optionComment = question.optionNotes?.[selectedIndex];
+  feedback.innerHTML = `<strong>${right ? '✓ Resposta correta!' : '↗ Quase lá!'}</strong>${optionComment ? `<p class="option-correction">${escapeHTML(optionComment)}</p>` : question.note}${source ? `<a class="question-source" href="${source.url}" target="_blank" rel="noreferrer">${source.label}</a>` : ''}<div class="feedback-actions"><button type="button" data-explain="essential">Essencial</button><button type="button" data-explain="steps">Passo a passo</button><button type="button" data-explain="deeper">Aprofundar</button><button type="button" class="similar-action">Nova rodada inédita</button></div><p class="explanation-extra" hidden></p>`;
   const detail = feedback.querySelector('.explanation-extra'); const explanations = { essential: question.note, steps: `1. Identifique os dados e o que foi pedido. 2. Escolha a relação adequada. 3. Resolva sem pular etapas. 4. Confira se a resposta é coerente. Aplicando isso aqui: ${question.note}`, deeper: `Habilidade em foco: ${questionSkill(question)}. Tente criar um exemplo novo sobre ${topicForEntry(question)} e explique por que cada alternativa incorreta não resolve o problema.` };
   feedback.querySelectorAll('[data-explain]').forEach((button) => button.addEventListener('click', () => { feedback.querySelectorAll('[data-explain]').forEach((item) => item.classList.remove('selected')); button.classList.add('selected'); detail.hidden = false; detail.textContent = explanations[button.dataset.explain]; }));
   feedback.querySelector('.similar-action').addEventListener('click', () => begin(currentPhase)); if (rewards.length) showToast(rewards);
 }
 function answer(index) {
   const question = questions[current], right = index === question.correct;
-  document.querySelectorAll('.answer').forEach((button, answerIndex) => { button.disabled = true; if (quizMode !== 'Prova' && answerIndex === question.correct) button.classList.add('correct'); if (quizMode !== 'Prova' && answerIndex === index && !right) button.classList.add('wrong'); if (quizMode === 'Prova' && answerIndex === index) button.classList.add('selected-answer'); });
+  document.querySelectorAll('.answer').forEach((button, answerIndex) => { button.disabled = true; if (answerIndex === question.correct) button.classList.add('correct'); if (answerIndex === index && !right) button.classList.add('wrong'); if (quizMode === 'Prova' && answerIndex === index) button.classList.add('selected-answer'); });
   if (right) { score += difficulty === 'Difícil' ? 150 : difficulty === 'Médio' ? 120 : 100; hits++; }
-  const rewards = recordAnswer(question, right); el('score').textContent = score; if (quizMode !== 'Prova') showFeedback(question, right, rewards);
+  const rewards = recordAnswer(question, right); el('score').textContent = score; showFeedback(question, right, rewards, index);
   const next = el('next-question'); next.hidden = false; next.innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>';
 }
 el('quiz-form').addEventListener('submit', (event) => { event.preventDefault(); openAdventure(); });

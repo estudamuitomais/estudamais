@@ -219,8 +219,7 @@
     const pool = banks[subject]?.[year.band] || banks.Matemática[year.band];
     const offset = (year.order + subject.length) % pool.length;
     const ordered = [...pool.slice(offset), ...pool.slice(0, offset)];
-    return Array.from({ length: 10 }, (_, index) => {
-      const base = ordered[index % ordered.length];
+    return ordered.map((base) => {
       return {
         ...base,
         a: [...base.a],

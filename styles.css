@@ -170,6 +170,9 @@ h1, h2, h3 { margin-top: 0; }
 .topic-examples > span { flex-basis: 100%; color: var(--muted); font-size: 12px; font-weight: 800; }
 .topic-chip { min-height: 34px; padding: 6px 11px; border-radius: 99px; }
 .school-year-hint, .curriculum-hint { margin: 0; }
+.question-bank-promise { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 14px; border: 1px solid #ddd2fb; border-radius: 13px; background: #f8f5ff; color: #55406f; line-height: 1.45; }
+.question-bank-promise > span { display: grid; flex: 0 0 30px; width: 30px; height: 30px; place-items: center; border-radius: 10px; background: #7c3aed; color: #fff; font-size: 20px; font-weight: 900; }
+.question-bank-promise.error { border-color: #ef9a9a; background: #fff4f4; color: #8b2635; font-weight: 700; }
 fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 legend { margin-bottom: 10px; }
 .choice-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -205,6 +208,7 @@ legend { margin-bottom: 10px; }
 .small-action { min-height: 40px; padding: 9px 14px; border-radius: 11px; }
 .feedback { display: grid; gap: 10px; margin-top: 18px; padding: 17px; line-height: 1.6; }
 .feedback > strong { display: block; font-size: 17px; }
+.option-correction { margin: 0; padding: 11px 13px; border-radius: 12px; background: rgba(255,255,255,.72); font-weight: 700; }
 .question-source { width: max-content; max-width: 100%; }
 .feedback-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 5px; }
 .feedback-actions button { min-height: 34px; padding: 6px 10px; border: 1px solid currentColor; border-radius: 9px; background: rgba(255,255,255,.72); color: inherit; }
