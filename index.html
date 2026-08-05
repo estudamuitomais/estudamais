@@ -73,7 +73,12 @@
         </div>
 
         <div id="subject-screen" class="screen subject-screen">
-          <div class="subject-welcome"><span class="eyebrow">ESTUDA+ AVENTURA</span><h2>Qual matéria vamos explorar?</h2><p class="subtitle">Escolha uma matéria para montar sua trilha de estudos.</p></div>
+          <div class="subject-welcome"><span class="eyebrow">ESTUDA+ AVENTURA</span><h2>Qual matéria vamos explorar?</h2><p class="subtitle">Escolha uma matéria para montar sua trilha de estudos.</p><button id="open-app-tutorial-home" class="tutorial-help-button is-light" type="button"><span aria-hidden="true">▷</span> Como usar o app</button></div>
+          <section class="avatar-home-card" aria-labelledby="avatar-home-title">
+            <div id="home-avatar-preview" class="avatar-home-preview"></div>
+            <div class="avatar-home-copy"><span>MEU PERSONAGEM</span><strong id="avatar-home-title">Crie seu avatar</strong><p id="avatar-home-progress">Personalize seu visual e desbloqueie novidades nas fases.</p></div>
+            <button id="open-avatar-studio-home" class="avatar-edit-button" type="button"><span aria-hidden="true">✦</span> Personalizar</button>
+          </section>
           <section class="subject-year-card" aria-label="Escolha do ano escolar">
             <div><span>PRIMEIRO PASSO</span><strong>Em qual ano você está?</strong><small>As matérias e questões serão organizadas para essa etapa.</small></div>
             <label>Ano escolar<select id="subject-school-year" aria-label="Ano escolar na escolha de matéria"></select></label>
@@ -195,6 +200,11 @@
           <h2 id="result-title">Mandou muito bem!</h2>
           <p id="result-message" class="subtitle"></p>
           <div id="phase-result" class="phase-result"></div>
+          <section id="avatar-unlock-result" class="avatar-unlock-result" hidden aria-live="polite">
+            <div id="avatar-unlock-icons" class="avatar-unlock-icons" aria-hidden="true"></div>
+            <div><strong>Novo visual desbloqueado!</strong><p id="avatar-unlock-copy"></p></div>
+            <button id="open-avatar-studio-result" type="button">Experimentar agora</button>
+          </section>
           <div class="result-score"><strong id="final-score">0</strong><span>pontos</span></div>
           <div class="result-stats"><div><strong id="correct-count">0</strong><span>acertos</span></div><div><strong>10</strong><span>questões</span></div></div>
           <button id="restart" class="start-button">Novo desafio <span>↻</span></button>
@@ -202,15 +212,19 @@
         </div>
 
         <div id="dashboard-screen" class="screen dashboard-screen">
-          <header class="dashboard-header"><button id="close-dashboard" class="icon-button" aria-label="Voltar">←</button><div><span class="eyebrow">MEU ESPAÇO</span><h2>Minha jornada</h2></div></header>
+          <header class="dashboard-header"><button id="close-dashboard" class="icon-button" aria-label="Voltar">←</button><div><span class="eyebrow">MEU ESPAÇO</span><h2>Minha jornada</h2></div><button id="open-app-tutorial-profile" class="tutorial-help-button" type="button"><span aria-hidden="true">▷</span> Como usar</button></header>
           <section class="profile-card">
-            <div id="profile-avatar" class="profile-avatar">🧑‍🚀</div><div><strong id="profile-name">Explorador</strong><span id="profile-points">0 pontos acumulados</span></div><button id="logout-user" class="logout-button" type="button">Sair</button>
+            <div id="profile-avatar" class="profile-avatar"></div><div><strong id="profile-name">Explorador</strong><span id="profile-points">0 pontos acumulados</span></div><button id="logout-user" class="logout-button" type="button">Sair</button>
           </section>
           <section class="dashboard-stats" aria-label="Resumo de desempenho"><article><span>PRECISÃO</span><strong id="accuracy-stat">—</strong><small>acertos gerais</small></article><article><span>REVISÕES</span><strong id="due-review-stat">0</strong><small>para hoje</small></article><article><span>SEMANA</span><strong id="weekly-stat">0</strong><small>questões feitas</small></article></section>
           <section class="focus-card"><div><span class="eyebrow">PLANO ENEM</span><strong>Ritmo consistente vence a pressa.</strong><p id="focus-goal-copy">Faça um pouco por dia e use os erros para decidir o que revisar.</p></div><button id="open-review-from-dashboard" type="button">Ver revisões</button></section>
-          <h3>Escolha seu avatar</h3>
-          <div id="avatar-picker" class="avatar-picker"></div>
-          <h3>Itens desbloqueáveis</h3>
+          <h3>Meu avatar</h3>
+          <section class="avatar-profile-card" aria-labelledby="avatar-profile-title">
+            <div id="dashboard-avatar-preview" class="dashboard-avatar-preview"></div>
+            <div><strong id="avatar-profile-title">Seu companheiro de estudos</strong><span id="avatar-profile-progress">Conclua fases para liberar novos itens.</span></div>
+            <button id="open-avatar-studio-profile" class="avatar-edit-button" type="button">Editar visual</button>
+          </section>
+          <h3>Conquistas e itens desbloqueáveis</h3>
           <div id="rewards-list" class="rewards-list"></div>
           <h3>Meu progresso</h3>
           <section id="subject-progress" class="subject-progress"></section>
@@ -259,6 +273,54 @@
         </form>
       </section>
     </div>
+    <div id="avatar-studio-modal" class="modal-backdrop avatar-studio-backdrop" hidden>
+      <section class="modal-panel avatar-studio-panel" role="dialog" aria-modal="true" aria-labelledby="avatar-studio-title" aria-describedby="avatar-studio-description">
+        <button class="modal-close" type="button" data-close-avatar-studio aria-label="Fechar criador de avatar">×</button>
+        <header class="avatar-studio-heading">
+          <div><span class="eyebrow">ATELIÊ DO EXPLORADOR</span><h2 id="avatar-studio-title">Monte seu próprio avatar</h2><p id="avatar-studio-description">Escolha o visual inicial e conclua fases para liberar roupas e acessórios.</p></div>
+          <div class="avatar-phase-pill"><span aria-hidden="true">★</span><strong id="avatar-phase-count">0</strong><small>fases</small></div>
+        </header>
+        <div class="avatar-studio-layout">
+          <section class="avatar-preview-stage" aria-label="Prévia do avatar">
+            <div id="avatar-studio-preview" class="avatar-studio-preview"></div>
+            <strong id="avatar-preview-name">Seu explorador</strong>
+            <span id="avatar-next-unlock">A próxima fase libera uma novidade.</span>
+          </section>
+          <section class="avatar-editor-controls">
+            <div id="avatar-category-tabs" class="avatar-category-tabs" role="tablist" aria-label="Parte do avatar"></div>
+            <div id="avatar-option-grid" class="avatar-option-grid" role="tabpanel" aria-live="polite"></div>
+            <p id="avatar-studio-status" class="avatar-studio-status" role="status" aria-live="polite"></p>
+          </section>
+        </div>
+        <div class="modal-actions avatar-studio-actions">
+          <button class="modal-secondary" type="button" data-close-avatar-studio>Cancelar</button>
+          <button id="save-avatar-design" class="start-button" type="button">Salvar meu avatar <span>✓</span></button>
+        </div>
+      </section>
+    </div>
+    <div id="app-tutorial-modal" class="modal-backdrop tutorial-backdrop" hidden>
+      <section class="modal-panel tutorial-panel" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-description">
+        <button class="modal-close" type="button" data-close-app-tutorial aria-label="Pular e fechar o tutorial">×</button>
+        <header class="tutorial-heading">
+          <div><span id="tutorial-step-kicker" class="eyebrow">BEM-VINDO</span><span id="tutorial-step-count" class="tutorial-step-count">PASSO 1 DE 5</span></div>
+          <button id="tutorial-skip" class="tutorial-skip" type="button">Pular tutorial</button>
+        </header>
+        <div class="tutorial-main">
+          <div id="tutorial-visual" class="tutorial-visual" aria-hidden="true"></div>
+          <div class="tutorial-copy">
+            <h2 id="tutorial-title" tabindex="-1">Sua aventura começa aqui</h2>
+            <p id="tutorial-description">Em poucos passos, você vai aprender a usar o Estuda+.</p>
+            <ul id="tutorial-tips"></ul>
+          </div>
+        </div>
+        <div id="tutorial-progress" class="tutorial-progress" role="progressbar" aria-label="Progresso do tutorial" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1"><i></i></div>
+        <div id="tutorial-dots" class="tutorial-dots" aria-hidden="true"></div>
+        <div class="modal-actions tutorial-actions">
+          <button id="tutorial-prev" class="modal-secondary" type="button">← Voltar</button>
+          <button id="tutorial-next" class="start-button" type="button">Próximo <span>→</span></button>
+        </div>
+      </section>
+    </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
       <button type="button" data-nav="subjects"><span>⌂</span>Início</button>
       <button type="button" data-nav="trail"><span>⌁</span>Trilha</button>
@@ -268,6 +330,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="grade-content.js"></script>
     <script src="question-expansion.js"></script>
+    <script src="avatar-studio.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

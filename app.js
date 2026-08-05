@@ -13,7 +13,19 @@ let navigationSessionId = createNavigationSessionId();
 let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
 const gradeContent = window.EstudaGradeContent;
 const questionEngine = window.EstudaQuestionExpansion;
+const avatarStudio = window.EstudaAvatarStudio;
+const APP_TUTORIAL_VERSION = 1;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
+let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null;
+let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
+
+const tutorialSteps = [
+  { kicker: 'COMECE AQUI', title: 'Escolha seu ano e uma matéria', description: 'O Estuda+ organiza a aventura de acordo com a etapa escolar da criança.', kind: 'subjects', tips: ['Selecione o ano escolar na tela inicial.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar essas escolhas sempre que quiser.'] },
+  { kicker: 'MONTE SUA TRILHA', title: 'Personalize o desafio', description: 'Antes de começar, escolha como será a rodada de estudos.', kind: 'path', tips: ['O assunto é opcional: em branco, o app faz uma revisão geral.', 'Escolha o sistema de ensino, a dificuldade e o formato.', 'Cada fase reúne 10 questões variadas.'] },
+  { kicker: 'APRENDA FAZENDO', title: 'Responda e entenda cada solução', description: 'Não basta saber se acertou: o comentário mostra como pensar melhor.', kind: 'question', tips: ['Há cinco alternativas e somente uma resposta correta.', 'Use “Passo a passo” e “Aprofundar” depois de responder.', 'Marque questões difíceis para revisar mais tarde.'] },
+  { kicker: 'EVOLUA NA AVENTURA', title: 'Conclua fases e transforme seu avatar', description: 'Com 7 acertos ou mais, a próxima fase fica disponível e novos visuais são liberados.', kind: 'avatar', tips: ['Roupas e acessórios são conquistados por fases concluídas.', 'Repetir uma fase ajuda a praticar, mas não duplica recompensas.', 'Abra o ateliê no Início ou no Perfil para mudar o visual.'] },
+  { kicker: 'CONTINUE CRESCENDO', title: 'Acompanhe o progresso e revise', description: 'O Perfil reúne conquistas, desempenho e os temas que merecem atenção.', kind: 'progress', tips: ['Complete missões curtas e acompanhe a evolução por matéria.', 'O caderno de erros traz conteúdos de volta no momento certo.', 'Adultos e professores podem identificar temas para sugerir revisão.'] }
+];
 
 const avatars = [
   { icon: '🧑‍🚀', name: 'Explorador', cost: 0 },
@@ -114,8 +126,18 @@ const subjectChallengeBank = {
 function today() { return new Date().toISOString().slice(0, 10); }
 function weekKey() { const date = new Date(); const first = new Date(date.getFullYear(), 0, 1); return `${date.getFullYear()}-${Math.ceil((((date - first) / 86400000) + first.getDay() + 1) / 7)}`; }
 function futureDate(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }
-function blankState() { return { totalPoints: 0, avatar: '🧑‍🚀', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: 5, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, questionSequences: {}, seenQuestionIds: [], seenQuestionFingerprints: [], plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
-function mergeState(saved) { return { ...blankState(), ...(saved || {}), subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], questionSequences: saved?.questionSequences && typeof saved.questionSequences === 'object' && !Array.isArray(saved.questionSequences) ? saved.questionSequences : {}, seenQuestionIds: [...new Set(Array.isArray(saved?.seenQuestionIds) ? saved.seenQuestionIds : [])], seenQuestionFingerprints: [...new Set(Array.isArray(saved?.seenQuestionFingerprints) ? saved.seenQuestionFingerprints : [])], weekly: { ...blankState().weekly, ...(saved?.weekly || {}) } }; }
+function completedPhaseCountFrom(progress = {}) { return Object.values(progress || {}).reduce((total, item) => total + Math.max(0, Math.min(4, Number(item?.completed) || 0)), 0); }
+function blankState() { return { stateVersion: 5, totalPoints: 0, avatar: '🧑‍🚀', avatarDesign: avatarStudio.copyDefaults(), avatarDesignUpdatedAt: '', avatarCreated: false, tutorialSeenVersion: 0, tutorialSeenAt: '', tutorialOutcome: '', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: 5, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, questionSequences: {}, seenQuestionIds: [], seenQuestionFingerprints: [], plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
+function mergeState(saved) {
+  const base = blankState(), phaseProgress = saved?.phaseProgress && typeof saved.phaseProgress === 'object' && !Array.isArray(saved.phaseProgress) ? saved.phaseProgress : {};
+  const migratedAvatar = saved?.avatarDesign ? avatarStudio.normalize(saved.avatarDesign) : avatarStudio.migrateLegacy(saved?.avatar);
+  return { ...base, ...(saved || {}), stateVersion: 5, avatarDesign: avatarStudio.fitToUnlocks(migratedAvatar, completedPhaseCountFrom(phaseProgress)), avatarDesignUpdatedAt: String(saved?.avatarDesignUpdatedAt || ''), avatarCreated: Boolean(saved?.avatarCreated), tutorialSeenVersion: Math.max(0, Number(saved?.tutorialSeenVersion) || 0), tutorialSeenAt: String(saved?.tutorialSeenAt || ''), tutorialOutcome: saved?.tutorialOutcome === 'completed' ? 'completed' : saved?.tutorialOutcome === 'skipped' ? 'skipped' : '', subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], phaseProgress, questionSequences: saved?.questionSequences && typeof saved.questionSequences === 'object' && !Array.isArray(saved.questionSequences) ? saved.questionSequences : {}, seenQuestionIds: [...new Set(Array.isArray(saved?.seenQuestionIds) ? saved.seenQuestionIds : [])], seenQuestionFingerprints: [...new Set(Array.isArray(saved?.seenQuestionFingerprints) ? saved.seenQuestionFingerprints : [])], weekly: { ...base.weekly, ...(saved?.weekly || {}) } };
+}
+function mergePhaseProgress(local = {}, cloud = {}) {
+  const merged = { ...local };
+  Object.entries(cloud || {}).forEach(([key, value]) => { const previous = Number(merged[key]?.completed) || 0, incoming = Number(value?.completed) || 0; merged[key] = incoming >= previous ? { ...(merged[key] || {}), ...(value || {}), completed: incoming } : merged[key]; });
+  return merged;
+}
 function mergeQuestionSequences(local = {}, cloud = {}) {
   const merged = { ...local };
   Object.entries(cloud).forEach(([key, value]) => { merged[key] = Math.max(Number(merged[key]) || 0, Number(value) || 0); });
@@ -264,6 +286,16 @@ async function activateUser(user) {
   if (profile?.app_state && Object.keys(profile.app_state).length) {
     const cloudState = mergeState(profile.app_state);
     state = cloudState;
+    state.phaseProgress = mergePhaseProgress(localState.phaseProgress, cloudState.phaseProgress);
+    const localAvatarTime = Date.parse(localState.avatarDesignUpdatedAt || '') || 0, cloudAvatarTime = Date.parse(cloudState.avatarDesignUpdatedAt || '') || 0;
+    const avatarSource = localAvatarTime > cloudAvatarTime ? localState : cloudState;
+    state.avatarDesign = avatarStudio.fitToUnlocks(avatarSource.avatarDesign, completedPhaseCountFrom(state.phaseProgress));
+    state.avatarDesignUpdatedAt = avatarSource.avatarDesignUpdatedAt || '';
+    state.avatarCreated = Boolean(localState.avatarCreated || cloudState.avatarCreated);
+    state.tutorialSeenVersion = Math.max(Number(localState.tutorialSeenVersion) || 0, Number(cloudState.tutorialSeenVersion) || 0);
+    const tutorialStateSource = Number(localState.tutorialSeenVersion) >= Number(cloudState.tutorialSeenVersion) ? localState : cloudState;
+    state.tutorialSeenAt = tutorialStateSource.tutorialSeenAt || '';
+    state.tutorialOutcome = tutorialStateSource.tutorialOutcome || '';
     state.seenQuestionIds = [...new Set([...(localState.seenQuestionIds || []), ...(cloudState.seenQuestionIds || [])])];
     state.seenQuestionFingerprints = [...new Set([...(localState.seenQuestionFingerprints || []), ...(cloudState.seenQuestionFingerprints || [])])];
     state.questionSequences = mergeQuestionSequences(localState.questionSequences, cloudState.questionSequences);
@@ -272,10 +304,14 @@ async function activateUser(user) {
   state.userName = profile?.name || user.user_metadata?.name || state.userName || user.email?.split('@')[0] || 'Estudante';
   state.schoolYear = profile?.school_year || state.schoolYear || '6EF';
   state.avatar = profile?.avatar || state.avatar;
+  state.avatarDesign = avatarStudio.fitToUnlocks(state.avatarDesign, completedPhaseCountFrom(state.phaseProgress));
   state.totalPoints = Math.max(state.totalPoints || 0, profile?.points || 0);
+  const tutorialPendingVersion = Math.max(0, Number(user.user_metadata?.tutorial_pending_version) || 0);
+  const shouldAutoOpenTutorial = tutorialPendingVersion >= APP_TUTORIAL_VERSION && state.tutorialSeenVersion < APP_TUTORIAL_VERSION;
   setSchoolYear(state.schoolYear, false);
   saveState();
   updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen', { historyMode: 'reset' });
+  if (shouldAutoOpenTutorial) requestAnimationFrame(() => openAppTutorial({ automatic: true }));
   return true;
 }
 async function registerUser(event) {
@@ -285,7 +321,7 @@ async function registerUser(event) {
   if (!supabaseClient) { showAuthNotice('O serviço de cadastro não carregou. Verifique sua conexão e atualize a página.', true); return; }
   setAuthBusy('register-form', true, 'Criando conta…'); showAuthNotice('');
   try {
-    const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { name, school_year: state.schoolYear || '6EF', avatar: state.avatar || '🧑‍🚀' } } });
+    const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { name, school_year: state.schoolYear || '6EF', avatar: state.avatar || '🧑‍🚀', tutorial_pending_version: APP_TUTORIAL_VERSION } } });
     if (error) throw error;
     if (data.session && data.user) { await activateUser(data.user); return; }
     el('login-email').value = email;
@@ -353,8 +389,9 @@ async function updateRecoveredPassword(event) {
   finally { setAuthBusy('new-password-form', false); }
 }
 async function logoutUser() {
-  if (supabaseClient) await supabaseClient.auth.signOut();
   clearTimeout(remoteSaveTimer);
+  if (activeSupabaseUser && supabaseClient) await syncStateToSupabase();
+  if (supabaseClient) await supabaseClient.auth.signOut();
   activeSupabaseUser = null;
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
@@ -367,6 +404,90 @@ const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
 const unique = (items) => [...new Set(items)];
 function isUnlocked(avatar) { return state.totalPoints >= avatar.cost; }
 function selectedAvatar() { return avatars.find((avatar) => avatar.icon === state.avatar) || avatars[0]; }
+function completedAvatarPhases() { return completedPhaseCountFrom(state.phaseProgress); }
+function avatarProgressMessage(count = completedAvatarPhases()) {
+  const next = avatarStudio.nextUnlock(count);
+  if (!next) return `${count} fases concluídas · você liberou todo o guarda-roupa!`;
+  const remaining = next.unlock - count;
+  return `${count} fase${count === 1 ? '' : 's'} concluída${count === 1 ? '' : 's'} · ${remaining === 1 ? 'a próxima fase libera' : `faltam ${remaining} fases para liberar`} ${next.name}.`;
+}
+function renderAvatarInto(id, design = state.avatarDesign, options = {}) {
+  const target = el(id); if (!target) return;
+  target.innerHTML = avatarStudio.render(design, options);
+}
+function renderAvatarSurfaces() {
+  const count = completedAvatarPhases(), name = learnerName(), message = avatarProgressMessage(count);
+  renderAvatarInto('home-avatar-preview');
+  renderAvatarInto('top-avatar', state.avatarDesign, { decorative: true });
+  renderAvatarInto('profile-avatar', state.avatarDesign, { decorative: true });
+  renderAvatarInto('dashboard-avatar-preview');
+  if (el('avatar-home-title')) el('avatar-home-title').textContent = state.avatarCreated ? `${name}, este é seu avatar!` : 'Crie seu avatar';
+  if (el('avatar-home-progress')) el('avatar-home-progress').textContent = message;
+  if (el('avatar-profile-progress')) el('avatar-profile-progress').textContent = message;
+}
+function renderAvatarStudioPreview() {
+  if (!avatarDraft) return;
+  renderAvatarInto('avatar-studio-preview', avatarDraft);
+  const count = completedAvatarPhases(), next = avatarStudio.nextUnlock(count);
+  el('avatar-phase-count').textContent = count;
+  el('avatar-preview-name').textContent = learnerName();
+  el('avatar-next-unlock').textContent = next ? `${next.name} será liberado ao completar ${next.unlock} fase${next.unlock === 1 ? '' : 's'}.` : 'Todo o guarda-roupa foi liberado. Excelente jornada!';
+}
+function avatarOptionSample(category, item) {
+  const color = item.color;
+  if (category === 'skin' || category === 'hairColor') return `<span class="avatar-option-sample is-color" style="--sample:${color}" aria-hidden="true"></span>`;
+  return `<span class="avatar-option-sample" aria-hidden="true">${item.icon || '✦'}</span>`;
+}
+function renderAvatarOptions(category = avatarCategory) {
+  const grid = el('avatar-option-grid'), count = completedAvatarPhases(); if (!grid || !avatarDraft) return;
+  const categoryInfo = avatarStudio.categories.find((item) => item.id === category) || avatarStudio.categories[0];
+  grid.setAttribute('aria-labelledby', `avatar-tab-${categoryInfo.id}`);
+  grid.innerHTML = '';
+  avatarStudio.catalog[categoryInfo.id].forEach((item) => {
+    const unlocked = (item.unlock || 0) <= count, selected = avatarDraft[categoryInfo.id] === item.id;
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'avatar-part-option'; button.dataset.avatarOption = item.id; button.setAttribute('aria-pressed', String(selected)); button.setAttribute('aria-disabled', String(!unlocked));
+    const requirement = unlocked ? selected ? 'Selecionado' : 'Disponível' : `Libera após ${item.unlock} fase${item.unlock === 1 ? '' : 's'}`;
+    button.innerHTML = `${avatarOptionSample(categoryInfo.id, item)}<span><strong>${item.name}</strong><small>${requirement}</small></span><b aria-hidden="true">${unlocked ? selected ? '✓' : '' : '🔒'}</b>`;
+    button.addEventListener('click', () => {
+      if (!unlocked) { const remaining = item.unlock - count; el('avatar-studio-status').textContent = `Continue a aventura: ${remaining === 1 ? 'falta 1 fase' : `faltam ${remaining} fases`} para liberar ${item.name}.`; return; }
+      avatarDraft[categoryInfo.id] = item.id; el('avatar-studio-status').textContent = `${item.name} escolhido. Salve para usar este visual.`; renderAvatarStudioPreview(); renderAvatarOptions(categoryInfo.id); requestAnimationFrame(() => el('avatar-option-grid').querySelector(`[data-avatar-option="${item.id}"]`)?.focus());
+    });
+    grid.append(button);
+  });
+}
+function renderAvatarEditor() {
+  const tabs = el('avatar-category-tabs'); if (!tabs || !avatarDraft) return; tabs.innerHTML = '';
+  avatarStudio.categories.forEach((category) => { const button = document.createElement('button'); const active = category.id === avatarCategory; button.type = 'button'; button.id = `avatar-tab-${category.id}`; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(active)); button.setAttribute('aria-controls', 'avatar-option-grid'); button.innerHTML = `<span aria-hidden="true">${category.icon}</span>${category.label}`; button.addEventListener('click', () => { avatarCategory = category.id; el('avatar-studio-status').textContent = ''; renderAvatarEditor(); }); tabs.append(button); });
+  renderAvatarStudioPreview(); renderAvatarOptions(avatarCategory);
+}
+function renderAvatarUnlockResult(items = []) {
+  const panel = el('avatar-unlock-result'); if (!panel) return; panel.hidden = !items.length;
+  if (!items.length) return;
+  el('avatar-unlock-icons').innerHTML = items.map((item) => `<span>${item.icon || '✨'}</span>`).join('');
+  el('avatar-unlock-copy').textContent = items.map((item) => item.name).join(items.length > 1 ? ' e ' : '');
+}
+function tutorialVisualMarkup(kind) {
+  if (kind === 'subjects') return '<div class="tutorial-subject-demo"><span>÷</span><span>文</span><span>⌁</span><b>6º ano selecionado</b></div>';
+  if (kind === 'path') return '<div class="tutorial-path-demo"><div class="tutorial-path-line"><i class="done">✓</i><span></span><i class="current">2</i><span></span><i>3</i></div><strong>Faça 7 de 10 para avançar</strong></div>';
+  if (kind === 'question') return '<div class="tutorial-question-demo"><small>QUESTÃO 3 DE 10</small><strong>Qual alternativa resolve corretamente o desafio?</strong><span>A&nbsp;&nbsp; Primeira possibilidade</span><span class="correct">✓&nbsp;&nbsp; Resposta correta comentada</span></div>';
+  if (kind === 'avatar') return `<div class="tutorial-avatar-demo">${avatarStudio.render(state.avatarDesign, { decorative: true })}<div class="tutorial-avatar-items"><span><b>👕</b> Roupas por fases</span><span><b>👓</b> Acessórios novos</span><span><b>✦</b> Seu próprio estilo</span></div></div>`;
+  return '<div class="tutorial-progress-demo"><article><span>🎯</span><div>Missão diária<i><b style="--demo-progress:80%"></b></i></div><b>4/5</b></article><article><span>↻</span><div>Revisões inteligentes<i><b style="--demo-progress:55%"></b></i></div><b>3</b></article><article><span>★</span><div>Evolução em Matemática<i><b style="--demo-progress:72%"></b></i></div><b>72%</b></article></div>';
+}
+function renderAppTutorial(options = {}) {
+  const step = tutorialSteps[tutorialStep] || tutorialSteps[0];
+  const position = tutorialStep + 1;
+  el('tutorial-step-kicker').textContent = step.kicker;
+  el('tutorial-step-count').textContent = `PASSO ${position} DE ${tutorialSteps.length}`;
+  el('tutorial-title').textContent = step.title;
+  el('tutorial-description').textContent = step.description;
+  el('tutorial-tips').innerHTML = step.tips.map((tip) => `<li>${tip}</li>`).join('');
+  const visual = el('tutorial-visual'); visual.className = `tutorial-visual is-${step.kind}`; visual.innerHTML = tutorialVisualMarkup(step.kind);
+  const progress = el('tutorial-progress'); progress.setAttribute('aria-valuenow', String(position)); progress.querySelector('i').style.width = `${(position / tutorialSteps.length) * 100}%`;
+  el('tutorial-dots').innerHTML = tutorialSteps.map((_, index) => `<i class="${index === tutorialStep ? 'active' : ''}"></i>`).join('');
+  el('tutorial-prev').hidden = tutorialStep === 0;
+  el('tutorial-next').innerHTML = tutorialStep === tutorialSteps.length - 1 ? 'Começar a estudar <span>✓</span>' : 'Próximo <span>→</span>';
+  if (options.focusTitle) requestAnimationFrame(() => el('tutorial-title').focus({ preventScroll: true }));
+}
 function contextFor(topic) { const lower = String(topic || '').toLocaleLowerCase('pt-BR'); return contexts.find((item) => item.keys.some((key) => lower.includes(key))) || contexts[random(0, contexts.length - 1)]; }
 function defaultTopicFor(subject = 'Matemática', year = schoolYear) {
   const profile = schoolYearProfile(year);
@@ -643,16 +764,30 @@ function updateLearningRail() {
   if (el('rail-review-count')) el('rail-review-count').textContent = dueReviews().length;
 }
 function updateMission() { normalizeDay(); normalizeWeek(); const count = Math.min(state.answeredToday, 5); el('mission-count').textContent = `${count}/5`; el('mission-progress').style.width = `${count * 20}%`; el('mission-copy').textContent = count === 5 ? 'Missão cumprida. Muito bem!' : 'Responda 5 questões hoje'; updateStudySnapshot(); updateLearningRail(); }
-function learnerName() { return state.userName || selectedAvatar().name; }
-function updateHome() { const avatar = selectedAvatar(); el('top-avatar').textContent = avatar.icon; el('top-name').textContent = learnerName(); if (el('avatar-name')) el('avatar-name').textContent = learnerName(); el('streak-days').textContent = state.streakDays || 1; el('energy-count').textContent = state.energy ?? 5; el('gem-count').textContent = Math.floor(state.totalPoints / 100); updateLearningRail(); }
+function learnerName() { return state.userName || 'Estudante'; }
+function updateHome() {
+  el('top-name').textContent = learnerName();
+  if (el('avatar-name')) el('avatar-name').textContent = learnerName();
+  el('streak-days').textContent = state.streakDays || 1;
+  el('energy-count').textContent = state.energy ?? 5;
+  el('gem-count').textContent = Math.floor(state.totalPoints / 100);
+  renderAvatarSurfaces();
+  updateLearningRail();
+}
 function updateStudySnapshot() { const theme = currentTheme(), weekly = state.weekly || { answered: 0, goal: 50 }, percent = Math.min(100, Math.round((weekly.answered / weekly.goal) * 100)); if (el('weekly-theme-title')) { el('weekly-theme-title').textContent = theme.title; el('weekly-theme-copy').textContent = theme.copy; el('weekly-goal-copy').textContent = `${weekly.answered}/${weekly.goal} questões`; el('weekly-goal-progress').style.width = `${percent}%`; } if (el('nav-review-badge')) { const due = dueReviews().length; el('nav-review-badge').hidden = due === 0; el('nav-review-badge').textContent = due > 9 ? '9+' : due; } }
 function renderDashboard() {
-  const avatar = selectedAvatar(); el('avatar-name').textContent = learnerName(); el('profile-name').textContent = learnerName(); el('profile-avatar').textContent = avatar.icon; el('profile-points').textContent = `${state.totalPoints} pontos acumulados`;
+  el('avatar-name').textContent = learnerName(); el('profile-name').textContent = learnerName(); el('profile-points').textContent = `${state.totalPoints} pontos acumulados`; renderAvatarSurfaces();
   const totals = Object.values(state.subjectStats).reduce((sum, stats) => ({ correct: sum.correct + stats.correct, total: sum.total + stats.total }), { correct: 0, total: 0 }); const accuracy = totals.total ? `${Math.round((totals.correct / totals.total) * 100)}%` : '—'; el('accuracy-stat').textContent = accuracy; el('due-review-stat').textContent = dueReviews().length; el('weekly-stat').textContent = state.weekly?.answered || 0; el('focus-goal-copy').textContent = `Meta atual: ${state.weekly?.goal || 50} questões nesta semana. Você já concluiu ${state.weekly?.answered || 0}.`;
-  const picker = el('avatar-picker'); picker.innerHTML = '';
-  avatars.forEach((item) => { const button = document.createElement('button'); const unlocked = isUnlocked(item); button.className = `avatar-option ${item.icon === state.avatar ? 'selected' : ''} ${unlocked ? '' : 'locked'}`; button.textContent = item.icon; button.title = unlocked ? item.name : `Libere com ${item.cost} pontos`; if (!unlocked) { const lock = document.createElement('small'); lock.textContent = '🔒'; button.append(lock); } button.addEventListener('click', () => { if (!unlocked) return; state.avatar = item.icon; saveState(); renderDashboard(); updateMission(); updateHome(); }); picker.append(button); });
   const rewards = el('rewards-list'); rewards.innerHTML = '';
-  [...medals.map((medal) => ({ icon: medal.icon, title: medal.title, description: medal.description, unlocked: state.medals.includes(medal.id), value: 'Medalha' })), ...avatars.slice(1).map((item) => ({ icon: item.icon, title: item.name, description: `${item.cost} pontos`, unlocked: isUnlocked(item), value: isUnlocked(item) ? 'Liberado' : `${item.cost} pts` }))].forEach((reward) => { const row = document.createElement('div'); row.className = `reward ${reward.unlocked ? '' : 'locked'}`; row.innerHTML = `<div class="reward-icon">${reward.icon}</div><div><strong>${reward.title}</strong><span>${reward.description}</span></div><b>${reward.value}</b>`; rewards.append(row); });
+  const completedPhases = completedAvatarPhases();
+  const avatarRewards = ['outfit', 'accessory'].flatMap((category) => avatarStudio.catalog[category].filter((item) => item.unlock > 0).map((item) => ({
+    icon: item.icon || '✦',
+    title: item.name,
+    description: `Complete ${item.unlock} fase${item.unlock === 1 ? '' : 's'} para liberar`,
+    unlocked: item.unlock <= completedPhases,
+    value: item.unlock <= completedPhases ? 'Liberado' : `${item.unlock} fases`
+  })));
+  [...medals.map((medal) => ({ icon: medal.icon, title: medal.title, description: medal.description, unlocked: state.medals.includes(medal.id), value: 'Medalha' })), ...avatarRewards].forEach((reward) => { const row = document.createElement('div'); row.className = `reward ${reward.unlocked ? '' : 'locked'}`; row.innerHTML = `<div class="reward-icon">${reward.icon}</div><div><strong>${reward.title}</strong><span>${reward.description}</span></div><b>${reward.value}</b>`; rewards.append(row); });
   const progress = el('subject-progress'); progress.innerHTML = ''; const subjects = Object.entries(state.subjectStats);
   if (!subjects.length) progress.innerHTML = '<div class="empty-review">Complete uma rodada para ver sua evolução.</div>';
   subjects.sort((a, b) => b[1].total - a[1].total).forEach(([subject, stats]) => { const percent = Math.round((stats.correct / stats.total) * 100); const row = document.createElement('div'); row.className = 'subject-row'; row.innerHTML = `<div><span>${subject}</span><span>${percent}% de acertos</span></div><i><b style="width:${percent}%"></b></i>`; progress.append(row); });
@@ -814,6 +949,7 @@ async function begin(phaseOverride) {
   const route = currentRoute(), subject = route.subject, topic = route.topic;
   curriculum = el('curriculum').value;
   if (!el('subject').value) { el('subject').focus(); return; }
+  renderAvatarUnlockResult([]);
   const progress = getPhaseProgress(route);
   currentPhase = phaseOverride || Math.min(progress.completed + 1, 4);
   current = 0; score = 0; hits = 0; roundStreak = 0;
@@ -864,7 +1000,39 @@ function answer(index) {
   const next = el('next-question'); next.hidden = false; next.innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>';
 }
 el('quiz-form').addEventListener('submit', (event) => { event.preventDefault(); openAdventure(); });
-el('next-question').addEventListener('click', () => { if (current === 9) { const route = currentRoute(); const progress = getPhaseProgress(route); const passed = hits >= 7; state.rounds++; state.bestScore = Math.max(state.bestScore, score); if (passed) { progress.completed = Math.max(progress.completed, currentPhase); state.phaseProgress[route.key] = progress; resultAction = currentPhase < 4 ? 'nextPhase' : 'home'; } else { resultAction = 'retry'; } const earned = checkAchievements(); saveState(); el('final-score').textContent = score; el('correct-count').textContent = hits; el('result-title').textContent = passed ? `Fase ${currentPhase} concluída!` : `Fase ${currentPhase}: tente novamente`; el('phase-result').textContent = passed ? `Você acertou ${hits}/10 e liberou ${currentPhase < 4 ? `a fase ${currentPhase + 1}` : 'toda a trilha'}!` : `Você acertou ${hits}/10. São necessários 7 acertos para avançar.`; el('result-message').textContent = passed ? 'Excelente trabalho: avance para a próxima etapa da trilha.' : 'Revise as explicações, pratique os erros e tente esta fase de novo.'; el('restart').innerHTML = passed && currentPhase < 4 ? 'Ir para a próxima fase <span>→</span>' : passed ? 'Escolher nova trilha <span>↻</span>' : 'Refazer esta fase <span>↻</span>'; if (earned.length) setTimeout(() => showToast(earned), 0); renderPhaseMap(); show('result-screen', { historyMode: 'replace' }); } else { current++; renderQuestion(); } });
+el('next-question').addEventListener('click', () => {
+  if (current !== 9) { current++; renderQuestion(); return; }
+
+  const route = currentRoute();
+  const progress = getPhaseProgress(route);
+  const passed = hits >= 7;
+  const previousAvatarPhaseCount = completedAvatarPhases();
+  state.rounds++;
+  state.bestScore = Math.max(state.bestScore, score);
+
+  if (passed) {
+    progress.completed = Math.max(progress.completed, currentPhase);
+    state.phaseProgress[route.key] = progress;
+    resultAction = currentPhase < 4 ? 'nextPhase' : 'home';
+  } else {
+    resultAction = 'retry';
+  }
+
+  const avatarUnlocks = passed ? avatarStudio.unlockedBetween(previousAvatarPhaseCount, completedAvatarPhases()) : [];
+  const earned = checkAchievements();
+  saveState();
+  updateHome();
+  el('final-score').textContent = score;
+  el('correct-count').textContent = hits;
+  el('result-title').textContent = passed ? `Fase ${currentPhase} concluída!` : `Fase ${currentPhase}: tente novamente`;
+  el('phase-result').textContent = passed ? `Você acertou ${hits}/10 e liberou ${currentPhase < 4 ? `a fase ${currentPhase + 1}` : 'toda a trilha'}!` : `Você acertou ${hits}/10. São necessários 7 acertos para avançar.`;
+  el('result-message').textContent = passed ? 'Excelente trabalho: avance para a próxima etapa da trilha.' : 'Revise as explicações, pratique os erros e tente esta fase de novo.';
+  el('restart').innerHTML = passed && currentPhase < 4 ? 'Ir para a próxima fase <span>→</span>' : passed ? 'Escolher nova trilha <span>↻</span>' : 'Refazer esta fase <span>↻</span>';
+  renderAvatarUnlockResult(avatarUnlocks);
+  if (earned.length) setTimeout(() => showToast(earned), 0);
+  renderPhaseMap();
+  show('result-screen', { historyMode: 'replace' });
+});
 el('restart').addEventListener('click', () => { updateMission(); if (resultAction === 'nextPhase') begin(currentPhase + 1); else if (resultAction === 'retry') begin(currentPhase); else { renderPhaseMap(); show('setup-screen', { historyMode: 'replace' }); } }); el('leave-quiz').addEventListener('click', () => { updateMission(); renderPhaseMap(); navigateBack('setup-screen'); });
 el('open-dashboard').addEventListener('click', () => { renderDashboard(); show('dashboard-screen'); }); el('close-dashboard').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('save-plan').addEventListener('click', () => { state.plan.minutes = el('daily-minutes').value; saveState(); });
@@ -874,24 +1042,26 @@ el('close-review').addEventListener('click', () => { updateMission(); navigateBa
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
+function updateModalBackgroundState() {
+  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden;
+  document.body.classList.toggle('modal-open', anyModalOpen);
+  document.querySelector('.app-shell')?.toggleAttribute('inert', anyModalOpen);
+  el('app-nav')?.toggleAttribute('inert', anyModalOpen);
+}
 function openWeeklyGoalModal(options = {}) {
   const modal = el('weekly-goal-modal'), input = el('weekly-goal-input');
   weeklyGoalReturnFocus = document.activeElement;
   input.value = String(state.weekly?.goal || 50);
   el('weekly-goal-error').textContent = '';
   modal.hidden = false;
-  document.body.classList.add('modal-open');
-  document.querySelector('.app-shell')?.setAttribute('inert', '');
-  el('app-nav')?.setAttribute('inert', '');
+  updateModalBackgroundState();
   if (!options.fromHistory) updateScreenHistory(activeScreenId(), 'push', { estudaModal: 'weekly-goal' });
   setTimeout(() => { input.focus(); input.select(); }, 0);
 }
 function closeWeeklyGoalModal(options = {}) {
   if (!options.fromHistory && historyStateIsCurrent() && window.history.state?.estudaModal === 'weekly-goal') { window.history.back(); return; }
   el('weekly-goal-modal').hidden = true;
-  document.body.classList.remove('modal-open');
-  document.querySelector('.app-shell')?.removeAttribute('inert');
-  el('app-nav')?.removeAttribute('inert');
+  updateModalBackgroundState();
   weeklyGoalReturnFocus?.focus?.();
 }
 el('edit-weekly-goal').addEventListener('click', openWeeklyGoalModal);
@@ -903,11 +1073,46 @@ el('weekly-goal-form').addEventListener('submit', (event) => {
   if (!Number.isFinite(goal) || goal < 5 || goal > 500) { el('weekly-goal-error').textContent = 'Digite um número entre 5 e 500.'; el('weekly-goal-input').focus(); return; }
   state.weekly.goal = Math.round(goal); saveState(); updateMission(); closeWeeklyGoalModal();
 });
+function openAvatarStudio(options = {}) {
+  const modal = el('avatar-studio-modal');
+  avatarStudioReturnFocus = document.activeElement;
+  avatarDraft = avatarStudio.fitToUnlocks(state.avatarDesign, completedAvatarPhases());
+  avatarCategory = 'skin';
+  el('avatar-studio-status').textContent = state.avatarCreated ? 'Seu visual atual está pronto para receber novas ideias.' : 'Escolha cada parte e salve seu primeiro avatar.';
+  modal.hidden = false;
+  updateModalBackgroundState();
+  if (!options.fromHistory) updateScreenHistory(activeScreenId(), 'push', { estudaModal: 'avatar-studio' });
+  renderAvatarEditor();
+  setTimeout(() => el('avatar-category-tabs')?.querySelector('[role="tab"]')?.focus(), 0);
+}
+function closeAvatarStudio(options = {}) {
+  if (!options.fromHistory && historyStateIsCurrent() && window.history.state?.estudaModal === 'avatar-studio') { window.history.back(); return; }
+  el('avatar-studio-modal').hidden = true;
+  updateModalBackgroundState();
+  avatarDraft = null;
+  avatarStudioReturnFocus?.focus?.();
+}
+['open-avatar-studio-home', 'open-avatar-studio-profile', 'open-avatar-studio-result'].forEach((id) => el(id)?.addEventListener('click', openAvatarStudio));
+document.querySelectorAll('[data-close-avatar-studio]').forEach((button) => button.addEventListener('click', closeAvatarStudio));
+el('avatar-studio-modal').addEventListener('click', (event) => { if (event.target === el('avatar-studio-modal')) closeAvatarStudio(); });
+el('save-avatar-design').addEventListener('click', () => {
+  if (!avatarDraft) return;
+  state.avatarDesign = avatarStudio.fitToUnlocks(avatarDraft, completedAvatarPhases());
+  state.avatarDesignUpdatedAt = new Date().toISOString();
+  state.avatarCreated = true;
+  saveState();
+  updateHome();
+  if (activeScreenId() === 'dashboard-screen') renderDashboard();
+  if (activeSupabaseUser && supabaseClient) void syncStateToSupabase();
+  closeAvatarStudio();
+});
 document.addEventListener('keydown', (event) => {
-  const modal = el('weekly-goal-modal'); if (modal.hidden) return;
-  if (event.key === 'Escape') { event.preventDefault(); closeWeeklyGoalModal(); return; }
+  const avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal');
+  const modal = !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
+  if (!modal) return;
+  if (event.key === 'Escape') { event.preventDefault(); modal === avatarModal ? closeAvatarStudio() : closeWeeklyGoalModal(); return; }
   if (event.key !== 'Tab') return;
-  const focusable = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled])')];
+  const focusable = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]')].filter((item) => !item.hidden);
   if (!focusable.length) return;
   const first = focusable[0], last = focusable[focusable.length - 1];
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -936,13 +1141,15 @@ document.querySelectorAll('.subject-card').forEach((card) => card.addEventListen
 el('back-to-subjects').addEventListener('click', goToSubjects);
 el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'replace' }));
 window.addEventListener('popstate', (event) => {
-  const modal = el('weekly-goal-modal');
-  if (!modal.hidden && event.state?.estudaModal !== 'weekly-goal') { closeWeeklyGoalModal({ fromHistory: true }); return; }
+  const weeklyModal = el('weekly-goal-modal'), avatarModal = el('avatar-studio-modal');
+  if (!avatarModal.hidden && event.state?.estudaModal !== 'avatar-studio') { closeAvatarStudio({ fromHistory: true }); return; }
+  if (!weeklyModal.hidden && event.state?.estudaModal !== 'weekly-goal') { closeWeeklyGoalModal({ fromHistory: true }); return; }
   if (!historyStateIsCurrent(event.state)) {
     show(activeSupabaseUser ? 'subject-screen' : 'auth-screen', { historyMode: 'reset' });
     return;
   }
-  if (event.state?.estudaModal === 'weekly-goal') { if (modal.hidden) openWeeklyGoalModal({ fromHistory: true }); return; }
+  if (event.state?.estudaModal === 'avatar-studio') { if (avatarModal.hidden) openAvatarStudio({ fromHistory: true }); return; }
+  if (event.state?.estudaModal === 'weekly-goal') { if (weeklyModal.hidden) openWeeklyGoalModal({ fromHistory: true }); return; }
   const requested = event.state?.estudaScreen;
   const fallback = activeSupabaseUser ? 'subject-screen' : 'auth-screen';
   const transientReady = requested === 'quiz-screen' ? questions.length === 10 && current < questions.length : requested === 'result-screen' ? questions.length === 10 && current === 9 : true;
