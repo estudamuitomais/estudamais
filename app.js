@@ -18,6 +18,7 @@ const APP_TUTORIAL_VERSION = 1;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
 let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
+const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 
 const tutorialSteps = [
   { kicker: 'COMECE AQUI', title: 'Escolha seu ano e uma matéria', description: 'O Estuda+ organiza a aventura de acordo com a etapa escolar da criança.', kind: 'subjects', tips: ['Selecione o ano escolar na tela inicial.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar essas escolhas sempre que quiser.'] },
@@ -311,6 +312,7 @@ async function activateUser(user) {
   setSchoolYear(state.schoolYear, false);
   saveState();
   updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen', { historyMode: 'reset' });
+  if (friendsHub) void friendsHub.init(user);
   if (shouldAutoOpenTutorial) requestAnimationFrame(() => openAppTutorial({ automatic: true }));
   return true;
 }
@@ -390,6 +392,7 @@ async function updateRecoveredPassword(event) {
 }
 async function logoutUser() {
   clearTimeout(remoteSaveTimer);
+  if (friendsHub) await friendsHub.stop();
   if (activeSupabaseUser && supabaseClient) await syncStateToSupabase();
   if (supabaseClient) await supabaseClient.auth.signOut();
   activeSupabaseUser = null;
@@ -893,13 +896,14 @@ el('subject').addEventListener('change', () => { renderTopicExamples(); renderPh
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
-const appScreenIds = new Set(['auth-screen', 'subject-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen']);
+const appScreenIds = new Set(['auth-screen', 'subject-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen']);
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('a11y-calm');
 function activeScreenId() { return document.querySelector('.screen.active')?.id || 'auth-screen'; }
 function screenNavigationKey(id) {
   if (id === 'subject-screen') return 'subjects';
   if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
   if (id === 'review-screen') return 'review';
+  if (id === 'friends-screen') return 'friends';
   if (id === 'dashboard-screen') return 'profile';
   return '';
 }
@@ -971,6 +975,7 @@ function navigateBack(fallback = 'setup-screen') {
 function goToSubjects(options = {}) { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
 function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); resetViewport('setup-screen'); }
 function openReview() { renderReviewScreen(); show('review-screen'); }
+async function openFriends() { show('friends-screen'); await friendsHub?.open(); }
 function setChoice(groupId, value) { const group = el(groupId); if (!group) return; group.querySelectorAll('.choice').forEach((button) => button.classList.toggle('selected', button.dataset.value === value)); if (groupId === 'difficulty') difficulty = value; else quizMode = value; }
 function startEnemSimulation() { setSchoolYear('3EM'); el('subject').value = el('subject').value || 'Matemática'; el('topic').value = el('topic').value || 'proporcionalidade e porcentagem'; el('curriculum').value = 'Base Enem/Inep'; curriculum = 'Base Enem/Inep'; setChoice('difficulty', 'Médio'); setChoice('quiz-mode', 'Prova'); el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderTopicExamples(); openAdventure(); }
 function setQuestionBankStatus(message = '', error = false) {
@@ -1072,11 +1077,12 @@ el('save-plan').addEventListener('click', () => { state.plan.minutes = el('daily
 el('practice-notebook').addEventListener('click', openReview);
 el('review-errors').addEventListener('click', openReview);
 el('close-review').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
+el('close-friends').addEventListener('click', () => navigateBack('subject-screen'));
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
 function updateModalBackgroundState() {
-  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden || !el('app-tutorial-modal').hidden;
+  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden || !el('app-tutorial-modal').hidden || !el('chat-modal').hidden;
   document.body.classList.toggle('modal-open', anyModalOpen);
   document.querySelector('.app-shell')?.toggleAttribute('inert', anyModalOpen);
   el('app-nav')?.toggleAttribute('inert', anyModalOpen);
@@ -1153,12 +1159,13 @@ el('save-avatar-design').addEventListener('click', () => {
   closeAvatarStudio();
 });
 document.addEventListener('keydown', (event) => {
-  const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal');
-  const modal = !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
+  const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal'), chatModal = el('chat-modal');
+  const modal = !chatModal.hidden ? chatModal : !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
   if (!modal) return;
   if (event.key === 'Escape') {
     event.preventDefault();
-    if (modal === tutorialModal) closeAppTutorial();
+    if (modal === chatModal) friendsHub?.closeChat();
+    else if (modal === tutorialModal) closeAppTutorial();
     else if (modal === avatarModal) closeAvatarStudio();
     else closeWeeklyGoalModal();
     return;
@@ -1174,6 +1181,7 @@ el('app-nav').querySelectorAll('button').forEach((button) => button.addEventList
   if (button.dataset.nav === 'subjects') goToSubjects();
   else if (button.dataset.nav === 'trail') show('setup-screen');
   else if (button.dataset.nav === 'review') openReview();
+  else if (button.dataset.nav === 'friends') openFriends();
   else { renderDashboard(); show('dashboard-screen'); }
 }));
 document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEventListener('click', () => {
@@ -1181,8 +1189,15 @@ document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEvent
   if (destination === 'subjects') goToSubjects();
   else if (destination === 'trail') show('setup-screen');
   else if (destination === 'review') openReview();
+  else if (destination === 'friends') openFriends();
   else { renderDashboard(); show('dashboard-screen'); }
 }));
+el('ask-friend-question').addEventListener('click', () => {
+  const question = questions[current];
+  if (!question) return;
+  friendsHub?.shareQuestion(question);
+  openFriends();
+});
 el('listen-question').addEventListener('click', () => { if (!('speechSynthesis' in window) || !questions[current]) return; speechSynthesis.cancel(); const speech = new SpeechSynthesisUtterance(questions[current].q); speech.lang = 'pt-BR'; speechSynthesis.speak(speech); });
 function applyAccessibility() { document.body.classList.toggle('a11y-large', state.accessibility.font); document.body.classList.toggle('a11y-contrast', state.accessibility.contrast); document.body.classList.toggle('a11y-calm', state.accessibility.calm); }
 document.querySelectorAll('.access-control').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.access; state.accessibility[key] = !state.accessibility[key]; saveState(); applyAccessibility(); }));
@@ -1194,6 +1209,7 @@ el('back-to-subjects').addEventListener('click', goToSubjects);
 el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'replace' }));
 window.addEventListener('popstate', (event) => {
   const weeklyModal = el('weekly-goal-modal'), avatarModal = el('avatar-studio-modal'), tutorialModal = el('app-tutorial-modal');
+  if (friendsHub?.isChatOpen()) friendsHub.closeChat();
   if (!tutorialModal.hidden && event.state?.estudaModal !== 'app-tutorial') { closeAppTutorial({ fromHistory: true }); return; }
   if (!avatarModal.hidden && event.state?.estudaModal !== 'avatar-studio') { closeAvatarStudio({ fromHistory: true }); return; }
   if (!weeklyModal.hidden && event.state?.estudaModal !== 'weekly-goal') { closeWeeklyGoalModal({ fromHistory: true }); return; }
@@ -1210,6 +1226,7 @@ window.addEventListener('popstate', (event) => {
   const destination = appScreenIds.has(requested) && transientReady && (activeSupabaseUser || requested === 'auth-screen') ? requested : fallback;
   if (destination === 'dashboard-screen') renderDashboard();
   if (destination === 'review-screen') renderReviewScreen();
+  if (destination === 'friends-screen') friendsHub?.open();
   if (destination === 'setup-screen' || destination === 'subject-screen') renderPhaseMap();
   show(destination, { historyMode: 'none' });
 });

@@ -21,6 +21,7 @@
           <button type="button" data-side-nav="subjects"><span>⌂</span><b>Início</b></button>
           <button type="button" data-side-nav="trail"><span>★</span><b>Aprender</b></button>
           <button type="button" data-side-nav="review"><span>↻</span><b>Revisar</b></button>
+          <button type="button" data-side-nav="friends"><span>♧</span><b>Amigos</b><i id="side-friends-badge" hidden>0</i></button>
           <button type="button" data-side-nav="profile"><span>☺</span><b>Perfil</b></button>
         </nav>
         <div class="hero-copy">
@@ -188,7 +189,7 @@
           <header class="quiz-header"><button id="leave-quiz" class="icon-button" aria-label="Voltar">←</button><div><span id="question-counter">Questão 1 de 10</span><div class="progress"><i id="progress-bar"></i></div></div><button id="listen-question" class="listen-button" type="button">🔊 Ouvir</button><div class="score"><small>PONTOS</small><strong id="score">0</strong> ✦</div></header>
           <div class="quiz-meta"><div class="quiz-tag" id="quiz-tag"></div><div id="quiz-skill" class="quiz-skill">Habilidade em foco</div></div>
           <h2 id="question-text"></h2>
-          <div class="question-tools"><button id="save-question" type="button">♡ Salvar</button><button id="mark-difficult" type="button">⚑ Marcar para revisar</button></div>
+          <div class="question-tools"><button id="save-question" type="button">♡ Salvar</button><button id="mark-difficult" type="button">⚑ Marcar para revisar</button><button id="ask-friend-question" type="button">♧ Pedir ajuda</button></div>
           <div id="answers" class="answers"></div>
           <section id="feedback" class="feedback" hidden role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></section>
           <div id="achievement-toast" class="achievement-toast" hidden></div>
@@ -252,6 +253,33 @@
           <section id="review-queue" class="review-queue"></section>
           <h3>Favoritos e desafios</h3>
           <section id="review-saved-list" class="review-queue"></section>
+        </div>
+
+        <div id="friends-screen" class="screen friends-screen">
+          <header class="dashboard-header friends-header"><button id="close-friends" class="icon-button" aria-label="Voltar">←</button><div><span class="eyebrow">AMIGOS DE ESTUDO</span><h2>Aprender juntos</h2></div><button id="refresh-friends" class="tutorial-help-button" type="button"><span aria-hidden="true">↻</span> Atualizar</button></header>
+          <p class="subtitle">Converse somente com pessoas conhecidas e amizades aprovadas.</p>
+          <section id="guardian-chat-card" class="guardian-chat-card" aria-labelledby="guardian-chat-title">
+            <div class="guardian-shield" aria-hidden="true">⌾</div>
+            <div><span>CONTROLE DO RESPONSÁVEL</span><strong id="guardian-chat-title">Conversas protegidas</strong><p id="guardian-chat-copy">O chat começa desativado. Um adulto responsável pode liberar conversas somente com amigos aprovados.</p></div>
+            <button id="toggle-guardian-chat" type="button" aria-pressed="false">Ativar chat</button>
+          </section>
+          <div id="friends-notice" class="friends-notice" role="status" aria-live="polite"></div>
+          <section class="friend-code-card" aria-labelledby="friend-code-title">
+            <div><span>SEU CÓDIGO DE AMIZADE</span><strong id="friend-code-title">Compartilhe apenas com conhecidos</strong><p>Seu e-mail não aparece. A outra pessoa precisa enviar um convite e você decide se aceita.</p></div>
+            <div class="friend-code-box"><b id="my-friend-code">••••••••</b><button id="copy-friend-code" type="button">Copiar</button></div>
+          </section>
+          <section class="add-friend-card" aria-labelledby="add-friend-title">
+            <div><span class="friend-card-icon" aria-hidden="true">＋</span><div><strong id="add-friend-title">Adicionar uma pessoa conhecida</strong><p>Digite o código que seu amigo compartilhou com você.</p></div></div>
+            <form id="add-friend-form"><label for="friend-code-input">Código do amigo</label><div><input id="friend-code-input" maxlength="8" autocomplete="off" spellcheck="false" placeholder="EX.: A1B2C3D4" required /><button type="submit">Enviar convite</button></div></form>
+          </section>
+          <section id="shared-question-banner" class="shared-question-banner" hidden>
+            <div><span>QUESTÃO PARA COMPARTILHAR</span><strong id="shared-question-title"></strong><p>Escolha um amigo abaixo para enviar a dúvida no chat.</p></div><button id="cancel-question-share" type="button">Cancelar</button>
+          </section>
+          <div class="friends-columns">
+            <section class="friends-section" aria-labelledby="friend-requests-title"><header><div><span>CONVITES</span><h3 id="friend-requests-title">Aguardando você</h3></div><b id="friend-request-count">0</b></header><div id="friend-requests-list" class="friend-list"></div></section>
+            <section class="friends-section" aria-labelledby="friends-list-title"><header><div><span>SEUS AMIGOS</span><h3 id="friends-list-title">Disponíveis para estudar</h3></div><b id="online-friend-count">0 online</b></header><div id="friends-list" class="friend-list"></div></section>
+          </div>
+          <section class="chat-safety-card"><strong>🛡️ Conversa segura</strong><p>Não compartilhe endereço, telefone, escola, senha ou fotos pessoais. Se algo incomodar, bloqueie a pessoa e envie uma denúncia.</p></section>
         </div>
       </section>
     </main>
@@ -321,16 +349,29 @@
         </div>
       </section>
     </div>
+    <div id="chat-modal" class="modal-backdrop chat-backdrop" hidden>
+      <section class="modal-panel chat-panel" role="dialog" aria-modal="true" aria-labelledby="chat-friend-name">
+        <header class="chat-heading"><button id="close-chat" class="modal-close" type="button" aria-label="Fechar conversa">×</button><div id="chat-friend-avatar" class="chat-friend-avatar" aria-hidden="true">☺</div><div><span id="chat-presence-label">AMIGO DE ESTUDO</span><h2 id="chat-friend-name">Conversa</h2></div><button id="chat-options" type="button" aria-expanded="false" aria-controls="chat-options-menu">•••</button></header>
+        <div id="chat-options-menu" class="chat-options-menu" hidden><button id="block-chat-user" type="button">Bloquear pessoa</button><button id="report-chat-user" type="button">Denunciar conversa</button><button id="remove-chat-friend" type="button">Remover amizade</button></div>
+        <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Mensagens da conversa"></div>
+        <div id="chat-question-preview" class="chat-question-preview" hidden><div><span>DÚVIDA DO QUIZ</span><strong id="chat-question-text"></strong></div><button id="remove-chat-question" type="button" aria-label="Remover questão">×</button></div>
+        <div class="quick-replies" aria-label="Respostas rápidas"><button type="button" data-quick-reply="Posso explicar 😊">Posso explicar</button><button type="button" data-quick-reply="Vamos resolver juntos!">Vamos resolver juntos</button><button type="button" data-quick-reply="Qual etapa ficou difícil?">Qual etapa?</button></div>
+        <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Mensagem</label><textarea id="chat-input" rows="1" maxlength="1000" placeholder="Escreva uma dúvida ou explicação…"></textarea><button type="submit" aria-label="Enviar mensagem">➤</button></form>
+        <p id="chat-status" class="chat-status" role="status"></p>
+      </section>
+    </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
       <button type="button" data-nav="subjects"><span>⌂</span>Início</button>
       <button type="button" data-nav="trail"><span>⌁</span>Trilha</button>
       <button type="button" data-nav="review"><span>↻</span>Revisar<b id="nav-review-badge" hidden>0</b></button>
+      <button type="button" data-nav="friends"><span>♧</span>Amigos<b id="nav-friends-badge" hidden>0</b></button>
       <button type="button" data-nav="profile"><span>☺</span>Perfil</button>
     </nav>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="grade-content.js"></script>
     <script src="question-expansion.js"></script>
     <script src="avatar-studio.js"></script>
+    <script src="friends-chat.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
