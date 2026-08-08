@@ -7,6 +7,7 @@ const supabaseClient = globalThis.supabase?.createClient(supabaseUrl, supabasePu
 });
 let activeSupabaseUser = null;
 let activeUserIsAdmin = false;
+let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
 const createNavigationSessionId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -21,6 +22,7 @@ let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
+const materialQuiz = window.EstudaMaterialQuiz?.create({ onStart: startMaterialQuiz });
 
 const tutorialSteps = [
   { kicker: 'COMECE AQUI', title: 'Escolha seu ano e uma matéria', description: 'O Estuda+ organiza a aventura de acordo com a etapa escolar da criança.', kind: 'subjects', tips: ['Selecione o ano escolar na tela inicial.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar essas escolhas sempre que quiser.'] },
@@ -332,11 +334,15 @@ async function activateUser(user) {
 async function registerUser(event) {
   event.preventDefault();
   const name = el('register-name').value.trim(), email = el('register-email').value.trim().toLowerCase(), password = el('register-password').value;
+  const whatsappDigits = el('register-whatsapp').value.replace(/\D/g, '');
+  const whatsapp = whatsappDigits.startsWith('55') ? `+${whatsappDigits}` : `+55${whatsappDigits}`;
+  const whatsappOptIn = el('register-whatsapp-opt-in').checked;
   if (!name || !email || password.length < 6) { showAuthNotice('Preencha os campos e use uma senha com pelo menos 6 caracteres.', true); return; }
+  if (!/^[+]55\d{10,11}$/.test(whatsapp)) { showAuthNotice('Digite um WhatsApp brasileiro válido, com DDD.', true); el('register-whatsapp').focus(); return; }
   if (!supabaseClient) { showAuthNotice('O serviço de cadastro não carregou. Verifique sua conexão e atualize a página.', true); return; }
   setAuthBusy('register-form', true, 'Criando conta…'); showAuthNotice('');
   try {
-    const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { name, school_year: state.schoolYear || '6EF', avatar: state.avatar || '🧑‍🚀', tutorial_pending_version: APP_TUTORIAL_VERSION } } });
+    const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { name, school_year: state.schoolYear || '6EF', avatar: state.avatar || '🧑‍🚀', tutorial_pending_version: APP_TUTORIAL_VERSION, whatsapp_phone: whatsapp, whatsapp_opt_in: whatsappOptIn } } });
     if (error) throw error;
     if (data.session && data.user) { await activateUser(data.user); return; }
     el('login-email').value = email;
@@ -415,6 +421,7 @@ async function logoutUser() {
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
   questions = []; current = 0; currentPhase = 1; resultAction = 'home'; hits = 0; score = 0; roundStreak = 0;
+  materialQuizSession = false;
   setAuthMode('login', { historyMode: 'reset' });
   showAuthNotice('Você saiu com segurança. Até a próxima aventura!');
 }
@@ -912,11 +919,12 @@ el('subject').addEventListener('change', () => { renderTopicExamples(); renderPh
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
-const appScreenIds = new Set(['auth-screen', 'subject-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen', 'admin-screen']);
+const appScreenIds = new Set(['auth-screen', 'subject-screen', 'material-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen', 'admin-screen']);
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('a11y-calm');
 function activeScreenId() { return document.querySelector('.screen.active')?.id || 'auth-screen'; }
 function screenNavigationKey(id) {
   if (id === 'subject-screen') return 'subjects';
+  if (id === 'material-screen') return 'subjects';
   if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
   if (id === 'review-screen') return 'review';
   if (id === 'friends-screen') return 'friends';
@@ -990,6 +998,15 @@ function navigateBack(fallback = 'setup-screen') {
   else show(fallback, { historyMode: 'reset' });
 }
 function goToSubjects(options = {}) { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
+function openMaterialQuiz() { materialQuizSession = false; show('material-screen'); }
+function startMaterialQuiz(payload) {
+  const subject = payload?.subject || 'Português';
+  if (!Array.isArray(payload?.questions) || payload.questions.length !== 10) return;
+  el('subject').value = subject; el('topic').value = 'Conteúdo da minha apostila'; el('curriculum').value = 'Personalizado'; curriculum = 'Personalizado';
+  questions = payload.questions.map((question, index) => ({ ...question, id: question.id || `material-${Date.now()}-${index}`, subject, topic: 'Conteúdo da minha apostila', curriculum: 'Personalizado', schoolYear, phase: 1 }));
+  current = 0; currentPhase = 1; score = 0; hits = 0; roundStreak = 0; resultAction = 'material'; materialQuizSession = true;
+  show('quiz-screen'); renderQuestion();
+}
 function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); resetViewport('setup-screen'); }
 function openReview() { renderReviewScreen(); show('review-screen'); }
 async function openFriends() { show('friends-screen'); await friendsHub?.open(); }
@@ -1006,6 +1023,7 @@ function setQuestionBankStatus(message = '', error = false) {
   status.innerHTML = error ? `<span aria-hidden="true">!</span><strong>${escapeHTML(message)}</strong>` : '<span aria-hidden="true">∞</span><strong>Banco inteligente sem repetição</strong> — centenas de exercícios por matéria e ano, com histórico salvo no seu perfil.';
 }
 async function begin(phaseOverride) {
+  materialQuizSession = false;
   const route = currentRoute(), subject = route.subject, topic = route.topic;
   curriculum = el('curriculum').value;
   if (!el('subject').value) { el('subject').focus(); return; }
@@ -1050,7 +1068,10 @@ function showFeedback(question, right, rewards, selectedIndex) {
   feedback.innerHTML = `<strong>${right ? '✓ Resposta correta!' : '↗ Quase lá!'}</strong>${optionComment ? `<p class="option-correction">${escapeHTML(optionComment)}</p>` : question.note}${source ? `<a class="question-source" href="${source.url}" target="_blank" rel="noreferrer">${source.label}</a>` : ''}<div class="feedback-actions"><button type="button" data-explain="essential">Essencial</button><button type="button" data-explain="steps">Passo a passo</button><button type="button" data-explain="deeper">Aprofundar</button><button type="button" class="similar-action">Nova rodada inédita</button></div><p class="explanation-extra" hidden></p>`;
   const detail = feedback.querySelector('.explanation-extra'); const explanations = { essential: question.note, steps: `1. Identifique os dados e o que foi pedido. 2. Escolha a relação adequada. 3. Resolva sem pular etapas. 4. Confira se a resposta é coerente. Aplicando isso aqui: ${question.note}`, deeper: `Habilidade em foco: ${questionSkill(question)}. Tente criar um exemplo novo sobre ${topicForEntry(question)} e explique por que cada alternativa incorreta não resolve o problema.` };
   feedback.querySelectorAll('[data-explain]').forEach((button) => button.addEventListener('click', () => { feedback.querySelectorAll('[data-explain]').forEach((item) => item.classList.remove('selected')); button.classList.add('selected'); detail.hidden = false; detail.textContent = explanations[button.dataset.explain]; }));
-  feedback.querySelector('.similar-action').addEventListener('click', () => begin(currentPhase)); if (rewards.length) showToast(rewards); revealFeedback(feedback);
+  const similarAction = feedback.querySelector('.similar-action');
+  if (question.materialQuiz) { similarAction.textContent = 'Estudar outra foto'; similarAction.addEventListener('click', openMaterialQuiz); }
+  else similarAction.addEventListener('click', () => begin(currentPhase));
+  if (rewards.length) showToast(rewards); revealFeedback(feedback);
 }
 function answer(index) {
   const question = questions[current], right = index === question.correct;
@@ -1062,6 +1083,19 @@ function answer(index) {
 el('quiz-form').addEventListener('submit', (event) => { event.preventDefault(); openAdventure(); });
 el('next-question').addEventListener('click', () => {
   if (current !== 9) { current++; renderQuestion(); return; }
+
+  if (materialQuizSession) {
+    const passed = hits >= 7;
+    state.rounds++; state.bestScore = Math.max(state.bestScore, score); resultAction = 'material';
+    const earned = checkAchievements(); saveState(); updateHome();
+    el('final-score').textContent = score; el('correct-count').textContent = hits;
+    el('result-title').textContent = passed ? 'Você dominou esta página!' : 'Sua apostila merece uma revisão';
+    el('phase-result').textContent = `Você acertou ${hits}/10 questões criadas a partir do texto conferido.`;
+    el('result-message').textContent = passed ? 'Excelente: você localizou e relacionou as informações principais do material.' : 'Leia novamente os trechos comentados e gere outro quiz quando estiver pronto.';
+    el('restart').innerHTML = 'Estudar outra foto <span>↻</span>'; renderAvatarUnlockResult([]);
+    if (earned.length) setTimeout(() => showToast(earned), 0);
+    show('result-screen', { historyMode: 'replace' }); return;
+  }
 
   const route = currentRoute();
   const progress = getPhaseProgress(route);
@@ -1093,7 +1127,7 @@ el('next-question').addEventListener('click', () => {
   renderPhaseMap();
   show('result-screen', { historyMode: 'replace' });
 });
-el('restart').addEventListener('click', () => { updateMission(); if (resultAction === 'nextPhase') begin(currentPhase + 1); else if (resultAction === 'retry') begin(currentPhase); else { renderPhaseMap(); show('setup-screen', { historyMode: 'replace' }); } }); el('leave-quiz').addEventListener('click', () => { updateMission(); renderPhaseMap(); navigateBack('setup-screen'); });
+el('restart').addEventListener('click', () => { updateMission(); if (resultAction === 'material') openMaterialQuiz(); else if (resultAction === 'nextPhase') begin(currentPhase + 1); else if (resultAction === 'retry') begin(currentPhase); else { renderPhaseMap(); show('setup-screen', { historyMode: 'replace' }); } }); el('leave-quiz').addEventListener('click', () => { updateMission(); if (materialQuizSession) { show('material-screen'); return; } renderPhaseMap(); navigateBack('setup-screen'); });
 el('open-dashboard').addEventListener('click', () => { renderDashboard(); show('dashboard-screen'); }); el('close-dashboard').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('save-plan').addEventListener('click', () => { state.plan.minutes = el('daily-minutes').value; saveState(); });
 el('practice-notebook').addEventListener('click', openReview);
@@ -1101,6 +1135,8 @@ el('review-errors').addEventListener('click', openReview);
 el('close-review').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('close-friends').addEventListener('click', () => navigateBack('subject-screen'));
 el('close-admin').addEventListener('click', () => navigateBack('dashboard-screen'));
+el('open-material-quiz').addEventListener('click', openMaterialQuiz);
+el('close-material-quiz').addEventListener('click', () => navigateBack('subject-screen'));
 el('open-admin-panel').addEventListener('click', openAdmin);
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
