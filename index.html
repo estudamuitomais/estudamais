@@ -75,6 +75,7 @@
 
         <div id="subject-screen" class="screen subject-screen">
           <div class="subject-welcome"><span class="eyebrow">ESTUDA+ AVENTURA</span><h2>Qual matéria vamos explorar?</h2><p class="subtitle">Escolha uma matéria para montar sua trilha de estudos.</p><button id="open-app-tutorial-home" class="tutorial-help-button is-light" type="button"><span aria-hidden="true">▷</span> Como usar o app</button></div>
+          <section id="app-announcement" class="app-announcement" hidden aria-labelledby="app-announcement-title"><span aria-hidden="true">✦</span><div><strong id="app-announcement-title"></strong><p id="app-announcement-body"></p></div><button id="dismiss-announcement" type="button" aria-label="Fechar aviso">×</button></section>
           <section class="avatar-home-card" aria-labelledby="avatar-home-title">
             <div id="home-avatar-preview" class="avatar-home-preview"></div>
             <div class="avatar-home-copy"><span>MEU PERSONAGEM</span><strong id="avatar-home-title">Crie seu avatar</strong><p id="avatar-home-progress">Personalize seu visual e desbloqueie novidades nas fases.</p></div>
@@ -217,6 +218,7 @@
           <section class="profile-card">
             <div id="profile-avatar" class="profile-avatar"></div><div><strong id="profile-name">Explorador</strong><span id="profile-points">0 pontos acumulados</span></div><button id="logout-user" class="logout-button" type="button">Sair</button>
           </section>
+          <section id="admin-access-card" class="admin-access-card" hidden><div><span>PAINEL PROTEGIDO</span><strong>Administração do Estuda+</strong><p>Acompanhe usuários, avisos, desempenho e segurança da plataforma.</p></div><button id="open-admin-panel" type="button">Abrir administração</button></section>
           <section class="dashboard-stats" aria-label="Resumo de desempenho"><article><span>PRECISÃO</span><strong id="accuracy-stat">—</strong><small>acertos gerais</small></article><article><span>REVISÕES</span><strong id="due-review-stat">0</strong><small>para hoje</small></article><article><span>SEMANA</span><strong id="weekly-stat">0</strong><small>questões feitas</small></article></section>
           <section class="focus-card"><div><span class="eyebrow">PLANO ENEM</span><strong>Ritmo consistente vence a pressa.</strong><p id="focus-goal-copy">Faça um pouco por dia e use os erros para decidir o que revisar.</p></div><button id="open-review-from-dashboard" type="button">Ver revisões</button></section>
           <h3>Meu avatar</h3>
@@ -280,6 +282,28 @@
             <section class="friends-section" aria-labelledby="friends-list-title"><header><div><span>SEUS AMIGOS</span><h3 id="friends-list-title">Disponíveis para estudar</h3></div><b id="online-friend-count">0 online</b></header><div id="friends-list" class="friend-list"></div></section>
           </div>
           <section class="chat-safety-card"><strong>🛡️ Conversa segura</strong><p>Não compartilhe endereço, telefone, escola, senha ou fotos pessoais. Se algo incomodar, bloqueie a pessoa e envie uma denúncia.</p></section>
+        </div>
+
+        <div id="admin-screen" class="screen admin-screen">
+          <header class="dashboard-header admin-header"><button id="close-admin" class="icon-button" aria-label="Voltar">←</button><div><span class="eyebrow">ADMINISTRAÇÃO</span><h2>Central do Estuda+</h2></div><button id="refresh-admin" class="tutorial-help-button" type="button"><span aria-hidden="true">↻</span> Atualizar</button></header>
+          <p class="subtitle">Dados essenciais para melhorar a aprendizagem e manter a comunidade segura.</p>
+          <div id="admin-notice" class="admin-notice" role="status" aria-live="polite"></div>
+          <section id="admin-stats" class="admin-stats" aria-label="Resumo da plataforma">
+            <article><span>CADASTRADOS</span><strong id="admin-total-users">0</strong><small>usuários</small></article>
+            <article><span>ATIVOS 7 DIAS</span><strong id="admin-active-users">0</strong><small>estudantes</small></article>
+            <article><span>CHAT LIBERADO</span><strong id="admin-chat-users">0</strong><small>contas</small></article>
+            <article><span>DENÚNCIAS</span><strong id="admin-open-reports">0</strong><small>em aberto</small></article>
+          </section>
+          <nav id="admin-tabs" class="admin-tabs" aria-label="Seções administrativas"><button class="active" type="button" data-admin-tab="users">Usuários</button><button type="button" data-admin-tab="reports">Segurança</button><button type="button" data-admin-tab="announcements">Avisos</button><button type="button" data-admin-tab="insights">Aprendizagem</button><button type="button" data-admin-tab="audit">Auditoria</button></nav>
+          <section class="admin-tab-panel active" data-admin-panel="users" aria-labelledby="admin-users-title">
+            <header class="admin-section-heading"><div><span>CONTAS CADASTRADAS</span><h3 id="admin-users-title">Usuários da plataforma</h3></div><div class="admin-user-filters"><input id="admin-user-search" type="search" placeholder="Buscar por nome" aria-label="Buscar usuário por nome"><select id="admin-user-status" aria-label="Filtrar status"><option value="all">Todos</option><option value="active">Ativos</option><option value="suspended">Suspensos</option></select></div></header>
+            <div class="admin-table-wrap"><table class="admin-users-table"><thead><tr><th>Usuário</th><th>Ano escolar</th><th>Pontos</th><th>Última atividade</th><th>Status</th><th></th></tr></thead><tbody id="admin-users-list"></tbody></table></div>
+            <button id="admin-load-more" class="admin-load-more" type="button" hidden>Carregar mais usuários</button>
+          </section>
+          <section class="admin-tab-panel" data-admin-panel="reports" aria-labelledby="admin-reports-title" hidden><header class="admin-section-heading"><div><span>MODERAÇÃO</span><h3 id="admin-reports-title">Denúncias recebidas</h3></div></header><div id="admin-reports-list" class="admin-report-list"></div></section>
+          <section class="admin-tab-panel" data-admin-panel="announcements" aria-labelledby="admin-announcement-form-title" hidden><div class="admin-announcement-layout"><form id="admin-announcement-form" class="admin-announcement-form"><span>COMUNICAÇÃO NO APP</span><h3 id="admin-announcement-form-title">Criar aviso</h3><input id="admin-announcement-id" type="hidden"><label>Título<input id="admin-announcement-title" maxlength="100" required placeholder="Ex.: Novas fases disponíveis"></label><label>Mensagem<textarea id="admin-announcement-body" maxlength="500" required placeholder="Escreva um aviso claro e curto."></textarea></label><label class="admin-publish-check"><input id="admin-announcement-published" type="checkbox"> Publicar agora</label><div><button id="admin-cancel-announcement" type="button" hidden>Cancelar edição</button><button type="submit">Salvar aviso</button></div></form><section><div class="admin-section-heading"><div><span>HISTÓRICO</span><h3>Avisos criados</h3></div></div><div id="admin-announcements-list" class="admin-announcements-list"></div></section></div></section>
+          <section class="admin-tab-panel" data-admin-panel="insights" aria-labelledby="admin-insights-title" hidden><header class="admin-section-heading"><div><span>DADOS PARA MELHORIA</span><h3 id="admin-insights-title">Onde os estudantes precisam de ajuda</h3></div></header><div id="admin-learning-insights" class="admin-learning-insights"></div></section>
+          <section class="admin-tab-panel" data-admin-panel="audit" aria-labelledby="admin-audit-title" hidden><header class="admin-section-heading"><div><span>RASTREABILIDADE</span><h3 id="admin-audit-title">Ações administrativas recentes</h3></div></header><div id="admin-audit-list" class="admin-audit-list"></div></section>
         </div>
       </section>
     </main>
@@ -360,6 +384,9 @@
         <p id="chat-status" class="chat-status" role="status"></p>
       </section>
     </div>
+    <div id="admin-user-modal" class="modal-backdrop admin-user-backdrop" hidden>
+      <section class="modal-panel admin-user-panel" role="dialog" aria-modal="true" aria-labelledby="admin-user-name"><button id="close-admin-user" class="modal-close" type="button" aria-label="Fechar detalhes">×</button><span class="eyebrow">GERENCIAR USUÁRIO</span><h2 id="admin-user-name">Usuário</h2><p id="admin-user-summary"></p><div class="admin-user-actions"><button id="admin-toggle-user-status" type="button"></button><button id="admin-toggle-user-chat" type="button"></button></div><label>Observação interna<textarea id="admin-user-note" maxlength="500" placeholder="Anotação visível somente para administradores."></textarea></label><button id="admin-save-user-note" class="start-button" type="button">Salvar observação <span>✓</span></button><small>Senhas e conteúdo privado das conversas não ficam disponíveis nesta página.</small></section>
+    </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
       <button type="button" data-nav="subjects"><span>⌂</span>Início</button>
       <button type="button" data-nav="trail"><span>⌁</span>Trilha</button>
@@ -372,6 +399,7 @@
     <script src="question-expansion.js"></script>
     <script src="avatar-studio.js"></script>
     <script src="friends-chat.js"></script>
+    <script src="admin-panel.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
