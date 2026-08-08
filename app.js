@@ -6,6 +6,7 @@ const supabaseClient = globalThis.supabase?.createClient(supabaseUrl, supabasePu
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
 let activeSupabaseUser = null;
+let activeUserIsAdmin = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
 const createNavigationSessionId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -19,6 +20,7 @@ let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum
 let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
+const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 
 const tutorialSteps = [
   { kicker: 'COMECE AQUI', title: 'Escolha seu ano e uma matéria', description: 'O Estuda+ organiza a aventura de acordo com a etapa escolar da criança.', kind: 'subjects', tips: ['Selecione o ano escolar na tela inicial.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar essas escolhas sempre que quiser.'] },
@@ -202,7 +204,7 @@ function friendlyAuthError(error) {
 }
 async function fetchCloudProfile(user) {
   if (!supabaseClient) return { data: null, error: new Error('Serviço de sincronização indisponível.') };
-  return supabaseClient.from('profiles').select('name, school_year, avatar, points, app_state').eq('id', user.id).maybeSingle();
+  return supabaseClient.from('profiles').select('name, school_year, avatar, points, app_state, is_admin, account_status').eq('id', user.id).maybeSingle();
 }
 async function fetchQuestionHistory(user = activeSupabaseUser) {
   if (!user || !supabaseClient) return { data: [], error: new Error('Histórico de questões indisponível.') };
@@ -276,6 +278,14 @@ async function activateUser(user) {
     showAuthNotice('Não foi possível sincronizar seu histórico agora. Por segurança, o quiz não foi iniciado para evitar questões repetidas. Verifique a conexão e tente entrar novamente.', true);
     return false;
   }
+  if (profile.account_status === 'suspended') {
+    await supabaseClient.auth.signOut();
+    activeSupabaseUser = null;
+    activeUserIsAdmin = false;
+    show('auth-screen', { historyMode: 'reset' });
+    showAuthNotice('Esta conta está temporariamente suspensa. Entre em contato com a administração do Estuda+.', true);
+    return false;
+  }
   const { data: reservedHistory, error: historyError } = await fetchQuestionHistory(user);
   if (historyError) {
     console.warn('Não foi possível carregar o histórico atômico de questões:', historyError.message);
@@ -307,12 +317,15 @@ async function activateUser(user) {
   state.avatar = profile?.avatar || state.avatar;
   state.avatarDesign = avatarStudio.fitToUnlocks(state.avatarDesign, completedPhaseCountFrom(state.phaseProgress));
   state.totalPoints = Math.max(state.totalPoints || 0, profile?.points || 0);
+  activeUserIsAdmin = Boolean(profile?.is_admin);
+  if (el('admin-access-card')) el('admin-access-card').hidden = !activeUserIsAdmin;
   const tutorialPendingVersion = Math.max(0, Number(user.user_metadata?.tutorial_pending_version) || 0);
   const shouldAutoOpenTutorial = tutorialPendingVersion >= APP_TUTORIAL_VERSION && state.tutorialSeenVersion < APP_TUTORIAL_VERSION;
   setSchoolYear(state.schoolYear, false);
   saveState();
   updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen', { historyMode: 'reset' });
   if (friendsHub) void friendsHub.init(user);
+  if (adminPanel) void adminPanel.init(user, activeUserIsAdmin);
   if (shouldAutoOpenTutorial) requestAnimationFrame(() => openAppTutorial({ automatic: true }));
   return true;
 }
@@ -393,9 +406,12 @@ async function updateRecoveredPassword(event) {
 async function logoutUser() {
   clearTimeout(remoteSaveTimer);
   if (friendsHub) await friendsHub.stop();
+  adminPanel?.stop();
   if (activeSupabaseUser && supabaseClient) await syncStateToSupabase();
   if (supabaseClient) await supabaseClient.auth.signOut();
   activeSupabaseUser = null;
+  activeUserIsAdmin = false;
+  if (el('admin-access-card')) el('admin-access-card').hidden = true;
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
   questions = []; current = 0; currentPhase = 1; resultAction = 'home'; hits = 0; score = 0; roundStreak = 0;
@@ -896,7 +912,7 @@ el('subject').addEventListener('change', () => { renderTopicExamples(); renderPh
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
-const appScreenIds = new Set(['auth-screen', 'subject-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen']);
+const appScreenIds = new Set(['auth-screen', 'subject-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen', 'admin-screen']);
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('a11y-calm');
 function activeScreenId() { return document.querySelector('.screen.active')?.id || 'auth-screen'; }
 function screenNavigationKey(id) {
@@ -904,6 +920,7 @@ function screenNavigationKey(id) {
   if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
   if (id === 'review-screen') return 'review';
   if (id === 'friends-screen') return 'friends';
+  if (id === 'admin-screen') return 'profile';
   if (id === 'dashboard-screen') return 'profile';
   return '';
 }
@@ -976,6 +993,11 @@ function goToSubjects(options = {}) { el('adventure-overview').hidden = true; el
 function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); resetViewport('setup-screen'); }
 function openReview() { renderReviewScreen(); show('review-screen'); }
 async function openFriends() { show('friends-screen'); await friendsHub?.open(); }
+async function openAdmin() {
+  if (!activeUserIsAdmin) return;
+  show('admin-screen');
+  await adminPanel?.open();
+}
 function setChoice(groupId, value) { const group = el(groupId); if (!group) return; group.querySelectorAll('.choice').forEach((button) => button.classList.toggle('selected', button.dataset.value === value)); if (groupId === 'difficulty') difficulty = value; else quizMode = value; }
 function startEnemSimulation() { setSchoolYear('3EM'); el('subject').value = el('subject').value || 'Matemática'; el('topic').value = el('topic').value || 'proporcionalidade e porcentagem'; el('curriculum').value = 'Base Enem/Inep'; curriculum = 'Base Enem/Inep'; setChoice('difficulty', 'Médio'); setChoice('quiz-mode', 'Prova'); el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderTopicExamples(); openAdventure(); }
 function setQuestionBankStatus(message = '', error = false) {
@@ -1078,11 +1100,13 @@ el('practice-notebook').addEventListener('click', openReview);
 el('review-errors').addEventListener('click', openReview);
 el('close-review').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('close-friends').addEventListener('click', () => navigateBack('subject-screen'));
+el('close-admin').addEventListener('click', () => navigateBack('dashboard-screen'));
+el('open-admin-panel').addEventListener('click', openAdmin);
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
 function updateModalBackgroundState() {
-  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden || !el('app-tutorial-modal').hidden || !el('chat-modal').hidden;
+  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden || !el('app-tutorial-modal').hidden || !el('chat-modal').hidden || !el('admin-user-modal').hidden;
   document.body.classList.toggle('modal-open', anyModalOpen);
   document.querySelector('.app-shell')?.toggleAttribute('inert', anyModalOpen);
   el('app-nav')?.toggleAttribute('inert', anyModalOpen);
@@ -1159,12 +1183,13 @@ el('save-avatar-design').addEventListener('click', () => {
   closeAvatarStudio();
 });
 document.addEventListener('keydown', (event) => {
-  const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal'), chatModal = el('chat-modal');
-  const modal = !chatModal.hidden ? chatModal : !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
+  const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal'), chatModal = el('chat-modal'), adminUserModal = el('admin-user-modal');
+  const modal = !adminUserModal.hidden ? adminUserModal : !chatModal.hidden ? chatModal : !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
   if (!modal) return;
   if (event.key === 'Escape') {
     event.preventDefault();
-    if (modal === chatModal) friendsHub?.closeChat();
+    if (modal === adminUserModal) adminPanel?.closeUser();
+    else if (modal === chatModal) friendsHub?.closeChat();
     else if (modal === tutorialModal) closeAppTutorial();
     else if (modal === avatarModal) closeAvatarStudio();
     else closeWeeklyGoalModal();
@@ -1210,6 +1235,7 @@ el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'r
 window.addEventListener('popstate', (event) => {
   const weeklyModal = el('weekly-goal-modal'), avatarModal = el('avatar-studio-modal'), tutorialModal = el('app-tutorial-modal');
   if (friendsHub?.isChatOpen()) friendsHub.closeChat();
+  if (adminPanel?.isUserModalOpen()) adminPanel.closeUser();
   if (!tutorialModal.hidden && event.state?.estudaModal !== 'app-tutorial') { closeAppTutorial({ fromHistory: true }); return; }
   if (!avatarModal.hidden && event.state?.estudaModal !== 'avatar-studio') { closeAvatarStudio({ fromHistory: true }); return; }
   if (!weeklyModal.hidden && event.state?.estudaModal !== 'weekly-goal') { closeWeeklyGoalModal({ fromHistory: true }); return; }
@@ -1227,6 +1253,7 @@ window.addEventListener('popstate', (event) => {
   if (destination === 'dashboard-screen') renderDashboard();
   if (destination === 'review-screen') renderReviewScreen();
   if (destination === 'friends-screen') friendsHub?.open();
+  if (destination === 'admin-screen' && activeUserIsAdmin) adminPanel?.open();
   if (destination === 'setup-screen' || destination === 'subject-screen') renderPhaseMap();
   show(destination, { historyMode: 'none' });
 });
