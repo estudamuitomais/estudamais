@@ -1231,3 +1231,7 @@ body {
   .material-actions { flex-direction: column; }
   .material-actions button { width: 100%; min-width: 0; }
 }
+
+.disconnect-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; padding: 8px 13px !important; border: 2px solid #fecaca !important; border-radius: 12px !important; background: #fff1f2 !important; color: #b42335 !important; font-weight: 1000 !important; box-shadow: 0 3px 0 #fecaca !important; cursor: pointer; }
+.disconnect-button:hover { background: #ffe4e6 !important; transform: translateY(-1px); }
+.disconnect-button:focus-visible { outline: 3px solid rgba(239,68,68,.28); outline-offset: 2px; }
