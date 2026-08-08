@@ -53,6 +53,9 @@
             <form id="register-form" class="auth-form" hidden>
               <label>Como quer ser chamado?<input id="register-name" autocomplete="name" required placeholder="Seu nome ou apelido" /></label>
               <label>E-mail<input id="register-email" type="email" autocomplete="email" required placeholder="voce@email.com" /></label>
+              <label>WhatsApp do usuário ou responsável<input id="register-whatsapp" type="tel" autocomplete="tel" inputmode="tel" required placeholder="(11) 99999-9999" aria-describedby="whatsapp-register-help" /></label>
+              <small id="whatsapp-register-help" class="input-help">Usado para suporte da conta. O número não será mostrado a outros estudantes.</small>
+              <label class="auth-consent"><input id="register-whatsapp-opt-in" type="checkbox" /> Autorizo receber pelo WhatsApp avisos importantes e novidades do Estuda+.</label>
               <label>Senha<span class="password-field"><input id="register-password" type="password" autocomplete="new-password" minlength="6" required placeholder="Pelo menos 6 caracteres" /><button class="password-toggle" type="button" data-password-target="register-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
               <button class="start-button" type="submit">Criar minha conta <span>→</span></button>
             </form>
@@ -218,6 +221,7 @@
           <section class="profile-card">
             <div id="profile-avatar" class="profile-avatar"></div><div><strong id="profile-name">Explorador</strong><span id="profile-points">0 pontos acumulados</span></div><button id="logout-user" class="logout-button" type="button">Sair</button>
           </section>
+          <section class="material-home-card" aria-labelledby="material-home-title"><div class="material-home-icon" aria-hidden="true">▣</div><div><span>ESTUDO PERSONALIZADO</span><strong id="material-home-title">Transforme sua apostila em quiz</strong><p>Envie fotos das páginas, confira o texto reconhecido e pratique dez questões sobre o conteúdo.</p></div><button id="open-material-quiz" type="button">Usar minha apostila <span>→</span></button></section>
           <section id="admin-access-card" class="admin-access-card" hidden><div><span>PAINEL PROTEGIDO</span><strong>Administração do Estuda+</strong><p>Acompanhe usuários, avisos, desempenho e segurança da plataforma.</p></div><button id="open-admin-panel" type="button">Abrir administração</button></section>
           <section class="dashboard-stats" aria-label="Resumo de desempenho"><article><span>PRECISÃO</span><strong id="accuracy-stat">—</strong><small>acertos gerais</small></article><article><span>REVISÕES</span><strong id="due-review-stat">0</strong><small>para hoje</small></article><article><span>SEMANA</span><strong id="weekly-stat">0</strong><small>questões feitas</small></article></section>
           <section class="focus-card"><div><span class="eyebrow">PLANO ENEM</span><strong>Ritmo consistente vence a pressa.</strong><p id="focus-goal-copy">Faça um pouco por dia e use os erros para decidir o que revisar.</p></div><button id="open-review-from-dashboard" type="button">Ver revisões</button></section>
@@ -282,6 +286,20 @@
             <section class="friends-section" aria-labelledby="friends-list-title"><header><div><span>SEUS AMIGOS</span><h3 id="friends-list-title">Disponíveis para estudar</h3></div><b id="online-friend-count">0 online</b></header><div id="friends-list" class="friend-list"></div></section>
           </div>
           <section class="chat-safety-card"><strong>🛡️ Conversa segura</strong><p>Não compartilhe endereço, telefone, escola, senha ou fotos pessoais. Se algo incomodar, bloqueie a pessoa e envie uma denúncia.</p></section>
+        </div>
+
+        <div id="material-screen" class="screen material-screen">
+          <header class="dashboard-header material-header"><button id="close-material-quiz" class="icon-button" type="button" aria-label="Voltar">←</button><div><span class="eyebrow">MODO APOSTILA</span><h2>Da foto para o quiz</h2></div></header>
+          <section class="material-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Processamento privado no seu aparelho</strong><p>As imagens não são salvas no Estuda+. Evite fotografar nomes, rostos, escola ou outros dados pessoais.</p></div></section>
+          <form id="material-quiz-form" class="material-quiz-form">
+            <div class="material-form-grid"><label>Matéria<select id="material-subject" required><option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option></select></label><label>Fotos da apostila<input id="material-images" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple required /><small>Até 5 imagens nítidas, com no máximo 8 MB cada.</small></label></div>
+            <div id="material-image-preview" class="material-image-preview" aria-live="polite"></div>
+            <section id="material-reading-progress" class="material-reading-progress" hidden><div><strong id="material-progress-title">Lendo sua apostila…</strong><span id="material-progress-percent">0%</span></div><i><b id="material-progress-bar"></b></i><p id="material-progress-detail">Preparando a leitura.</p></section>
+            <label id="material-text-label" class="material-text-label" hidden>Confira o texto reconhecido<textarea id="material-extracted-text" minlength="250" rows="12" spellcheck="true" placeholder="O texto extraído aparecerá aqui para você corrigir antes de gerar as perguntas."></textarea><small>Corrija palavras ou números que a câmera tenha lido errado. As questões serão feitas somente com este texto.</small></label>
+            <p id="material-status" class="material-status" role="status" aria-live="polite"></p>
+            <div class="material-actions"><button id="read-material-images" class="modal-secondary" type="button">Ler as fotos</button><button id="generate-material-quiz" class="start-button" type="submit" disabled>Criar 10 questões <span>→</span></button></div>
+          </form>
+          <section class="material-photo-tips"><strong>Para uma leitura melhor</strong><ul><li>Use boa iluminação e evite sombras.</li><li>Fotografe a página inteira, reta e sem cortes.</li><li>Envie páginas com texto suficiente e revise a transcrição.</li></ul></section>
         </div>
 
         <div id="admin-screen" class="screen admin-screen">
@@ -385,7 +403,7 @@
       </section>
     </div>
     <div id="admin-user-modal" class="modal-backdrop admin-user-backdrop" hidden>
-      <section class="modal-panel admin-user-panel" role="dialog" aria-modal="true" aria-labelledby="admin-user-name"><button id="close-admin-user" class="modal-close" type="button" aria-label="Fechar detalhes">×</button><span class="eyebrow">GERENCIAR USUÁRIO</span><h2 id="admin-user-name">Usuário</h2><p id="admin-user-summary"></p><div class="admin-user-actions"><button id="admin-toggle-user-status" type="button"></button><button id="admin-toggle-user-chat" type="button"></button></div><label>Observação interna<textarea id="admin-user-note" maxlength="500" placeholder="Anotação visível somente para administradores."></textarea></label><button id="admin-save-user-note" class="start-button" type="button">Salvar observação <span>✓</span></button><small>Senhas e conteúdo privado das conversas não ficam disponíveis nesta página.</small></section>
+      <section class="modal-panel admin-user-panel" role="dialog" aria-modal="true" aria-labelledby="admin-user-name"><button id="close-admin-user" class="modal-close" type="button" aria-label="Fechar detalhes">×</button><span class="eyebrow">GERENCIAR USUÁRIO</span><h2 id="admin-user-name">Usuário</h2><p id="admin-user-summary"></p><div class="admin-user-actions"><button id="admin-toggle-user-status" type="button"></button><button id="admin-toggle-user-chat" type="button"></button></div><section class="admin-whatsapp-card"><div><span>WHATSAPP CADASTRADO</span><strong id="admin-user-whatsapp">Não informado</strong><small id="admin-user-whatsapp-consent">Sem autorização para receber novidades.</small></div><label>Mensagem<textarea id="admin-whatsapp-message" maxlength="700" placeholder="Escreva a atualização que deseja enviar."></textarea></label><button id="admin-open-whatsapp" type="button">Abrir conversa no WhatsApp <span>↗</span></button></section><label>Observação interna<textarea id="admin-user-note" maxlength="500" placeholder="Anotação visível somente para administradores."></textarea></label><button id="admin-save-user-note" class="start-button" type="button">Salvar observação <span>✓</span></button><small>O envio é confirmado pelo administrador no WhatsApp. Senhas e conversas privadas não ficam disponíveis nesta página.</small></section>
     </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
       <button type="button" data-nav="subjects"><span>⌂</span>Início</button>
@@ -395,11 +413,13 @@
       <button type="button" data-nav="profile"><span>☺</span>Perfil</button>
     </nav>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="grade-content.js"></script>
     <script src="question-expansion.js"></script>
     <script src="avatar-studio.js"></script>
     <script src="friends-chat.js"></script>
     <script src="admin-panel.js"></script>
+    <script src="material-quiz.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
