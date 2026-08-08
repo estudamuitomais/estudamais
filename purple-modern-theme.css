@@ -1166,3 +1166,68 @@ body {
   .admin-learning-insights article { grid-template-columns: 1fr; gap: 8px; }
   .admin-user-actions { grid-template-columns: 1fr; }
 }
+
+/* Modo Apostila e contato autorizado */
+.auth-consent { display: grid !important; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 9px !important; padding: 11px 12px; border: 1px solid #ddd6fe; border-radius: 12px; background: #f7f5ff; color: #665873 !important; font-size: 11px !important; line-height: 1.4; }
+.auth-consent input { width: 18px !important; height: 18px; margin: 0; accent-color: #7c3aed; }
+.material-home-card { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 16px; margin: 17px 0; padding: 18px; overflow: hidden; border: 2px solid #c4b5fd; border-radius: 22px; background: linear-gradient(135deg, #2e1065, #6d28d9 62%, #8b5cf6); box-shadow: 0 6px 0 #230b4f; }
+.material-home-icon { display: grid; place-items: center; width: 56px; height: 56px; border: 2px solid rgba(255,255,255,.55); border-radius: 17px; background: rgba(255,255,255,.14); color: #fff; font-size: 28px; }
+.material-home-card span { color: #ddd6fe; font-size: 9px; font-weight: 1000; letter-spacing: 1px; }
+.material-home-card strong { display: block; margin-top: 3px; color: #fff; font-size: 18px; font-weight: 1000; }
+.material-home-card p { margin: 4px 0 0; color: #ede9fe; font-size: 11px; line-height: 1.45; }
+.material-home-card button { min-height: 44px; padding: 9px 14px; border: 2px solid #fff; border-radius: 13px; background: #fff; color: #5b21b6; font: 1000 11px Nunito, sans-serif; box-shadow: 0 3px 0 #c4b5fd; cursor: pointer; }
+.material-screen { width: min(100%, 900px) !important; }
+.material-privacy-card { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 12px; margin: 14px 0 18px; padding: 14px; border: 2px solid #bbf7d0; border-radius: 17px; background: #f0fdf4; }
+.material-privacy-card > span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #16a34a; color: #fff; font-size: 21px; }
+.material-privacy-card strong { color: #166534; font-size: 13px; }
+.material-privacy-card p { margin: 3px 0 0; color: #47735a; font-size: 11px; line-height: 1.45; }
+.material-quiz-form { padding: 22px; border: 2px solid #e4dced; border-radius: 23px; background: #fff; box-shadow: 0 5px 0 #ddd5e6; }
+.material-form-grid { display: grid; grid-template-columns: minmax(190px,.65fr) minmax(260px,1.35fr); gap: 13px; }
+.material-form-grid label,
+.material-text-label { display: grid; align-content: start; gap: 6px; color: #5f5269; font-size: 11px; font-weight: 900; }
+.material-form-grid select,
+.material-form-grid input,
+.material-text-label textarea { width: 100%; min-height: 46px; padding: 10px 11px; border: 2px solid #dfd6e8; border-radius: 12px; background: #fbfaff; color: #3d2d49; font: 800 12px Nunito, sans-serif; outline: none; }
+.material-form-grid input[type=file] { min-height: 52px; padding: 8px; }
+.material-form-grid small,
+.material-text-label small { color: #8d8294; font-size: 9px; line-height: 1.4; }
+.material-image-preview { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; margin: 15px 0; }
+.material-image-preview:empty { display: none; }
+.material-image-preview article { min-width: 0; overflow: hidden; border: 1px solid #e5ddec; border-radius: 12px; background: #faf8fc; }
+.material-image-preview img { width: 100%; height: 92px; object-fit: cover; }
+.material-image-preview article div { padding: 7px; }
+.material-image-preview strong,
+.material-image-preview span { display: block; overflow: hidden; color: #51405d; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.material-image-preview span { color: #93889b; }
+.material-reading-progress { margin: 15px 0; padding: 15px; border-radius: 15px; background: #f6f2ff; }
+.material-reading-progress > div { display: flex; justify-content: space-between; gap: 12px; color: #5b21b6; font-size: 11px; }
+.material-reading-progress i { display: block; height: 10px; margin: 9px 0; overflow: hidden; border-radius: 999px; background: #ddd6fe; }
+.material-reading-progress b { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#8b5cf6,#6d28d9); transition: width .2s ease; }
+.material-reading-progress p,
+.material-status { margin: 4px 0 0; color: #71637b; font-size: 10px; }
+.material-status.error { color: #b42335; font-weight: 900; }
+.material-text-label { margin-top: 15px; }
+.material-text-label textarea { min-height: 220px; resize: vertical; line-height: 1.55; }
+.material-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 17px; }
+.material-actions button { min-width: 170px; }
+.material-photo-tips { margin-top: 16px; padding: 17px 19px; border: 2px dashed #d8cee4; border-radius: 17px; background: #fbfafd; }
+.material-photo-tips strong { color: #4c3c57; font-size: 13px; }
+.material-photo-tips ul { display: grid; gap: 4px; margin: 8px 0 0; padding-left: 19px; color: #75687e; font-size: 11px; }
+.admin-whatsapp-card { display: grid; gap: 10px; margin: 14px 0; padding: 14px; border: 2px solid #bbf7d0; border-radius: 15px; background: #f0fdf4; }
+.admin-whatsapp-card span { color: #15803d; font-size: 8px; font-weight: 1000; letter-spacing: .8px; }
+.admin-whatsapp-card strong { display: block; margin-top: 2px; color: #14532d; font-size: 15px; }
+.admin-whatsapp-card small { display: block; color: #4f765c; font-size: 9px; }
+.admin-whatsapp-card label { color: #315d40; }
+.admin-whatsapp-card textarea { width: 100%; min-height: 90px; background: #fff; }
+.admin-whatsapp-card button { min-height: 42px; border: 0; border-radius: 12px; background: #16a34a; color: #fff; font: 1000 11px Nunito, sans-serif; box-shadow: 0 3px 0 #116b32; cursor: pointer; }
+.admin-whatsapp-card button:disabled { background: #b6c9bc; box-shadow: none; cursor: not-allowed; }
+
+@media (max-width: 700px) {
+  .material-home-card { grid-template-columns: 48px minmax(0,1fr); gap: 12px; }
+  .material-home-icon { width: 46px; height: 46px; }
+  .material-home-card button { grid-column: 1 / -1; width: 100%; }
+  .material-form-grid { grid-template-columns: 1fr; }
+  .material-image-preview { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .material-actions { flex-direction: column; }
+  .material-actions button { width: 100%; min-width: 0; }
+}
