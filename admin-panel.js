@@ -27,6 +27,7 @@
       const raw = `${error?.message || error || ''}`;
       if (/ADMIN_REQUIRED/i.test(raw)) return 'Sua conta não possui permissão administrativa.';
       if (/CANNOT_SUSPEND_SELF/i.test(raw)) return 'O administrador não pode suspender a própria conta.';
+      if (/WHATSAPP_NOT_AUTHORIZED/i.test(raw)) return 'Este usuário não autorizou o recebimento de novidades pelo WhatsApp.';
       if (/INVALID_ANNOUNCEMENT/i.test(raw)) return 'Preencha o título e a mensagem do aviso.';
       if (/relation .* does not exist|column .* does not exist|schema cache/i.test(raw)) return 'A estrutura administrativa ainda precisa ser ativada no Supabase.';
       return 'Não foi possível concluir a ação. Tente novamente.';
@@ -48,7 +49,17 @@
       const from = append ? page * pageSize : 0;
       const { data, error } = await supabase.from('profiles').select('id, name, school_year, points, created_at, updated_at, guardian_chat_enabled, account_status, admin_note, is_admin').order('created_at', { ascending: false }).range(from, from + pageSize - 1);
       if (error) throw error;
-      users = append ? [...users, ...(data || [])] : (data || []);
+      const profileRows = data || [];
+      const ids = profileRows.map((item) => item.id);
+      let contacts = [];
+      if (ids.length) {
+        const contactResult = await supabase.from('user_contacts').select('user_id, whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at').in('user_id', ids);
+        if (contactResult.error) throw contactResult.error;
+        contacts = contactResult.data || [];
+      }
+      const contactMap = new Map(contacts.map((item) => [item.user_id, item]));
+      const enrichedRows = profileRows.map((item) => ({ ...item, ...(contactMap.get(item.id) || {}) }));
+      users = append ? [...users, ...enrichedRows] : enrichedRows;
       if (!append) page = 1; else page += 1;
       byId('admin-load-more').hidden = (data || []).length < pageSize;
       renderUsers();
@@ -116,6 +127,11 @@
       byId('admin-toggle-user-status').textContent = item.account_status === 'suspended' ? 'Reativar conta' : 'Suspender conta';
       byId('admin-toggle-user-status').classList.toggle('danger', item.account_status !== 'suspended');
       byId('admin-toggle-user-chat').textContent = item.guardian_chat_enabled ? 'Desativar chat' : 'Liberar chat';
+      const phone = item.whatsapp_phone || '';
+      byId('admin-user-whatsapp').textContent = phone ? phone.replace(/^(\+55)(\d{2})(\d{4,5})(\d{4})$/, '$1 ($2) $3-$4') : 'Não informado';
+      byId('admin-user-whatsapp-consent').textContent = item.whatsapp_opt_in ? 'Autorizou receber atualizações do Estuda+.' : 'Sem autorização para receber novidades.';
+      byId('admin-whatsapp-message').value = `Olá, ${item.name || 'estudante'}! Temos uma novidade importante no Estuda+: `;
+      byId('admin-open-whatsapp').disabled = !phone || !item.whatsapp_opt_in;
       byId('admin-user-modal').hidden = false;
       options.onModalChange?.();
       setTimeout(() => byId('admin-user-note').focus(), 0);
@@ -136,6 +152,17 @@
         if (action === 'note') selectedUser.admin_note = value;
         closeUser(); await loadAdminData(); notice('Alteração administrativa registrada.');
       } catch (error) { notice(friendlyError(error), true); }
+    }
+
+    function openWhatsApp() {
+      if (!selectedUser?.whatsapp_phone || !selectedUser.whatsapp_opt_in) { notice('O usuário não possui WhatsApp autorizado para novidades.', true); return; }
+      const message = byId('admin-whatsapp-message').value.trim();
+      if (message.length < 5) { notice('Escreva a mensagem que será enviada.', true); byId('admin-whatsapp-message').focus(); return; }
+      const digits = selectedUser.whatsapp_phone.replace(/\D/g, '');
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+      void supabase.rpc('admin_log_whatsapp_contact', { p_target_user_id: selectedUser.id }).then(({ error }) => {
+        if (error) notice(friendlyError(error), true); else notice('Conversa aberta no WhatsApp. Confirme o envio da mensagem por lá.');
+      });
     }
 
     async function loadReportNames() {
@@ -222,7 +249,7 @@
       const list = byId('admin-audit-list'); if (!list) return;
       list.innerHTML = '';
       if (!auditRows.length) list.innerHTML = '<div class="admin-empty">Nenhuma ação administrativa registrada.</div>';
-      const labels = { user_status: 'Alterou status de conta', user_chat: 'Alterou permissão de chat', user_note: 'Atualizou observação', report_status: 'Atualizou denúncia', announcement_saved: 'Salvou aviso', announcement_deleted: 'Excluiu aviso' };
+      const labels = { user_status: 'Alterou status de conta', user_chat: 'Alterou permissão de chat', user_note: 'Atualizou observação', report_status: 'Atualizou denúncia', announcement_saved: 'Salvou aviso', announcement_deleted: 'Excluiu aviso', whatsapp_contact_opened: 'Abriu contato autorizado no WhatsApp' };
       auditRows.forEach((item) => { const row = document.createElement('article'); row.innerHTML = `<span>✓</span><div><strong>${safe(labels[item.action] || item.action)}</strong><small>${dateLabel(item.created_at)} · registro #${item.id}</small></div>`; list.append(row); });
     }
 
@@ -242,6 +269,7 @@
       byId('admin-toggle-user-status')?.addEventListener('click', () => updateUser('status', selectedUser?.account_status === 'suspended' ? 'active' : 'suspended'));
       byId('admin-toggle-user-chat')?.addEventListener('click', () => updateUser('chat', !selectedUser?.guardian_chat_enabled));
       byId('admin-save-user-note')?.addEventListener('click', () => updateUser('note', byId('admin-user-note').value.trim()));
+      byId('admin-open-whatsapp')?.addEventListener('click', openWhatsApp);
       byId('admin-announcement-form')?.addEventListener('submit', saveAnnouncement);
       byId('admin-cancel-announcement')?.addEventListener('click', clearAnnouncementForm);
       byId('admin-tabs')?.addEventListener('click', (event) => { const button = event.target.closest('[data-admin-tab]'); if (button) selectTab(button.dataset.adminTab); });
