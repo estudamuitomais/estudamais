@@ -488,6 +488,39 @@ function renderAppTutorial(options = {}) {
   el('tutorial-next').innerHTML = tutorialStep === tutorialSteps.length - 1 ? 'Começar a estudar <span>✓</span>' : 'Próximo <span>→</span>';
   if (options.focusTitle) requestAnimationFrame(() => el('tutorial-title').focus({ preventScroll: true }));
 }
+function markAppTutorialSeen(outcome = 'skipped') {
+  const nextOutcome = outcome === 'completed' ? 'completed' : 'skipped';
+  if (state.tutorialSeenVersion >= APP_TUTORIAL_VERSION && state.tutorialOutcome === 'completed' && nextOutcome !== 'completed') return;
+  state.tutorialSeenVersion = APP_TUTORIAL_VERSION;
+  state.tutorialSeenAt = new Date().toISOString();
+  state.tutorialOutcome = nextOutcome;
+  saveState();
+  if (activeSupabaseUser && supabaseClient) void syncStateToSupabase();
+}
+function openAppTutorial(options = {}) {
+  const modal = el('app-tutorial-modal');
+  if (!modal || !modal.hidden) return;
+  tutorialReturnFocus = options.automatic ? el('open-app-tutorial-home') : document.activeElement;
+  tutorialOpenedAutomatically = Boolean(options.automatic);
+  tutorialStep = Math.max(0, Math.min(tutorialSteps.length - 1, Number(options.step) || 0));
+  el('tutorial-skip').textContent = state.tutorialSeenVersion >= APP_TUTORIAL_VERSION ? 'Fechar tutorial' : 'Pular tutorial';
+  modal.hidden = false;
+  updateModalBackgroundState();
+  if (!options.fromHistory) updateScreenHistory(activeScreenId(), 'push', { estudaModal: 'app-tutorial' });
+  renderAppTutorial({ focusTitle: true });
+}
+function closeAppTutorial(options = {}) {
+  const modal = el('app-tutorial-modal');
+  if (!modal || modal.hidden) return;
+  const outcome = options.outcome === 'completed' ? 'completed' : 'skipped';
+  if (state.tutorialSeenVersion < APP_TUTORIAL_VERSION || outcome === 'completed') markAppTutorialSeen(outcome);
+  if (!options.fromHistory && historyStateIsCurrent() && window.history.state?.estudaModal === 'app-tutorial') { window.history.back(); return; }
+  modal.hidden = true;
+  updateModalBackgroundState();
+  tutorialOpenedAutomatically = false;
+  tutorialReturnFocus?.focus?.();
+  tutorialReturnFocus = null;
+}
 function contextFor(topic) { const lower = String(topic || '').toLocaleLowerCase('pt-BR'); return contexts.find((item) => item.keys.some((key) => lower.includes(key))) || contexts[random(0, contexts.length - 1)]; }
 function defaultTopicFor(subject = 'Matemática', year = schoolYear) {
   const profile = schoolYearProfile(year);
@@ -1043,7 +1076,7 @@ el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
 function updateModalBackgroundState() {
-  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden;
+  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden || !el('app-tutorial-modal').hidden;
   document.body.classList.toggle('modal-open', anyModalOpen);
   document.querySelector('.app-shell')?.toggleAttribute('inert', anyModalOpen);
   el('app-nav')?.toggleAttribute('inert', anyModalOpen);
@@ -1095,6 +1128,19 @@ function closeAvatarStudio(options = {}) {
 ['open-avatar-studio-home', 'open-avatar-studio-profile', 'open-avatar-studio-result'].forEach((id) => el(id)?.addEventListener('click', openAvatarStudio));
 document.querySelectorAll('[data-close-avatar-studio]').forEach((button) => button.addEventListener('click', closeAvatarStudio));
 el('avatar-studio-modal').addEventListener('click', (event) => { if (event.target === el('avatar-studio-modal')) closeAvatarStudio(); });
+['open-app-tutorial-home', 'open-app-tutorial-profile'].forEach((id) => el(id)?.addEventListener('click', () => openAppTutorial()));
+document.querySelectorAll('[data-close-app-tutorial]').forEach((button) => button.addEventListener('click', () => closeAppTutorial()));
+el('tutorial-skip').addEventListener('click', () => closeAppTutorial());
+el('app-tutorial-modal').addEventListener('click', (event) => { if (event.target === el('app-tutorial-modal')) closeAppTutorial(); });
+el('tutorial-prev').addEventListener('click', () => {
+  tutorialStep = Math.max(0, tutorialStep - 1);
+  renderAppTutorial({ focusTitle: true });
+});
+el('tutorial-next').addEventListener('click', () => {
+  if (tutorialStep >= tutorialSteps.length - 1) { closeAppTutorial({ outcome: 'completed' }); return; }
+  tutorialStep += 1;
+  renderAppTutorial({ focusTitle: true });
+});
 el('save-avatar-design').addEventListener('click', () => {
   if (!avatarDraft) return;
   state.avatarDesign = avatarStudio.fitToUnlocks(avatarDraft, completedAvatarPhases());
@@ -1107,10 +1153,16 @@ el('save-avatar-design').addEventListener('click', () => {
   closeAvatarStudio();
 });
 document.addEventListener('keydown', (event) => {
-  const avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal');
-  const modal = !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
+  const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal');
+  const modal = !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
   if (!modal) return;
-  if (event.key === 'Escape') { event.preventDefault(); modal === avatarModal ? closeAvatarStudio() : closeWeeklyGoalModal(); return; }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    if (modal === tutorialModal) closeAppTutorial();
+    else if (modal === avatarModal) closeAvatarStudio();
+    else closeWeeklyGoalModal();
+    return;
+  }
   if (event.key !== 'Tab') return;
   const focusable = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]')].filter((item) => !item.hidden);
   if (!focusable.length) return;
@@ -1141,13 +1193,15 @@ document.querySelectorAll('.subject-card').forEach((card) => card.addEventListen
 el('back-to-subjects').addEventListener('click', goToSubjects);
 el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'replace' }));
 window.addEventListener('popstate', (event) => {
-  const weeklyModal = el('weekly-goal-modal'), avatarModal = el('avatar-studio-modal');
+  const weeklyModal = el('weekly-goal-modal'), avatarModal = el('avatar-studio-modal'), tutorialModal = el('app-tutorial-modal');
+  if (!tutorialModal.hidden && event.state?.estudaModal !== 'app-tutorial') { closeAppTutorial({ fromHistory: true }); return; }
   if (!avatarModal.hidden && event.state?.estudaModal !== 'avatar-studio') { closeAvatarStudio({ fromHistory: true }); return; }
   if (!weeklyModal.hidden && event.state?.estudaModal !== 'weekly-goal') { closeWeeklyGoalModal({ fromHistory: true }); return; }
   if (!historyStateIsCurrent(event.state)) {
     show(activeSupabaseUser ? 'subject-screen' : 'auth-screen', { historyMode: 'reset' });
     return;
   }
+  if (event.state?.estudaModal === 'app-tutorial') { if (tutorialModal.hidden) openAppTutorial({ fromHistory: true }); return; }
   if (event.state?.estudaModal === 'avatar-studio') { if (avatarModal.hidden) openAvatarStudio({ fromHistory: true }); return; }
   if (event.state?.estudaModal === 'weekly-goal') { if (weeklyModal.hidden) openWeeklyGoalModal({ fromHistory: true }); return; }
   const requested = event.state?.estudaScreen;
