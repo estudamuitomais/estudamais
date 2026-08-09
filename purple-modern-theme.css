@@ -46,6 +46,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: #fff !important;
   box-shadow: 0 4px 0 #4c1d95, 0 10px 20px rgba(109, 40, 217, .18) !important;
 }
+.brand-wordmark { display: inline-flex; align-items: baseline; gap: 1px; font: 1000 24px/1 Nunito, sans-serif; letter-spacing: -.9px; }
+.brand-wordmark b { color: #17121f; font: inherit; }
+.brand-wordmark em { color: #7c3aed; font: 1000 29px/.75 Nunito, sans-serif; font-style: normal; transform: translateY(-3px); text-shadow: 0 7px 16px rgba(124,58,237,.24); }
 .side-menu button { color: #756c83 !important; }
 .side-menu button:hover { background: #f7f4fd !important; }
 .side-menu button.active {
@@ -1946,8 +1949,9 @@ body:has(#auth-screen.active) .content-panel {
   font-size: 28px;
   box-shadow: 0 4px 0 #d8ccf2, 0 12px 25px rgba(76, 29, 149, .1);
 }
-.landing-brand strong { display: inline-flex; align-items: baseline; color: #33243f; font: 1000 23px/1 Nunito, sans-serif; letter-spacing: -.8px; }
-.landing-brand em { margin-left: 1px; color: #7c3aed; font-size: inherit; font-style: normal; }
+.landing-brand strong { display: inline-flex; align-items: baseline; gap: 1px; color: #17121f; font: 1000 23px/1 Nunito, sans-serif; letter-spacing: -.8px; }
+.landing-brand strong b { color: #17121f; font: inherit; }
+.landing-brand em { color: #7c3aed; font: 1000 28px/.75 Nunito, sans-serif; font-style: normal; transform: translateY(-3px); text-shadow: 0 7px 16px rgba(124,58,237,.24); }
 .landing-navigation { display: flex; align-items: center; gap: 4px; padding: 5px; border: 1px solid rgba(229, 222, 238, .85); border-radius: 999px; background: rgba(255,255,255,.76); box-shadow: 0 8px 24px rgba(76,29,149,.05); backdrop-filter: blur(12px); }
 .landing-navigation button,
 .landing-login-button {
@@ -2139,8 +2143,8 @@ body:has(#auth-screen.active) .landing-auth-shell .auth-card::before { display: 
   .landing-header { grid-template-columns: minmax(0,1fr) auto; gap: 10px; min-height: 62px; }
   .landing-brand { gap: 7px; }
   .landing-brand > span { width: 41px; height: 41px; border-radius: 14px; font-size: 23px; }
-  .landing-brand strong { font-size: 19px; }
-  .landing-brand em { font-size: inherit; }
+  .landing-brand strong { font-size: 20px; }
+  .landing-brand em { font-size: 25px; }
   .landing-account-actions { gap: 3px; }
   .landing-login-button { min-height: 38px; padding-inline: 10px; font-size: 11px; }
   .landing-register-button { min-height: 40px; padding: 8px 13px; border-radius: 12px; font-size: 11px; }
