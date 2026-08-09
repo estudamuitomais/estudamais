@@ -295,11 +295,13 @@
             <div class="material-form-grid"><label>Matéria<select id="material-subject" required><option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option></select></label><label>Fotos da apostila<input id="material-images" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple required /><small>Até 5 imagens nítidas, com no máximo 8 MB cada.</small></label></div>
             <div id="material-image-preview" class="material-image-preview" aria-live="polite"></div>
             <section id="material-reading-progress" class="material-reading-progress" hidden><div><strong id="material-progress-title">Lendo sua apostila…</strong><span id="material-progress-percent">0%</span></div><i><b id="material-progress-bar"></b></i><p id="material-progress-detail">Preparando a leitura.</p></section>
-            <label id="material-text-label" class="material-text-label" hidden>Confira o texto reconhecido<textarea id="material-extracted-text" minlength="250" rows="12" spellcheck="true" placeholder="O texto extraído aparecerá aqui para você corrigir antes de gerar as perguntas."></textarea><small>Corrija palavras ou números que a câmera tenha lido errado. As questões serão feitas somente com este texto.</small></label>
+            <label id="material-text-label" class="material-text-label" hidden><span>Confira o texto reconhecido <em>etapa obrigatória</em></span><textarea id="material-extracted-text" minlength="250" rows="12" spellcheck="true" placeholder="O texto extraído aparecerá aqui para você corrigir antes de gerar as perguntas."></textarea><small>Compare com as fotos e corrija nomes, acentos, datas, fórmulas e números. O app usará somente este texto.</small></label>
+            <label id="material-confirm-wrap" class="material-confirm-wrap" hidden><input id="material-text-confirmed" type="checkbox" /> <span><strong>Conferi a transcrição com as fotos</strong><small>Se você editar o texto depois, será necessário conferir novamente.</small></span></label>
             <p id="material-status" class="material-status" role="status" aria-live="polite"></p>
-            <div class="material-actions"><button id="read-material-images" class="modal-secondary" type="button">Ler as fotos</button><button id="generate-material-quiz" class="start-button" type="submit" disabled>Criar 10 questões <span>→</span></button></div>
+            <div class="material-actions"><button id="read-material-images" class="modal-secondary" type="button">Ler com precisão</button><button id="generate-material-summary" class="material-summary-button" type="button" disabled>Criar resumo completo</button><button id="generate-material-quiz" class="start-button" type="submit" disabled>Criar 10 questões <span>→</span></button></div>
           </form>
-          <section class="material-photo-tips"><strong>Para uma leitura melhor</strong><ul><li>Use boa iluminação e evite sombras.</li><li>Fotografe a página inteira, reta e sem cortes.</li><li>Envie páginas com texto suficiente e revise a transcrição.</li></ul></section>
+          <section id="material-summary-panel" class="material-summary-panel" hidden><header><div><span>RESUMO DA APOSTILA</span><h3>Resumo completo</h3><p id="material-summary-meta"></p></div><button id="copy-material-summary" type="button">Copiar resumo</button></header><div id="material-summary-content" class="material-summary-content"></div><footer>O resumo é extrativo: ele seleciona frases do texto que você conferiu, sem acrescentar fatos externos.</footer></section>
+          <section class="material-photo-tips"><strong>Para uma leitura mais exata</strong><ul><li>Use luz uniforme, sem reflexos ou sombras sobre as palavras.</li><li>Fotografe uma página por imagem, paralela à câmera e sem cortes.</li><li>Evite páginas curvadas; aproxime até as letras ficarem nítidas.</li><li>Compare a transcrição com a foto antes de confirmar.</li></ul></section>
         </div>
 
         <div id="admin-screen" class="screen admin-screen">
@@ -413,7 +415,7 @@
       <button type="button" data-nav="profile"><span>☺</span>Perfil</button>
     </nav>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@6.0.1/dist/tesseract.min.js"></script>
     <script src="grade-content.js"></script>
     <script src="question-expansion.js"></script>
     <script src="avatar-studio.js"></script>
