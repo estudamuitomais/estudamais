@@ -5,6 +5,7 @@
   const safe = (value) => String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
   const yearLabels = { '1EF': '1º ano EF', '2EF': '2º ano EF', '3EF': '3º ano EF', '4EF': '4º ano EF', '5EF': '5º ano EF', '6EF': '6º ano EF', '7EF': '7º ano EF', '8EF': '8º ano EF', '9EF': '9º ano EF', '1EM': '1ª série EM', '2EM': '2ª série EM', '3EM': '3ª série EM' };
   const dateLabel = (value) => value ? new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+  const timeLabel = (value) => value ? new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
 
   function create(options) {
     const supabase = options.supabase;
@@ -15,6 +16,10 @@
     let reports = [];
     let announcements = [];
     let auditRows = [];
+    let onlineUsers = [];
+    let presenceChannel = null;
+    let onlineRefreshTimer = null;
+    let onlineReloadTimer = null;
     let selectedUser = null;
     let page = 0;
     const pageSize = 50;
@@ -82,7 +87,7 @@
         announcements = announcementsResult.data || [];
         auditRows = auditResult.data || [];
         page = 0;
-        await fetchUsers();
+        await Promise.all([fetchUsers(), loadOnlineUsers()]);
         renderSummary(); renderReports(); renderAnnouncements(); renderInsights(); renderAudit();
         notice('');
         return true;
@@ -94,10 +99,62 @@
     }
 
     function renderSummary() {
+      byId('admin-online-users').textContent = onlineUsers.length;
       byId('admin-total-users').textContent = summary.total_users || 0;
       byId('admin-active-users').textContent = summary.active_last_7_days || 0;
       byId('admin-chat-users').textContent = summary.chat_enabled || 0;
       byId('admin-open-reports').textContent = summary.open_reports || 0;
+    }
+
+    async function loadOnlineUsers() {
+      if (!isAdmin || !supabase) return;
+      const cutoff = new Date(Date.now() - 120000).toISOString();
+      const presenceResult = await supabase.from('user_presence').select('user_id, online, last_seen').eq('online', true).gte('last_seen', cutoff).order('last_seen', { ascending: false });
+      if (presenceResult.error) throw presenceResult.error;
+      const presenceRows = presenceResult.data || [];
+      const ids = presenceRows.map((item) => item.user_id);
+      let profileRows = [];
+      if (ids.length) {
+        const profileResult = await supabase.from('profiles').select('id, name, school_year, points, avatar, is_admin').in('id', ids);
+        if (profileResult.error) throw profileResult.error;
+        profileRows = profileResult.data || [];
+      }
+      const profileMap = new Map(profileRows.map((item) => [item.id, item]));
+      onlineUsers = presenceRows.map((presenceRow) => ({ ...presenceRow, profile: profileMap.get(presenceRow.user_id) })).filter((item) => item.profile);
+      renderOnlineUsers();
+      renderSummary();
+    }
+
+    function renderOnlineUsers() {
+      const list = byId('admin-online-list'); if (!list) return;
+      byId('admin-online-tab-count').textContent = onlineUsers.length;
+      list.innerHTML = '';
+      if (!onlineUsers.length) { list.innerHTML = '<div class="admin-empty">Nenhum usuário online neste momento.</div>'; return; }
+      onlineUsers.forEach((item) => {
+        const profile = item.profile;
+        const row = document.createElement('article');
+        row.innerHTML = `<div class="admin-online-avatar"><span>${safe(profile.avatar || (profile.name || 'E').slice(0, 1).toUpperCase())}</span><i aria-label="Online agora"></i></div><div class="admin-online-person"><strong>${safe(profile.name || 'Estudante')}</strong><span>${safe(profile.is_admin ? 'Administrador' : yearLabels[profile.school_year] || profile.school_year || 'Ano não informado')} · ${Number(profile.points) || 0} pontos</span></div><div class="admin-online-activity"><b>Online agora</b><small>Atividade às ${safe(timeLabel(item.last_seen))}</small></div>`;
+        list.append(row);
+      });
+    }
+
+    function scheduleOnlineRefresh() {
+      clearTimeout(onlineReloadTimer);
+      onlineReloadTimer = setTimeout(() => { void loadOnlineUsers().catch((error) => console.warn('Presença administrativa indisponível:', error)); }, 300);
+    }
+
+    function startOnlineMonitoring() {
+      if (!supabase || !user || !isAdmin || presenceChannel) return;
+      presenceChannel = supabase.channel(`admin-presence-${user.id}`).on('postgres_changes', { event: '*', schema: 'public', table: 'user_presence' }, scheduleOnlineRefresh).subscribe();
+      clearInterval(onlineRefreshTimer);
+      onlineRefreshTimer = setInterval(scheduleOnlineRefresh, 30000);
+    }
+
+    function stopOnlineMonitoring() {
+      clearInterval(onlineRefreshTimer); clearTimeout(onlineReloadTimer);
+      onlineRefreshTimer = null; onlineReloadTimer = null;
+      if (presenceChannel && supabase) void supabase.removeChannel(presenceChannel);
+      presenceChannel = null;
     }
 
     function filteredUsers() {
@@ -278,10 +335,10 @@
 
     return {
       async init(nextUser, adminAllowed) { user = nextUser; isAdmin = Boolean(adminAllowed); await loadPublicAnnouncement(); },
-      async open() { return loadAdminData(); },
+      async open() { const opened = await loadAdminData(); if (opened) startOnlineMonitoring(); return opened; },
       isUserModalOpen() { return !byId('admin-user-modal')?.hidden; },
       closeUser,
-      stop() { user = null; isAdmin = false; users = []; reports = []; announcements = []; auditRows = []; byId('app-announcement').hidden = true; closeUser(); }
+      stop() { stopOnlineMonitoring(); user = null; isAdmin = false; users = []; reports = []; announcements = []; auditRows = []; onlineUsers = []; byId('app-announcement').hidden = true; closeUser(); }
     };
   }
 

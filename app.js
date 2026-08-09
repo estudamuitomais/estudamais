@@ -1639,7 +1639,10 @@ document.querySelectorAll('[data-landing-scroll]').forEach((button) => button.ad
 el('close-landing-auth')?.addEventListener('click', showLandingHome);
 el('show-login').addEventListener('click', () => setAuthMode('login'));
 el('show-register').addEventListener('click', () => setAuthMode('register'));
-el('show-recovery').addEventListener('click', () => setAuthMode('recovery'));
+el('show-recovery').addEventListener('click', () => {
+  el('recovery-email').value = el('login-email').value.trim().toLowerCase();
+  setAuthMode('recovery');
+});
 document.querySelectorAll('[data-auth-back]').forEach((button) => button.addEventListener('click', () => setAuthMode('login')));
 document.querySelectorAll('[data-password-target]').forEach((button) => button.addEventListener('click', () => {
   const input = el(button.dataset.passwordTarget); if (!input) return;
