@@ -8,6 +8,8 @@ const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'purple-modern-theme.css'), 'utf8');
 
 assert.ok(html.includes('id="landing-home"') && html.includes('id="landing-title"'), 'a nova apresentação deve existir na entrada');
+assert.ok(html.includes('<span class="brand-mark" aria-hidden="true">🦉</span> Estuda<span>+</span>'), 'o menu interno deve mostrar o mascote junto da marca Estuda+');
+assert.ok(html.includes('<strong>Estuda<em>+</em></strong>'), 'o cabeçalho público deve mostrar o mascote ao lado da palavra Estuda+');
 assert.ok(html.includes('Estude de forma <em>inteligente e divertida</em>'), 'a entrada deve comunicar a proposta do Estuda Mais');
 assert.ok((html.match(/data-open-auth=/g) || []).length >= 4, 'a apresentação deve oferecer acessos claros para entrar e criar conta');
 assert.ok((html.match(/<article/g) || []).length >= 4 && html.includes('id="landing-benefits"'), 'os quatro benefícios principais devem ficar visíveis');
