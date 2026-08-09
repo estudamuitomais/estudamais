@@ -19,6 +19,8 @@ assert.ok(app.includes("document.querySelectorAll('[data-landing-scroll]')"), 'a
 
 assert.ok(css.includes('/* Nova entrada Estuda+:'), 'o visual da nova entrada deve ficar documentado');
 assert.ok(css.includes('.landing-hero {') && css.includes('.landing-mascot-stage {'), 'a composição principal e o avatar devem ter estilos dedicados');
+assert.ok(!/\.auth-screen,\s*\r?\n\.auth-screen\.active/.test(css), 'a tela de acesso não pode continuar visível após a navegação');
+assert.ok(css.includes('.auth-screen:not(.active) { display: none !important; }'), 'a tela de acesso inativa deve ser ocultada explicitamente');
 assert.ok(css.includes('@media (max-width: 760px)') && css.includes('@media (max-width: 430px)'), 'a entrada deve possuir ajustes para tablet e celular');
 assert.ok(css.includes('@media (prefers-reduced-motion: reduce)'), 'as animações devem respeitar a preferência de acessibilidade');
 

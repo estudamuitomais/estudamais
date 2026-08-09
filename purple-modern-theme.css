@@ -1888,7 +1888,6 @@ body:has(#auth-screen.active) .content-panel {
     radial-gradient(circle at 12% 88%, rgba(233, 213, 255, .42), transparent 27rem),
     #fbfaff !important;
 }
-.auth-screen,
 .auth-screen.active {
   display: block !important;
   width: 100% !important;
@@ -1896,6 +1895,7 @@ body:has(#auth-screen.active) .content-panel {
   min-height: 100dvh !important;
   margin: 0 !important;
 }
+.auth-screen:not(.active) { display: none !important; }
 
 .landing-home {
   position: relative;
