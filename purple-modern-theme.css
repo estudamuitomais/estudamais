@@ -2198,3 +2198,193 @@ body:has(#auth-screen.active) .landing-auth-shell .auth-card::before { display: 
   .landing-glow::before,
   .landing-glow::after { animation: none !important; }
 }
+
+/* Mascote lateral interativo */
+.hero-panel .side-mascot-interactive {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  isolation: isolate;
+}
+.hero-panel .side-mascot-interactive::before {
+  content: "TOQUE EM MIM";
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  left: 50%;
+  padding: 5px 9px;
+  border: 1px solid #ddd2f6;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .94);
+  color: #6d28d9;
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: .75px;
+  line-height: 1;
+  box-shadow: 0 5px 13px rgba(76, 29, 149, .12);
+  transform: translateX(-50%);
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events: none;
+}
+.hero-panel .side-mascot-interactive::after {
+  z-index: 3;
+  transition: filter .2s ease, box-shadow .2s ease;
+}
+.hero-panel .side-mascot-interactive:hover::after {
+  filter: drop-shadow(0 10px 8px rgba(91, 33, 182, .24)) brightness(1.04) !important;
+}
+.hero-panel .side-mascot-interactive:focus { outline: none; }
+.hero-panel .side-mascot-interactive:focus-visible::after {
+  box-shadow: inset 0 -8px 0 rgba(91, 33, 182, .09), 0 0 0 5px #fff, 0 0 0 9px #8b5cf6, 0 14px 30px rgba(91, 33, 182, .24);
+}
+.hero-panel .side-mascot-interactive.is-reacting::before {
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
+}
+.side-mascot-wing {
+  position: absolute;
+  z-index: 2;
+  bottom: 22px;
+  width: 49px;
+  height: 61px;
+  border: 3px solid rgba(255, 255, 255, .9);
+  background: linear-gradient(145deg, #8b5e4a, #c99170);
+  opacity: 0;
+  pointer-events: none;
+}
+.side-mascot-wing::after {
+  content: "";
+  position: absolute;
+  inset: 12px 8px;
+  border: 3px solid rgba(255, 232, 214, .5);
+  border-top-color: transparent;
+  border-radius: 50%;
+}
+.side-mascot-wing.wing-left {
+  left: calc(50% - 76px);
+  border-radius: 85% 30% 70% 42%;
+  transform: rotate(18deg) scale(.6);
+  transform-origin: 90% 75%;
+}
+.side-mascot-wing.wing-right {
+  right: calc(50% - 76px);
+  border-radius: 30% 85% 42% 70%;
+  transform: rotate(-18deg) scale(.6);
+  transform-origin: 10% 75%;
+}
+.side-mascot-speech {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  bottom: 111px;
+  width: max-content;
+  max-width: 225px;
+  padding: 10px 13px;
+  border: 2px solid #d8ccf4;
+  border-radius: 16px 16px 16px 5px;
+  background: #fff;
+  color: #3f2a56;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: 0 10px 26px rgba(76, 29, 149, .18);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.side-mascot-speech::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 13px;
+  height: 13px;
+  border-right: 2px solid #d8ccf4;
+  border-bottom: 2px solid #d8ccf4;
+  background: #fff;
+  transform: translateX(-50%) rotate(45deg);
+}
+.side-mascot-speech[hidden] { display: none !important; }
+.side-mascot-interactive.is-reacting .side-mascot-speech { animation: side-mascot-speech-in .28s cubic-bezier(.2, .9, .3, 1.25) both; }
+.side-mascot-effects {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.side-mascot-effects i {
+  --effect-x: 0px;
+  position: absolute;
+  left: 50%;
+  bottom: 47px;
+  display: block;
+  font-size: 23px;
+  font-style: normal;
+  line-height: 1;
+  opacity: 0;
+  filter: drop-shadow(0 3px 3px rgba(76, 29, 149, .15));
+  animation: side-mascot-particle 1.45s calc(var(--effect-index) * .12s) ease-out both;
+}
+.side-mascot-effects i:nth-child(1) { --effect-x: -72px; }
+.side-mascot-effects i:nth-child(2) { --effect-x: 0px; }
+.side-mascot-effects i:nth-child(3) { --effect-x: 72px; }
+.hero-panel .side-mascot-interactive.is-reacting::after { animation: side-mascot-hop .72s ease-in-out 2 !important; }
+.hero-panel .side-mascot-interactive.reaction-kiss::after { animation-name: side-mascot-kiss !important; }
+.hero-panel .side-mascot-interactive.reaction-dance::after { animation: side-mascot-dance .42s ease-in-out 4 !important; }
+.hero-panel .side-mascot-interactive.reaction-high-five::after { animation-name: side-mascot-high-five !important; }
+.side-mascot-interactive.reaction-wings .side-mascot-wing { opacity: 1; }
+.side-mascot-interactive.reaction-wings .wing-left { animation: side-mascot-left-wing .42s ease-in-out 4; }
+.side-mascot-interactive.reaction-wings .wing-right { animation: side-mascot-right-wing .42s ease-in-out 4; }
+
+@keyframes side-mascot-speech-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(9px) scale(.9); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes side-mascot-particle {
+  0% { opacity: 0; transform: translate(-50%, 4px) scale(.45) rotate(-8deg); }
+  18% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--effect-x)), -92px) scale(1.15) rotate(10deg); }
+}
+@keyframes side-mascot-hop {
+  0%, 100% { transform: translateX(50%) translateY(0) rotate(-1deg); }
+  45% { transform: translateX(50%) translateY(-14px) rotate(2deg) scale(1.04); }
+}
+@keyframes side-mascot-kiss {
+  0%, 100% { transform: translateX(50%) rotate(0); }
+  45% { transform: translateX(50%) rotate(-9deg) scale(1.06); }
+}
+@keyframes side-mascot-dance {
+  0%, 100% { transform: translateX(50%) rotate(-7deg) translateY(0); }
+  50% { transform: translateX(50%) rotate(7deg) translateY(-7px); }
+}
+@keyframes side-mascot-high-five {
+  0%, 100% { transform: translateX(50%) translateY(0) scale(1); }
+  48% { transform: translateX(50%) translateY(-18px) scale(1.08); }
+}
+@keyframes side-mascot-left-wing {
+  0%, 100% { transform: rotate(18deg) scale(.7); }
+  50% { transform: rotate(-43deg) translate(-8px, -9px) scale(1); }
+}
+@keyframes side-mascot-right-wing {
+  0%, 100% { transform: rotate(-18deg) scale(.7); }
+  50% { transform: rotate(43deg) translate(8px, -9px) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-panel .side-mascot-interactive::after,
+  .side-mascot-interactive .side-mascot-wing,
+  .side-mascot-interactive .side-mascot-effects i,
+  .side-mascot-interactive .side-mascot-speech { animation: none !important; }
+  .side-mascot-interactive .side-mascot-effects i { opacity: 1; }
+}

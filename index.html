@@ -31,11 +31,13 @@
           <h1>Estudar pode ser uma <em>aventura.</em></h1>
           <p>Crie seu desafio, responda questões comentadas e veja sua evolução a cada acerto.</p>
         </div>
-        <div class="mascot" aria-hidden="true">
-          <div class="spark s1">✦</div><div class="spark s2">✦</div>
-          <div class="book"><span>?</span></div>
-          <div class="face"><i></i><i></i><b>⌣</b></div>
-        </div>
+        <button id="side-mascot" class="mascot side-mascot-interactive" type="button" aria-label="Interagir com o mascote" title="Toque na corujinha">
+          <span class="spark s1" aria-hidden="true">✦</span><span class="spark s2" aria-hidden="true">✦</span>
+          <span class="side-mascot-wing wing-left" aria-hidden="true"></span>
+          <span class="side-mascot-wing wing-right" aria-hidden="true"></span>
+          <span id="side-mascot-effects" class="side-mascot-effects" aria-hidden="true"></span>
+          <span id="side-mascot-speech" class="side-mascot-speech" role="status" aria-live="polite" hidden></span>
+        </button>
         <div class="hero-footer"><span>10 questões por rodada</span><span>•</span><span>Seu progresso fica salvo</span></div>
       </section>
 

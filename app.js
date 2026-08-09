@@ -21,6 +21,7 @@ const avatarStudio = window.EstudaAvatarStudio;
 const APP_TUTORIAL_VERSION = 3;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
 let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null, avatarReactionTimer = null;
+let sideMascotReactionIndex = 0, sideMascotReactionTimer = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
@@ -486,6 +487,54 @@ const avatarReactionMessages = {
   celebrate: ['Arrasamos! Próxima fase!', 'Seu esforço merece festa!', 'Cada acerto nos deixa mais fortes!'],
   focus: ['Respira, lê com calma e confia.', 'Um passo de cada vez.', 'Errou? A gente aprende e tenta de novo!']
 };
+const sideMascotReactions = [
+  { id: 'wings', message: 'Vamos começar a aprender!', symbols: ['✦', '📘', '✦'] },
+  { id: 'heart', message: 'Meu coração fica feliz com seu esforço!', symbols: ['💜', '💜', '✨'] },
+  { id: 'kiss', message: 'Um beijo de incentivo para você!', symbols: ['💋', '💜', '✨'] },
+  { id: 'celebrate', message: 'Uhu! Cada acerto é uma conquista!', symbols: ['🎉', '⭐', '🎊'] },
+  { id: 'dance', message: 'Dança da sabedoria ativada!', symbols: ['♫', '♪', '✦'] },
+  { id: 'high-five', message: 'Toca aqui! Você mandou muito bem!', symbols: ['🖐️', '⭐', '💜'] },
+  { id: 'curious', message: 'Qual descoberta vamos fazer agora?', symbols: ['?', '📚', '✨'] },
+  { id: 'focus', message: 'Respire fundo. Você consegue!', symbols: ['💡', '✨', '⭐'] }
+];
+function speakSideMascot(message) {
+  if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
+  window.speechSynthesis.cancel();
+  const speech = new SpeechSynthesisUtterance(message);
+  speech.lang = 'pt-BR';
+  speech.rate = .96;
+  speech.pitch = 1.12;
+  speech.volume = .82;
+  window.speechSynthesis.speak(speech);
+}
+function playSideMascotReaction() {
+  const mascot = el('side-mascot');
+  const speech = el('side-mascot-speech');
+  const effects = el('side-mascot-effects');
+  if (!mascot || !speech || !effects) return;
+  const reaction = sideMascotReactions[sideMascotReactionIndex % sideMascotReactions.length];
+  sideMascotReactionIndex += 1;
+  clearTimeout(sideMascotReactionTimer);
+  mascot.classList.remove('is-reacting', ...sideMascotReactions.map((item) => `reaction-${item.id}`));
+  void mascot.offsetWidth;
+  mascot.classList.add('is-reacting', `reaction-${reaction.id}`);
+  speech.textContent = reaction.message;
+  speech.hidden = false;
+  effects.replaceChildren(...reaction.symbols.map((symbol, index) => {
+    const particle = document.createElement('i');
+    particle.textContent = symbol;
+    particle.style.setProperty('--effect-index', index);
+    return particle;
+  }));
+  mascot.setAttribute('aria-label', `Mascote diz: ${reaction.message} Toque novamente para outra reação.`);
+  speakSideMascot(reaction.message);
+  sideMascotReactionTimer = setTimeout(() => {
+    mascot.classList.remove('is-reacting', `reaction-${reaction.id}`);
+    speech.hidden = true;
+    effects.replaceChildren();
+    mascot.setAttribute('aria-label', 'Interagir com o mascote');
+  }, 2800);
+}
 function playAvatarReaction(type = 'wave', options = {}) {
   const safeType = avatarReactionMessages[type] ? type : 'wave';
   const messages = avatarReactionMessages[safeType];
@@ -1407,6 +1456,7 @@ document.querySelectorAll('[data-avatar-presentation]').forEach((button) => butt
 el('avatar-home-interact')?.addEventListener('click', () => playAvatarReaction('wave'));
 el('avatar-home-cheer')?.addEventListener('click', () => playAvatarReaction('celebrate'));
 el('avatar-result-interact')?.addEventListener('click', () => playAvatarReaction('celebrate'));
+el('side-mascot')?.addEventListener('click', playSideMascotReaction);
 document.querySelectorAll('[data-avatar-reaction]').forEach((button) => button.addEventListener('click', () => playAvatarReaction(button.dataset.avatarReaction, { announce: true })));
 el('avatar-nickname')?.addEventListener('input', renderAvatarStudioPreview);
 document.querySelectorAll('[data-close-avatar-studio]').forEach((button) => button.addEventListener('click', closeAvatarStudio));
