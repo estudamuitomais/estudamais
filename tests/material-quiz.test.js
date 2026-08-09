@@ -31,6 +31,7 @@ const html = fs.readFileSync(require('path').join(__dirname, '..', 'index.html')
 const app = fs.readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
 const admin = fs.readFileSync(require('path').join(__dirname, '..', 'admin-panel.js'), 'utf8');
 const migration = fs.readFileSync(require('path').join(__dirname, '..', 'contact-material-migration.sql'), 'utf8');
+const securityMigration = fs.readFileSync(require('path').join(__dirname, '..', 'security-hardening-migration.sql'), 'utf8');
 assert.ok(html.includes('id="material-images"') && html.includes('id="material-extracted-text"'), 'interface de fotos e revisão deve existir');
 assert.ok(html.includes('id="material-text-confirmed"') && html.includes('id="generate-material-summary"') && html.includes('id="material-summary-panel"'), 'confirmação e resumo completo devem existir');
 assert.ok(html.includes('id="material-mind-map-content"') && html.includes('id="copy-material-mind-map"'), 'mapa mental interativo e opção de copiar devem existir');
@@ -41,5 +42,10 @@ assert.ok(html.includes('id="register-whatsapp"') && html.includes('id="register
 assert.ok(app.includes('whatsapp_phone: whatsapp') && app.includes('startMaterialQuiz'), 'cadastro e início do quiz precisam estar integrados');
 assert.ok(admin.includes("from('user_contacts')") && admin.includes('admin_log_whatsapp_contact'), 'painel deve consultar contato privado e auditar abertura');
 assert.ok(migration.includes('enable row level security') && migration.includes('current_user_is_admin()'), 'contatos precisam de RLS e proteção administrativa');
+assert.ok(app.includes("const ADMIN_AUTH_EMAIL = 'admin@estudemais.net'") && !app.includes('ADMIN_LOGIN_ALIAS'), 'login administrativo deve usar apenas o e-mail solicitado');
+assert.ok(html.includes('ACESSO: ADMIN@ESTUDEMAIS.NET') && html.includes('id="login-email" type="email"'), 'interface deve exibir o e-mail administrativo e validar e-mails');
+assert.ok(securityMigration.includes('create schema if not exists private') && securityMigration.includes('security invoker'), 'funções expostas devem delegar a implementações privadas');
+assert.ok(securityMigration.includes("revoke all on function public.rls_auto_enable()") && securityMigration.includes('drop function if exists public.handle_new_user()'), 'funções internas não podem ficar executáveis pela API');
+assert.ok(securityMigration.includes("lower(u.email) = 'admin@estudemais.net'") && securityMigration.includes("admin.temporario@estudamais.app"), 'migração deve promover a nova conta e remover o privilégio temporário');
 
 console.log('OK: OCR comparativo, resumo extrativo, modo apostila e administração verificados.');

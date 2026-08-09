@@ -10,6 +10,10 @@
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} h`;
     return new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   };
+  const CHAT_POSITION_KEY = 'estuda-floating-chat-position-v1';
+  const CHAT_SOUND_KEY = 'estuda-floating-chat-sound-v1';
+  const readPreference = (key) => { try { return window.localStorage.getItem(key); } catch { return null; } };
+  const savePreference = (key, value) => { try { window.localStorage.setItem(key, value); } catch { /* Preferência apenas deste dispositivo. */ } };
 
   function create(options) {
     const supabase = options.supabase;
@@ -26,6 +30,14 @@
     let realtimeChannel = null;
     let heartbeatTimer = null;
     let guardianConfirmTimer = null;
+    let attentionTimer = null;
+    let dragState = null;
+    let audioContext = null;
+    let chatMinimized = false;
+    let chatSoundEnabled = readPreference(CHAT_SOUND_KEY) !== 'off';
+    let highlightedMessageId = null;
+    let incomingChatOpening = false;
+    let queuedIncomingMessage = null;
     let busy = false;
 
     const notice = (message = '', error = false) => {
@@ -42,6 +54,148 @@
       target.textContent = message;
       target.classList.toggle('error', error);
     };
+
+    const chatPanel = () => byId('chat-modal')?.querySelector('.chat-panel');
+
+    function updateSoundControl() {
+      const button = byId('chat-sound-toggle');
+      if (!button) return;
+      button.textContent = chatSoundEnabled ? '🔊' : '🔇';
+      button.setAttribute('aria-pressed', String(chatSoundEnabled));
+      button.setAttribute('aria-label', chatSoundEnabled ? 'Silenciar som de novas mensagens' : 'Ativar som de novas mensagens');
+      button.title = chatSoundEnabled ? 'Silenciar notificações' : 'Ativar notificações sonoras';
+    }
+
+    function getAudioContext() {
+      if (!chatSoundEnabled) return null;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return null;
+      if (!audioContext || audioContext.state === 'closed') audioContext = new AudioContext();
+      return audioContext;
+    }
+
+    function primeChatAudio() {
+      const context = getAudioContext();
+      if (context?.state === 'suspended') void context.resume().catch(() => {});
+      return context;
+    }
+
+    function playIncomingSound() {
+      const context = primeChatAudio();
+      if (!context) return;
+      const play = () => {
+        const now = context.currentTime;
+        [[0, 659], [0.11, 880]].forEach(([delay, frequency]) => {
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(frequency, now + delay);
+          gain.gain.setValueAtTime(0.0001, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.075, now + delay + 0.018);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.12);
+          oscillator.connect(gain).connect(context.destination);
+          oscillator.start(now + delay);
+          oscillator.stop(now + delay + 0.13);
+        });
+      };
+      if (context.state === 'suspended') void context.resume().then(play).catch(() => {});
+      else play();
+    }
+
+    function viewportSize() {
+      return {
+        width: window.visualViewport?.width || document.documentElement.clientWidth || window.innerWidth,
+        height: window.visualViewport?.height || window.innerHeight
+      };
+    }
+
+    function clampChatPosition(left, top) {
+      const panel = chatPanel();
+      if (!panel) return { left: 8, top: 8 };
+      const viewport = viewportSize();
+      const margin = 8;
+      return {
+        left: Math.min(Math.max(margin, left), Math.max(margin, viewport.width - panel.offsetWidth - margin)),
+        top: Math.min(Math.max(margin, top), Math.max(margin, viewport.height - panel.offsetHeight - margin))
+      };
+    }
+
+    function setChatPosition(left, top, { persist = false } = {}) {
+      const panel = chatPanel();
+      if (!panel) return;
+      const position = clampChatPosition(Number(left) || 0, Number(top) || 0);
+      panel.classList.add('is-positioned');
+      panel.style.left = `${Math.round(position.left)}px`;
+      panel.style.top = `${Math.round(position.top)}px`;
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      if (persist) savePreference(CHAT_POSITION_KEY, JSON.stringify(position));
+    }
+
+    function applyStoredChatPosition() {
+      const stored = readPreference(CHAT_POSITION_KEY);
+      if (!stored) return;
+      try {
+        const position = JSON.parse(stored);
+        if (Number.isFinite(position?.left) && Number.isFinite(position?.top)) setChatPosition(position.left, position.top);
+      } catch { /* Mantém a posição padrão. */ }
+    }
+
+    function keepChatOnScreen() {
+      const panel = chatPanel();
+      if (!panel || byId('chat-modal')?.hidden || !panel.classList.contains('is-positioned')) return;
+      const rect = panel.getBoundingClientRect();
+      setChatPosition(rect.left, rect.top);
+    }
+
+    function isChatReadable() {
+      return Boolean(activeConversationId && !byId('chat-modal')?.hidden && !chatMinimized && !document.hidden);
+    }
+
+    function updateFloatingUnread() {
+      const badge = byId('chat-unread-badge');
+      if (!badge) return;
+      const count = activeConversationId ? (unreadByConversation.get(activeConversationId) || 0) : 0;
+      badge.hidden = count === 0;
+      badge.textContent = count > 9 ? '9+' : String(count);
+      badge.setAttribute('aria-label', `${count} ${count === 1 ? 'nova mensagem' : 'novas mensagens'}`);
+    }
+
+    function setChatMinimized(minimized, { focus = true, refresh = true } = {}) {
+      const panel = chatPanel();
+      const button = byId('chat-minimize');
+      if (!panel || !button) return;
+      chatMinimized = Boolean(minimized);
+      panel.classList.toggle('is-minimized', chatMinimized);
+      if (chatMinimized) {
+        byId('chat-options-menu').hidden = true;
+        byId('chat-options').setAttribute('aria-expanded', 'false');
+      }
+      button.textContent = chatMinimized ? '▢' : '—';
+      button.setAttribute('aria-label', chatMinimized ? 'Expandir conversa' : 'Minimizar conversa');
+      button.title = chatMinimized ? 'Expandir conversa' : 'Minimizar conversa';
+      if (!chatMinimized && activeConversationId && refresh) void loadMessages({ markRead: true });
+      requestAnimationFrame(() => {
+        keepChatOnScreen();
+        if (focus) (chatMinimized ? byId('chat-drag-handle') : byId('chat-input'))?.focus();
+      });
+    }
+
+    function highlightIncomingMessage(message) {
+      if (!message?.id || message.id === highlightedMessageId) return;
+      highlightedMessageId = message.id;
+      const panel = chatPanel();
+      if (!panel) return;
+      panel.classList.remove('has-new-message');
+      void panel.offsetWidth;
+      panel.classList.add('has-new-message');
+      clearTimeout(attentionTimer);
+      attentionTimer = setTimeout(() => panel.classList.remove('has-new-message'), 3200);
+      const senderName = activeFriend?.profile?.name || 'Seu amigo';
+      const alert = byId('chat-live-alert');
+      if (alert) alert.textContent = `Nova mensagem de ${senderName}.`;
+      playIncomingSound();
+    }
 
     const friendlyError = (error) => {
       const raw = `${error?.message || error || ''}`;
@@ -72,6 +226,7 @@
         badge.hidden = total === 0;
         badge.textContent = total > 9 ? '9+' : String(total);
       });
+      updateFloatingUnread();
     }
 
     function renderGuardianControl() {
@@ -238,7 +393,11 @@
       finally { button.disabled = false; }
     }
 
-    async function openChat(friend) {
+    async function openChat(friend, chatOptions = {}) {
+      const shouldMinimize = Boolean(chatOptions.minimized);
+      const shouldFocus = chatOptions.focus !== false && !shouldMinimize;
+      const shouldMarkRead = chatOptions.markRead !== undefined ? Boolean(chatOptions.markRead) : !shouldMinimize;
+      if (shouldFocus) primeChatAudio();
       if (!ownProfile?.guardian_chat_enabled) { notice('O chat precisa ser ativado por um responsável.', true); return; }
       if (!friend.profile.guardian_chat_enabled) { notice(`${friend.profile.name || 'Seu amigo'} ainda não possui autorização para conversar.`, true); return; }
       activeFriend = friend;
@@ -251,25 +410,32 @@
         byId('chat-friend-avatar').textContent = friend.profile.avatar || '☺';
         byId('chat-presence-label').textContent = isOnline(friend.userId) ? 'ONLINE AGORA' : 'AMIGO DE ESTUDO';
         byId('chat-modal').hidden = false;
-        document.body.classList.add('modal-open');
+        document.body.classList.add('chat-floating-open');
         options.onModalChange?.();
+        setChatMinimized(shouldMinimize, { focus: false, refresh: false });
+        updateSoundControl();
+        requestAnimationFrame(() => { applyStoredChatPosition(); keepChatOnScreen(); });
         byId('chat-options-menu').hidden = true;
         byId('chat-options').setAttribute('aria-expanded', 'false');
         renderQuestionDraft();
-        await loadMessages();
+        await loadMessages({ markRead: shouldMarkRead });
+        if (chatOptions.highlightMessage) highlightIncomingMessage(chatOptions.highlightMessage);
         chatStatus('');
-        byId('chat-input').focus();
-      } catch (error) { notice(friendlyError(error), true); chatStatus(''); }
+        if (shouldFocus) byId('chat-input').focus();
+        return true;
+      } catch (error) { activeFriend = null; activeConversationId = null; notice(friendlyError(error), true); chatStatus(''); return false; }
     }
 
-    async function loadMessages() {
+    async function loadMessages({ markRead = isChatReadable() } = {}) {
       if (!activeConversationId) return;
-      const { data, error } = await supabase.from('messages').select('id, sender_id, body, kind, question_payload, created_at, read_at').eq('conversation_id', activeConversationId).order('created_at', { ascending: true }).limit(200);
+      const conversationId = activeConversationId;
+      const { data, error } = await supabase.from('messages').select('id, sender_id, body, kind, question_payload, created_at, read_at').eq('conversation_id', conversationId).order('created_at', { ascending: true }).limit(200);
       if (error) { chatStatus(friendlyError(error), true); return; }
+      if (conversationId !== activeConversationId) return;
       renderMessages(data || []);
       const unreadIds = (data || []).filter((row) => row.sender_id !== user.id && !row.read_at).map((row) => row.id);
-      if (unreadIds.length) await supabase.from('messages').update({ read_at: new Date().toISOString() }).in('id', unreadIds);
-      unreadByConversation.set(activeConversationId, 0);
+      if (markRead && unreadIds.length) await supabase.from('messages').update({ read_at: new Date().toISOString() }).in('id', unreadIds);
+      unreadByConversation.set(conversationId, markRead ? 0 : unreadIds.length);
       updateBadges();
       renderFriends();
     }
@@ -280,7 +446,8 @@
       if (!messages.length) list.innerHTML = '<div class="chat-empty"><span>👋</span><strong>Comecem estudando juntos</strong><p>Envie uma dúvida, uma explicação ou compartilhe uma questão do quiz.</p></div>';
       messages.forEach((message) => {
         const item = document.createElement('article');
-        item.className = `chat-message ${message.sender_id === user.id ? 'mine' : 'theirs'}`;
+        item.className = `chat-message ${message.sender_id === user.id ? 'mine' : 'theirs'}${message.id === highlightedMessageId ? ' is-new' : ''}`;
+        item.dataset.messageId = message.id;
         const question = message.kind === 'question' && message.question_payload?.q
           ? `<div class="message-question"><span>${safe(message.question_payload.subject || 'Questão')}</span><strong>${safe(message.question_payload.q)}</strong></div>` : '';
         item.innerHTML = `${question}<p>${safe(message.body)}</p><time>${new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${message.sender_id === user.id ? (message.read_at ? ' · lida' : ' · enviada') : ''}</time>`;
@@ -304,7 +471,7 @@
         input.value = '';
         questionDraft = null;
         renderQuestionDraft();
-        await loadMessages();
+        await loadMessages({ markRead: true });
         chatStatus('');
       } catch (error) { chatStatus(friendlyError(error), true); }
       finally { submit.disabled = false; }
@@ -313,9 +480,14 @@
     function closeChat() {
       byId('chat-modal').hidden = true;
       byId('chat-options-menu').hidden = true;
-      document.body.classList.remove('modal-open');
+      document.body.classList.remove('chat-floating-open');
+      clearTimeout(attentionTimer);
+      chatPanel()?.classList.remove('has-new-message', 'is-minimized');
+      chatMinimized = false;
+      highlightedMessageId = null;
       activeFriend = null;
       activeConversationId = null;
+      updateFloatingUnread();
       chatStatus('');
       options.onModalChange?.();
     }
@@ -350,6 +522,111 @@
       panel.append(overlay);
     }
 
+    function startChatDrag(event) {
+      if (event.button !== undefined && event.button !== 0) return;
+      const panel = chatPanel();
+      const handle = byId('chat-drag-handle');
+      if (!panel || !handle) return;
+      primeChatAudio();
+      const rect = panel.getBoundingClientRect();
+      dragState = { pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+      panel.classList.add('is-dragging');
+      byId('chat-options-menu').hidden = true;
+      byId('chat-options').setAttribute('aria-expanded', 'false');
+      handle.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    }
+
+    function moveChat(event) {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      setChatPosition(event.clientX - dragState.offsetX, event.clientY - dragState.offsetY);
+      event.preventDefault();
+    }
+
+    function finishChatDrag(event) {
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      const handle = byId('chat-drag-handle');
+      handle?.releasePointerCapture?.(event.pointerId);
+      const rect = chatPanel()?.getBoundingClientRect();
+      if (rect) setChatPosition(rect.left, rect.top, { persist: true });
+      chatPanel()?.classList.remove('is-dragging');
+      dragState = null;
+    }
+
+    function moveChatWithKeyboard(event) {
+      const movement = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+      if (!movement || byId('chat-modal')?.hidden) return;
+      const rect = chatPanel()?.getBoundingClientRect();
+      if (!rect) return;
+      const step = event.shiftKey ? 48 : 16;
+      setChatPosition(rect.left + movement[0] * step, rect.top + movement[1] * step, { persist: true });
+      event.preventDefault();
+    }
+
+    function toggleChatSound() {
+      chatSoundEnabled = !chatSoundEnabled;
+      savePreference(CHAT_SOUND_KEY, chatSoundEnabled ? 'on' : 'off');
+      updateSoundControl();
+      if (chatSoundEnabled) playIncomingSound();
+    }
+
+    async function resolveIncomingFriend(userId) {
+      const known = acceptedFriends().find((item) => item.userId === userId);
+      if (known) return known;
+      const friendshipFilter = `and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`;
+      const [friendshipResult, profileResult] = await Promise.all([
+        supabase.from('friendships').select('id, requester_id, addressee_id, status, created_at, responded_at').eq('status', 'accepted').or(friendshipFilter).maybeSingle(),
+        supabase.from('profiles').select('id, name, avatar, guardian_chat_enabled').eq('id', userId).maybeSingle()
+      ]);
+      if (friendshipResult.error || profileResult.error || !friendshipResult.data || !profileResult.data) return null;
+      if (!friendships.some((item) => item.id === friendshipResult.data.id)) friendships.unshift(friendshipResult.data);
+      profiles.set(userId, profileResult.data);
+      return { ...friendshipResult.data, userId, profile: profileResult.data };
+    }
+
+    async function revealIncomingChat(message) {
+      if (!message?.conversation_id || !message.sender_id || message.sender_id === user?.id) return;
+      if (incomingChatOpening) { queuedIncomingMessage = message; return; }
+      incomingChatOpening = true;
+      try {
+        await loadHub({ quiet: true });
+        const friend = await resolveIncomingFriend(message.sender_id);
+        if (!friend) return;
+        unreadByConversation.set(message.conversation_id, Math.max(1, unreadByConversation.get(message.conversation_id) || 0));
+        updateBadges();
+        await openChat(friend, { minimized: true, focus: false, markRead: false, highlightMessage: message });
+      } finally {
+        incomingChatOpening = false;
+        if (queuedIncomingMessage) {
+          const queued = queuedIncomingMessage;
+          queuedIncomingMessage = null;
+          void handleRealtimeMessage(queued);
+        }
+      }
+    }
+
+    async function handleRealtimeMessage(message) {
+      if (!message?.conversation_id || !user) return;
+      if (message.sender_id === user.id) {
+        if (message.conversation_id === activeConversationId) await loadMessages({ markRead: isChatReadable() });
+        return;
+      }
+      if (message.conversation_id === activeConversationId) {
+        const readable = isChatReadable();
+        if (!readable) unreadByConversation.set(activeConversationId, (unreadByConversation.get(activeConversationId) || 0) + 1);
+        highlightIncomingMessage(message);
+        updateBadges();
+        await loadMessages({ markRead: readable });
+        return;
+      }
+      if (!activeConversationId) {
+        await revealIncomingChat(message);
+        return;
+      }
+      await loadHub({ quiet: true });
+      playIncomingSound();
+    }
+
     function subscribe() {
       if (!supabase || !user) return;
       if (realtimeChannel) supabase.removeChannel(realtimeChannel);
@@ -357,12 +634,13 @@
         .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => loadHub({ quiet: true }))
         .on('postgres_changes', { event: '*', schema: 'public', table: 'user_presence' }, () => loadHub({ quiet: true }))
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-          if (payload.new?.conversation_id === activeConversationId) loadMessages();
-          else loadHub({ quiet: true });
+          void handleRealtimeMessage(payload.new);
         }).subscribe();
     }
 
     function bindEvents() {
+      document.addEventListener('pointerdown', primeChatAudio, { capture: true, once: true });
+      document.addEventListener('keydown', primeChatAudio, { capture: true, once: true });
       byId('add-friend-form')?.addEventListener('submit', sendRequest);
       byId('toggle-guardian-chat')?.addEventListener('click', toggleGuardianChat);
       byId('refresh-friends')?.addEventListener('click', () => loadHub());
@@ -374,18 +652,32 @@
       byId('cancel-question-share')?.addEventListener('click', () => { questionDraft = null; renderQuestionDraft(); renderFriends(); });
       byId('remove-chat-question')?.addEventListener('click', () => { questionDraft = null; renderQuestionDraft(); });
       byId('close-chat')?.addEventListener('click', closeChat);
-      byId('chat-modal')?.addEventListener('click', (event) => { if (event.target === byId('chat-modal')) closeChat(); });
+      byId('chat-minimize')?.addEventListener('click', () => setChatMinimized(!chatMinimized));
+      byId('chat-sound-toggle')?.addEventListener('click', toggleChatSound);
+      byId('chat-drag-handle')?.addEventListener('pointerdown', startChatDrag);
+      byId('chat-drag-handle')?.addEventListener('pointermove', moveChat);
+      byId('chat-drag-handle')?.addEventListener('pointerup', finishChatDrag);
+      byId('chat-drag-handle')?.addEventListener('pointercancel', finishChatDrag);
+      byId('chat-drag-handle')?.addEventListener('keydown', moveChatWithKeyboard);
+      byId('chat-drag-handle')?.addEventListener('dblclick', () => setChatMinimized(!chatMinimized));
       byId('chat-options')?.addEventListener('click', () => { const menu = byId('chat-options-menu'); menu.hidden = !menu.hidden; byId('chat-options').setAttribute('aria-expanded', String(!menu.hidden)); });
       byId('block-chat-user')?.addEventListener('click', () => safetyAction('block'));
       byId('report-chat-user')?.addEventListener('click', () => safetyAction('report'));
       byId('remove-chat-friend')?.addEventListener('click', () => safetyAction('remove'));
       byId('chat-form')?.addEventListener('submit', sendMessage);
       document.querySelectorAll('[data-quick-reply]').forEach((button) => button.addEventListener('click', () => sendMessage(null, button.dataset.quickReply)));
-      document.addEventListener('visibilitychange', () => updatePresence(!document.hidden));
+      document.addEventListener('visibilitychange', () => {
+        updatePresence(!document.hidden);
+        if (!document.hidden && activeConversationId && !chatMinimized) void loadMessages({ markRead: true });
+      });
+      window.addEventListener('resize', keepChatOnScreen);
+      window.visualViewport?.addEventListener('resize', keepChatOnScreen);
+      window.visualViewport?.addEventListener('scroll', keepChatOnScreen);
       window.addEventListener('beforeunload', () => { if (user) supabase.from('user_presence').upsert({ user_id: user.id, online: false, last_seen: new Date().toISOString() }, { onConflict: 'user_id' }); });
     }
 
     bindEvents();
+    updateSoundControl();
 
     return {
       async init(nextUser) {
@@ -403,8 +695,12 @@
       closeChat,
       async stop() {
         clearInterval(heartbeatTimer);
+        clearTimeout(attentionTimer);
         await updatePresence(false);
         if (realtimeChannel) await supabase.removeChannel(realtimeChannel);
+        if (audioContext && audioContext.state !== 'closed') await audioContext.close().catch(() => {});
+        audioContext = null;
+        incomingChatOpening = false; queuedIncomingMessage = null;
         realtimeChannel = null; user = null; ownProfile = null; friendships = []; profiles = new Map(); presence = new Map();
         updateBadges(); closeChat();
       }

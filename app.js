@@ -2,11 +2,13 @@ const el = (id) => document.getElementById(id);
 let storageKey = 'estuda-mais-profile-v3-guest';
 const supabaseUrl = 'https://wajefwcsnkwzetamjrwi.supabase.co';
 const supabasePublishableKey = 'sb_publishable_jTt4rZEi6LCtVrjuYxk7mQ_SfkCqZfw';
+const ADMIN_AUTH_EMAIL = 'admin@estudemais.net';
 const supabaseClient = globalThis.supabase?.createClient(supabaseUrl, supabasePublishableKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
 let activeSupabaseUser = null;
 let activeUserIsAdmin = false;
+let activeUserContact = null;
 let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
@@ -16,9 +18,9 @@ let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.loca
 const gradeContent = window.EstudaGradeContent;
 const questionEngine = window.EstudaQuestionExpansion;
 const avatarStudio = window.EstudaAvatarStudio;
-const APP_TUTORIAL_VERSION = 1;
+const APP_TUTORIAL_VERSION = 2;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
-let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null;
+let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null, avatarReactionTimer = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
@@ -26,9 +28,9 @@ const materialQuiz = window.EstudaMaterialQuiz?.create({ onStart: startMaterialQ
 
 const tutorialSteps = [
   { kicker: 'COMECE AQUI', title: 'Escolha seu ano e uma matéria', description: 'O Estuda+ organiza a aventura de acordo com a etapa escolar da criança.', kind: 'subjects', tips: ['Selecione o ano escolar na tela inicial.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar essas escolhas sempre que quiser.'] },
-  { kicker: 'MONTE SUA TRILHA', title: 'Personalize o desafio', description: 'Antes de começar, escolha como será a rodada de estudos.', kind: 'path', tips: ['O assunto é opcional: em branco, o app faz uma revisão geral.', 'Escolha o sistema de ensino, a dificuldade e o formato.', 'Cada fase reúne 10 questões variadas.'] },
+  { kicker: 'MONTE SUA TRILHA', title: 'Personalize o desafio', description: 'Antes de começar, escolha como será a rodada de estudos.', kind: 'path', tips: ['O assunto é opcional: em branco, o app faz uma revisão geral.', 'A referência curricular é definida automaticamente pelo ano escolar.', 'Escolha a dificuldade e o formato; cada fase reúne 10 questões variadas.'] },
   { kicker: 'APRENDA FAZENDO', title: 'Responda e entenda cada solução', description: 'Não basta saber se acertou: o comentário mostra como pensar melhor.', kind: 'question', tips: ['Há cinco alternativas e somente uma resposta correta.', 'Use “Passo a passo” e “Aprofundar” depois de responder.', 'Marque questões difíceis para revisar mais tarde.'] },
-  { kicker: 'EVOLUA NA AVENTURA', title: 'Conclua fases e transforme seu avatar', description: 'Com 7 acertos ou mais, a próxima fase fica disponível e novos visuais são liberados.', kind: 'avatar', tips: ['Roupas e acessórios são conquistados por fases concluídas.', 'Repetir uma fase ajuda a praticar, mas não duplica recompensas.', 'Abra o ateliê no Início ou no Perfil para mudar o visual.'] },
+  { kicker: 'EVOLUA NA AVENTURA', title: 'Conclua fases e transforme seu avatar', description: 'Com 7 acertos ou mais, a próxima fase fica disponível e seu parceiro de estudos ganha novidades.', kind: 'avatar', tips: ['Escolha estilo masculino ou feminino, nome, cabelo, olhos e expressão.', 'Roupas, acessórios, companheiros e cenários são conquistados nas fases.', 'Toque no avatar para ele acenar, comemorar e incentivar você.'] },
   { kicker: 'CONTINUE CRESCENDO', title: 'Acompanhe o progresso e revise', description: 'O Perfil reúne conquistas, desempenho e os temas que merecem atenção.', kind: 'progress', tips: ['Complete missões curtas e acompanhe a evolução por matéria.', 'O caderno de erros traz conteúdos de volta no momento certo.', 'Adultos e professores podem identificar temas para sugerir revisão.'] }
 ];
 
@@ -132,11 +134,11 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function weekKey() { const date = new Date(); const first = new Date(date.getFullYear(), 0, 1); return `${date.getFullYear()}-${Math.ceil((((date - first) / 86400000) + first.getDay() + 1) / 7)}`; }
 function futureDate(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }
 function completedPhaseCountFrom(progress = {}) { return Object.values(progress || {}).reduce((total, item) => total + Math.max(0, Math.min(4, Number(item?.completed) || 0)), 0); }
-function blankState() { return { stateVersion: 5, totalPoints: 0, avatar: '🧑‍🚀', avatarDesign: avatarStudio.copyDefaults(), avatarDesignUpdatedAt: '', avatarCreated: false, tutorialSeenVersion: 0, tutorialSeenAt: '', tutorialOutcome: '', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: 5, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, questionSequences: {}, seenQuestionIds: [], seenQuestionFingerprints: [], plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
+function blankState() { return { stateVersion: 6, totalPoints: 0, avatar: '🧑‍🚀', avatarDesign: avatarStudio.copyDefaults(), avatarNickname: '', avatarDesignUpdatedAt: '', avatarCreated: false, tutorialSeenVersion: 0, tutorialSeenAt: '', tutorialOutcome: '', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: 5, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, questionSequences: {}, seenQuestionIds: [], seenQuestionFingerprints: [], plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
 function mergeState(saved) {
   const base = blankState(), phaseProgress = saved?.phaseProgress && typeof saved.phaseProgress === 'object' && !Array.isArray(saved.phaseProgress) ? saved.phaseProgress : {};
   const migratedAvatar = saved?.avatarDesign ? avatarStudio.normalize(saved.avatarDesign) : avatarStudio.migrateLegacy(saved?.avatar);
-  return { ...base, ...(saved || {}), stateVersion: 5, avatarDesign: avatarStudio.fitToUnlocks(migratedAvatar, completedPhaseCountFrom(phaseProgress)), avatarDesignUpdatedAt: String(saved?.avatarDesignUpdatedAt || ''), avatarCreated: Boolean(saved?.avatarCreated), tutorialSeenVersion: Math.max(0, Number(saved?.tutorialSeenVersion) || 0), tutorialSeenAt: String(saved?.tutorialSeenAt || ''), tutorialOutcome: saved?.tutorialOutcome === 'completed' ? 'completed' : saved?.tutorialOutcome === 'skipped' ? 'skipped' : '', subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], phaseProgress, questionSequences: saved?.questionSequences && typeof saved.questionSequences === 'object' && !Array.isArray(saved.questionSequences) ? saved.questionSequences : {}, seenQuestionIds: [...new Set(Array.isArray(saved?.seenQuestionIds) ? saved.seenQuestionIds : [])], seenQuestionFingerprints: [...new Set(Array.isArray(saved?.seenQuestionFingerprints) ? saved.seenQuestionFingerprints : [])], weekly: { ...base.weekly, ...(saved?.weekly || {}) } };
+  return { ...base, ...(saved || {}), stateVersion: 6, avatarDesign: avatarStudio.fitToUnlocks(migratedAvatar, completedPhaseCountFrom(phaseProgress)), avatarNickname: String(saved?.avatarNickname || '').trim().slice(0, 24), avatarDesignUpdatedAt: String(saved?.avatarDesignUpdatedAt || ''), avatarCreated: Boolean(saved?.avatarCreated), tutorialSeenVersion: Math.max(0, Number(saved?.tutorialSeenVersion) || 0), tutorialSeenAt: String(saved?.tutorialSeenAt || ''), tutorialOutcome: saved?.tutorialOutcome === 'completed' ? 'completed' : saved?.tutorialOutcome === 'skipped' ? 'skipped' : '', subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], phaseProgress, questionSequences: saved?.questionSequences && typeof saved.questionSequences === 'object' && !Array.isArray(saved.questionSequences) ? saved.questionSequences : {}, seenQuestionIds: [...new Set(Array.isArray(saved?.seenQuestionIds) ? saved.seenQuestionIds : [])], seenQuestionFingerprints: [...new Set(Array.isArray(saved?.seenQuestionFingerprints) ? saved.seenQuestionFingerprints : [])], weekly: { ...base.weekly, ...(saved?.weekly || {}) } };
 }
 function mergePhaseProgress(local = {}, cloud = {}) {
   const merged = { ...local };
@@ -161,8 +163,16 @@ function saveState() {
 }
 function schoolYearProfile(code = schoolYear) { return gradeContent.profile(code); }
 function schoolYearLabel(code = schoolYear) { return schoolYearProfile(code).label; }
+function automaticCurriculum(code = schoolYear) { return schoolYearProfile(code).stage === 'Médio' ? 'Base Enem/Inep' : 'BNCC'; }
+function syncAutomaticCurriculum(code = schoolYear) {
+  const selected = automaticCurriculum(code);
+  curriculum = selected;
+  if (el('curriculum')) el('curriculum').value = selected;
+  if (el('curriculum-hint')) el('curriculum-hint').textContent = curriculumDescriptions[selected];
+  return selected;
+}
 function populateSchoolYearControls() {
-  ['subject-school-year', 'school-year'].forEach((id) => {
+  ['subject-school-year', 'school-year', 'profile-school-year'].forEach((id) => {
     const select = el(id); if (!select) return; select.innerHTML = '';
     const fundamental = document.createElement('optgroup'); fundamental.label = 'Ensino Fundamental';
     const high = document.createElement('optgroup'); high.label = 'Ensino Médio';
@@ -173,16 +183,11 @@ function populateSchoolYearControls() {
 function updateSchoolYearHint() {
   const profile = schoolYearProfile();
   if (el('school-year-hint')) el('school-year-hint').textContent = profile.stage === 'Médio' ? `${profile.label}: questões de Ensino Médio organizadas em progressão e práticas do Enem.` : `${profile.label}: questões curriculares adequadas à faixa e alinhadas à progressão da BNCC.`;
-  const curriculumSelect = el('curriculum');
-  if (curriculumSelect) {
-    const enemOption = [...curriculumSelect.options].find((option) => option.value === 'Base Enem/Inep');
-    if (enemOption) enemOption.disabled = profile.stage !== 'Médio';
-    if (profile.stage !== 'Médio' && curriculumSelect.value === 'Base Enem/Inep') { curriculumSelect.value = 'BNCC'; curriculum = 'BNCC'; }
-  }
+  syncAutomaticCurriculum(profile.code);
 }
 function setSchoolYear(code, persist = true) {
   const profile = schoolYearProfile(code); schoolYear = profile.code; level = profile.stage; state.schoolYear = profile.code;
-  ['subject-school-year', 'school-year'].forEach((id) => { if (el(id)) el(id).value = profile.code; });
+  ['subject-school-year', 'school-year', 'profile-school-year'].forEach((id) => { if (el(id)) el(id).value = profile.code; });
   updateSchoolYearHint(); renderTopicExamples(); renderPhaseMap();
   if (persist) saveState();
 }
@@ -196,7 +201,7 @@ function setAuthBusy(formId, busy, label) {
 }
 function friendlyAuthError(error) {
   const message = String(error?.message || '').toLowerCase();
-  if (message.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+  if (message.includes('invalid login credentials')) return 'E-mail, usuário ou senha incorretos.';
   if (message.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
   if (message.includes('already registered') || message.includes('already been registered')) return 'Este e-mail já possui cadastro. Entre com sua senha.';
   if (message.includes('expired') || message.includes('invalid token') || message.includes('session missing')) return 'Este link expirou ou já foi utilizado. Solicite uma nova recuperação de senha.';
@@ -207,6 +212,10 @@ function friendlyAuthError(error) {
 async function fetchCloudProfile(user) {
   if (!supabaseClient) return { data: null, error: new Error('Serviço de sincronização indisponível.') };
   return supabaseClient.from('profiles').select('name, school_year, avatar, points, app_state, is_admin, account_status').eq('id', user.id).maybeSingle();
+}
+async function fetchUserContact(user) {
+  if (!supabaseClient) return { data: null, error: new Error('Serviço de contatos indisponível.') };
+  return supabaseClient.from('user_contacts').select('whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at').eq('user_id', user.id).maybeSingle();
 }
 async function fetchQuestionHistory(user = activeSupabaseUser) {
   if (!user || !supabaseClient) return { data: [], error: new Error('Histórico de questões indisponível.') };
@@ -288,6 +297,9 @@ async function activateUser(user) {
     showAuthNotice('Esta conta está temporariamente suspensa. Entre em contato com a administração do Estuda+.', true);
     return false;
   }
+  const { data: contact, error: contactError } = await fetchUserContact(user);
+  activeUserContact = contact || null;
+  if (contactError) console.warn('Não foi possível carregar o contato do perfil:', contactError.message);
   const { data: reservedHistory, error: historyError } = await fetchQuestionHistory(user);
   if (historyError) {
     console.warn('Não foi possível carregar o histórico atômico de questões:', historyError.message);
@@ -303,6 +315,7 @@ async function activateUser(user) {
     const localAvatarTime = Date.parse(localState.avatarDesignUpdatedAt || '') || 0, cloudAvatarTime = Date.parse(cloudState.avatarDesignUpdatedAt || '') || 0;
     const avatarSource = localAvatarTime > cloudAvatarTime ? localState : cloudState;
     state.avatarDesign = avatarStudio.fitToUnlocks(avatarSource.avatarDesign, completedPhaseCountFrom(state.phaseProgress));
+    state.avatarNickname = String(avatarSource.avatarNickname || '').trim().slice(0, 24);
     state.avatarDesignUpdatedAt = avatarSource.avatarDesignUpdatedAt || '';
     state.avatarCreated = Boolean(localState.avatarCreated || cloudState.avatarCreated);
     state.tutorialSeenVersion = Math.max(Number(localState.tutorialSeenVersion) || 0, Number(cloudState.tutorialSeenVersion) || 0);
@@ -411,12 +424,15 @@ async function updateRecoveredPassword(event) {
 }
 async function logoutUser() {
   clearTimeout(remoteSaveTimer);
+  toggleProfileDataEditor(false);
+  toggleProfilePassword(false);
   if (friendsHub) await friendsHub.stop();
   adminPanel?.stop();
   if (activeSupabaseUser && supabaseClient) await syncStateToSupabase();
   if (supabaseClient) await supabaseClient.auth.signOut();
   activeSupabaseUser = null;
   activeUserIsAdmin = false;
+  activeUserContact = null;
   if (el('admin-access-card')) el('admin-access-card').hidden = true;
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
@@ -431,6 +447,11 @@ const unique = (items) => [...new Set(items)];
 function isUnlocked(avatar) { return state.totalPoints >= avatar.cost; }
 function selectedAvatar() { return avatars.find((avatar) => avatar.icon === state.avatar) || avatars[0]; }
 function completedAvatarPhases() { return completedPhaseCountFrom(state.phaseProgress); }
+function avatarDisplayName(includeDraft = false) {
+  const draftName = includeDraft ? el('avatar-nickname')?.value.trim() : '';
+  return (draftName || state.avatarNickname || learnerName()).slice(0, 24);
+}
+function avatarLevel(count = completedAvatarPhases()) { return Math.max(1, Math.floor(count / 2) + 1); }
 function avatarProgressMessage(count = completedAvatarPhases()) {
   const next = avatarStudio.nextUnlock(count);
   if (!next) return `${count} fases concluídas · você liberou todo o guarda-roupa!`;
@@ -442,26 +463,58 @@ function renderAvatarInto(id, design = state.avatarDesign, options = {}) {
   target.innerHTML = avatarStudio.render(design, options);
 }
 function renderAvatarSurfaces() {
-  const count = completedAvatarPhases(), name = learnerName(), message = avatarProgressMessage(count);
+  const count = completedAvatarPhases(), name = avatarDisplayName(), message = avatarProgressMessage(count), next = avatarStudio.nextUnlock(count);
   renderAvatarInto('home-avatar-preview');
   renderAvatarInto('top-avatar', state.avatarDesign, { decorative: true });
   renderAvatarInto('profile-avatar', state.avatarDesign, { decorative: true });
   renderAvatarInto('dashboard-avatar-preview');
-  if (el('avatar-home-title')) el('avatar-home-title').textContent = state.avatarCreated ? `${name}, este é seu avatar!` : 'Crie seu avatar';
+  renderAvatarInto('result-avatar-preview', state.avatarDesign, { decorative: true });
+  if (el('avatar-home-title')) el('avatar-home-title').textContent = state.avatarCreated ? `${name}, seu parceiro de aventuras` : 'Crie seu parceiro de estudos';
   if (el('avatar-home-progress')) el('avatar-home-progress').textContent = message;
   if (el('avatar-profile-progress')) el('avatar-profile-progress').textContent = message;
+  if (el('avatar-profile-title')) el('avatar-profile-title').textContent = `${name} · nível ${avatarLevel(count)}`;
+  if (el('avatar-home-level')) el('avatar-home-level').textContent = avatarLevel(count);
+  if (el('result-avatar-name')) el('result-avatar-name').textContent = `${name.toUpperCase()} · NÍVEL ${avatarLevel(count)}`;
+  if (el('avatar-home-evolution-fill')) el('avatar-home-evolution-fill').style.width = next ? `${Math.min(100, Math.round((count / next.unlock) * 100))}%` : '100%';
+  if (el('avatar-home-evolution-label')) el('avatar-home-evolution-label').textContent = next ? `${next.name} em ${next.unlock - count} fase${next.unlock - count === 1 ? '' : 's'}` : 'Coleção completa!';
+}
+const avatarReactionMessages = {
+  wave: ['Oi! Vamos aprender juntos?', 'Estou torcendo por você!', 'Que bom estudar com você!'],
+  celebrate: ['Arrasamos! Próxima fase!', 'Seu esforço merece festa!', 'Cada acerto nos deixa mais fortes!'],
+  focus: ['Respira, lê com calma e confia.', 'Um passo de cada vez.', 'Errou? A gente aprende e tenta de novo!']
+};
+function playAvatarReaction(type = 'wave', options = {}) {
+  const safeType = avatarReactionMessages[type] ? type : 'wave';
+  const messages = avatarReactionMessages[safeType];
+  const message = messages[Math.floor(Math.random() * messages.length)];
+  const targets = [el('avatar-home-interact'), el('avatar-result-interact'), el('avatar-studio-preview')?.closest('.avatar-preview-stage')].filter(Boolean);
+  clearTimeout(avatarReactionTimer);
+  targets.forEach((target) => {
+    target.classList.remove('is-reacting-wave', 'is-reacting-celebrate', 'is-reacting-focus');
+    void target.offsetWidth;
+    target.classList.add(`is-reacting-${safeType}`);
+  });
+  if (el('avatar-home-bubble')) el('avatar-home-bubble').textContent = message;
+  if (el('avatar-preview-bubble')) el('avatar-preview-bubble').textContent = message;
+  if (options.announce && el('avatar-studio-status')) el('avatar-studio-status').textContent = message;
+  avatarReactionTimer = setTimeout(() => {
+    targets.forEach((target) => target.classList.remove('is-reacting-wave', 'is-reacting-celebrate', 'is-reacting-focus'));
+    if (el('avatar-home-bubble')) el('avatar-home-bubble').textContent = 'Vamos aprender algo incrível?';
+    if (el('avatar-preview-bubble')) el('avatar-preview-bubble').textContent = 'Pronto para a próxima aventura!';
+  }, 1900);
 }
 function renderAvatarStudioPreview() {
   if (!avatarDraft) return;
   renderAvatarInto('avatar-studio-preview', avatarDraft);
   const count = completedAvatarPhases(), next = avatarStudio.nextUnlock(count);
   el('avatar-phase-count').textContent = count;
-  el('avatar-preview-name').textContent = learnerName();
+  el('avatar-preview-name').textContent = `${avatarDisplayName(true)} · nível ${avatarLevel(count)}`;
   el('avatar-next-unlock').textContent = next ? `${next.name} será liberado ao completar ${next.unlock} fase${next.unlock === 1 ? '' : 's'}.` : 'Todo o guarda-roupa foi liberado. Excelente jornada!';
 }
 function avatarOptionSample(category, item) {
   const color = item.color;
-  if (category === 'skin' || category === 'hairColor') return `<span class="avatar-option-sample is-color" style="--sample:${color}" aria-hidden="true"></span>`;
+  if (category === 'skin' || category === 'hairColor' || category === 'eyes') return `<span class="avatar-option-sample is-color" style="--sample:${color}" aria-hidden="true"></span>`;
+  if (category === 'scene') return `<span class="avatar-option-sample is-scene" style="--sample:${color}" aria-hidden="true">${item.icon || '✦'}</span>`;
   return `<span class="avatar-option-sample" aria-hidden="true">${item.icon || '✦'}</span>`;
 }
 function renderAvatarOptions(category = avatarCategory) {
@@ -476,15 +529,25 @@ function renderAvatarOptions(category = avatarCategory) {
     button.innerHTML = `${avatarOptionSample(categoryInfo.id, item)}<span><strong>${item.name}</strong><small>${requirement}</small></span><b aria-hidden="true">${unlocked ? selected ? '✓' : '' : '🔒'}</b>`;
     button.addEventListener('click', () => {
       if (!unlocked) { const remaining = item.unlock - count; el('avatar-studio-status').textContent = `Continue a aventura: ${remaining === 1 ? 'falta 1 fase' : `faltam ${remaining} fases`} para liberar ${item.name}.`; return; }
-      avatarDraft[categoryInfo.id] = item.id; el('avatar-studio-status').textContent = `${item.name} escolhido. Salve para usar este visual.`; renderAvatarStudioPreview(); renderAvatarOptions(categoryInfo.id); requestAnimationFrame(() => el('avatar-option-grid').querySelector(`[data-avatar-option="${item.id}"]`)?.focus());
+      avatarDraft[categoryInfo.id] = item.id;
+      el('avatar-studio-status').textContent = categoryInfo.id === 'presentation' ? `Estilo ${item.name.toLowerCase()} escolhido. Cabelos, roupas e acessórios continuam livres.` : `${item.name} escolhido. Salve para usar este visual.`;
+      renderAvatarStudioPreview(); renderAvatarOptions(categoryInfo.id); requestAnimationFrame(() => el('avatar-option-grid').querySelector(`[data-avatar-option="${item.id}"]`)?.focus());
     });
     grid.append(button);
   });
 }
+function renderAvatarGenderChoice() {
+  if (!avatarDraft) return;
+  document.querySelectorAll('[data-avatar-presentation]').forEach((button) => {
+    const selected = button.dataset.avatarPresentation === avatarDraft.presentation;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
 function renderAvatarEditor() {
   const tabs = el('avatar-category-tabs'); if (!tabs || !avatarDraft) return; tabs.innerHTML = '';
-  avatarStudio.categories.forEach((category) => { const button = document.createElement('button'); const active = category.id === avatarCategory; button.type = 'button'; button.id = `avatar-tab-${category.id}`; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(active)); button.setAttribute('aria-controls', 'avatar-option-grid'); button.innerHTML = `<span aria-hidden="true">${category.icon}</span>${category.label}`; button.addEventListener('click', () => { avatarCategory = category.id; el('avatar-studio-status').textContent = ''; renderAvatarEditor(); }); tabs.append(button); });
-  renderAvatarStudioPreview(); renderAvatarOptions(avatarCategory);
+  avatarStudio.categories.filter((category) => category.id !== 'presentation').forEach((category) => { const button = document.createElement('button'); const active = category.id === avatarCategory; button.type = 'button'; button.id = `avatar-tab-${category.id}`; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(active)); button.setAttribute('aria-controls', 'avatar-option-grid'); button.innerHTML = `<span aria-hidden="true">${category.icon}</span>${category.label}`; button.addEventListener('click', () => { avatarCategory = category.id; el('avatar-studio-status').textContent = ''; renderAvatarEditor(); }); tabs.append(button); });
+  renderAvatarGenderChoice(); renderAvatarStudioPreview(); renderAvatarOptions(avatarCategory);
 }
 function renderAvatarUnlockResult(items = []) {
   const panel = el('avatar-unlock-result'); if (!panel) return; panel.hidden = !items.length;
@@ -496,7 +559,7 @@ function tutorialVisualMarkup(kind) {
   if (kind === 'subjects') return '<div class="tutorial-subject-demo"><span>÷</span><span>文</span><span>⌁</span><b>6º ano selecionado</b></div>';
   if (kind === 'path') return '<div class="tutorial-path-demo"><div class="tutorial-path-line"><i class="done">✓</i><span></span><i class="current">2</i><span></span><i>3</i></div><strong>Faça 7 de 10 para avançar</strong></div>';
   if (kind === 'question') return '<div class="tutorial-question-demo"><small>QUESTÃO 3 DE 10</small><strong>Qual alternativa resolve corretamente o desafio?</strong><span>A&nbsp;&nbsp; Primeira possibilidade</span><span class="correct">✓&nbsp;&nbsp; Resposta correta comentada</span></div>';
-  if (kind === 'avatar') return `<div class="tutorial-avatar-demo">${avatarStudio.render(state.avatarDesign, { decorative: true })}<div class="tutorial-avatar-items"><span><b>👕</b> Roupas por fases</span><span><b>👓</b> Acessórios novos</span><span><b>✦</b> Seu próprio estilo</span></div></div>`;
+  if (kind === 'avatar') return `<div class="tutorial-avatar-demo">${avatarStudio.render(state.avatarDesign, { decorative: true })}<div class="tutorial-avatar-items"><span><b>☺</b> Masculino ou feminino</span><span><b>⭐</b> Amigos e cenários</span><span><b>👋</b> Reações ao toque</span></div></div>`;
   return '<div class="tutorial-progress-demo"><article><span>🎯</span><div>Missão diária<i><b style="--demo-progress:80%"></b></i></div><b>4/5</b></article><article><span>↻</span><div>Revisões inteligentes<i><b style="--demo-progress:55%"></b></i></div><b>3</b></article><article><span>★</span><div>Evolução em Matemática<i><b style="--demo-progress:72%"></b></i></div><b>72%</b></article></div>';
 }
 function renderAppTutorial(options = {}) {
@@ -834,12 +897,131 @@ function updateHome() {
   updateLearningRail();
 }
 function updateStudySnapshot() { const theme = currentTheme(), weekly = state.weekly || { answered: 0, goal: 50 }, percent = Math.min(100, Math.round((weekly.answered / weekly.goal) * 100)); if (el('weekly-theme-title')) { el('weekly-theme-title').textContent = theme.title; el('weekly-theme-copy').textContent = theme.copy; el('weekly-goal-copy').textContent = `${weekly.answered}/${weekly.goal} questões`; el('weekly-goal-progress').style.width = `${percent}%`; } if (el('nav-review-badge')) { const due = dueReviews().length; el('nav-review-badge').hidden = due === 0; el('nav-review-badge').textContent = due > 9 ? '9+' : due; } }
+function normalizedWhatsapp(value = '') {
+  const digits = String(value).replace(/\D/g, '');
+  if (!digits) return '';
+  const withCountry = digits.startsWith('55') ? digits : `55${digits}`;
+  return /^55\d{10,11}$/.test(withCountry) ? `+${withCountry}` : '';
+}
+function formattedWhatsapp(value = '') {
+  const digits = String(value).replace(/\D/g, '').replace(/^55/, '');
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return value || 'Não informado';
+}
+function showProfileDataStatus(message = '', error = false) {
+  const target = el('profile-data-status'); if (!target) return;
+  target.textContent = message;
+  target.classList.toggle('error', error);
+  target.classList.toggle('success', Boolean(message) && !error);
+}
+function renderProfileData() {
+  if (!activeSupabaseUser || !el('profile-data-summary')) return;
+  const phone = activeUserContact?.whatsapp_phone || '';
+  el('profile-data-name').textContent = learnerName();
+  el('profile-data-email').textContent = activeSupabaseUser.email || 'Não informado';
+  el('profile-data-access').textContent = activeUserIsAdmin ? ADMIN_AUTH_EMAIL : 'E-mail e senha';
+  el('profile-data-year').textContent = schoolYearLabel(state.schoolYear || '6EF');
+  el('profile-data-whatsapp').textContent = phone ? formattedWhatsapp(phone) : 'Não informado';
+  el('profile-data-whatsapp-consent').textContent = phone ? (activeUserContact.whatsapp_opt_in ? 'Avisos importantes autorizados.' : 'Apenas suporte da conta; novidades não autorizadas.') : 'Adicione um número para suporte da conta.';
+  el('profile-data-whatsapp-card').classList.toggle('missing', !phone);
+  el('edit-profile-data').textContent = phone ? 'Editar dados' : 'Adicionar WhatsApp';
+  el('profile-security-copy').textContent = activeUserIsAdmin ? `Altere aqui a senha protegida da conta ${ADMIN_AUTH_EMAIL}.` : 'Você pode trocar sua senha sem sair do aplicativo.';
+  el('profile-edit-name').value = learnerName();
+  el('profile-edit-email').value = activeSupabaseUser.email || '';
+  el('profile-school-year').value = state.schoolYear || '6EF';
+  el('profile-edit-whatsapp').value = phone ? formattedWhatsapp(phone) : '';
+  el('profile-edit-whatsapp-opt-in').checked = Boolean(activeUserContact?.whatsapp_opt_in);
+}
+function toggleProfileDataEditor(open) {
+  el('profile-data-summary').hidden = open;
+  el('profile-data-form').hidden = !open;
+  el('edit-profile-data').hidden = open;
+  if (open) {
+    renderProfileData();
+    showProfileDataStatus('Confira os dados antes de salvar.');
+    setTimeout(() => (activeUserContact?.whatsapp_phone ? el('profile-edit-name') : el('profile-edit-whatsapp'))?.focus(), 0);
+  } else {
+    renderProfileData();
+    showProfileDataStatus('');
+  }
+}
+async function saveProfileData(event) {
+  event.preventDefault();
+  if (!activeSupabaseUser || !supabaseClient) return;
+  const name = el('profile-edit-name').value.trim();
+  const year = schoolYearProfile(el('profile-school-year').value).code;
+  const rawPhone = el('profile-edit-whatsapp').value.trim();
+  const phone = normalizedWhatsapp(rawPhone);
+  const optIn = el('profile-edit-whatsapp-opt-in').checked;
+  if (name.length < 2) { showProfileDataStatus('Digite um nome ou apelido com pelo menos 2 caracteres.', true); el('profile-edit-name').focus(); return; }
+  if (rawPhone && !phone) { showProfileDataStatus('Digite um WhatsApp brasileiro válido, com DDD.', true); el('profile-edit-whatsapp').focus(); return; }
+  if (optIn && !phone) { showProfileDataStatus('Informe o WhatsApp antes de autorizar o recebimento de avisos.', true); el('profile-edit-whatsapp').focus(); return; }
+  setAuthBusy('profile-data-form', true, 'Salvando…'); showProfileDataStatus('Salvando seus dados…');
+  try {
+    const now = new Date().toISOString();
+    const { error: profileError } = await supabaseClient.from('profiles').update({ name, school_year: year, updated_at: now }).eq('id', activeSupabaseUser.id);
+    if (profileError) throw profileError;
+    if (phone) {
+      const contactPayload = { user_id: activeSupabaseUser.id, whatsapp_phone: phone, whatsapp_opt_in: optIn, whatsapp_consent_at: optIn ? (activeUserContact?.whatsapp_consent_at || now) : null, updated_at: now };
+      const contactResult = activeUserContact
+        ? await supabaseClient.from('user_contacts').update({ whatsapp_phone: phone, whatsapp_opt_in: optIn, whatsapp_consent_at: contactPayload.whatsapp_consent_at, updated_at: now }).eq('user_id', activeSupabaseUser.id)
+        : await supabaseClient.from('user_contacts').insert(contactPayload);
+      const contactError = contactResult.error;
+      if (contactError) throw contactError;
+      activeUserContact = contactPayload;
+    }
+    const metadata = { ...(activeSupabaseUser.user_metadata || {}), name, school_year: year, ...(phone ? { whatsapp_phone: phone, whatsapp_opt_in: optIn } : {}) };
+    const { data: updatedAuth, error: metadataError } = await supabaseClient.auth.updateUser({ data: metadata });
+    if (metadataError) console.warn('Os dados principais foram salvos, mas os metadados da conta não foram atualizados:', metadataError.message);
+    if (updatedAuth?.user) activeSupabaseUser = updatedAuth.user;
+    state.userName = name;
+    setSchoolYear(year, false);
+    saveState();
+    toggleProfileDataEditor(false);
+    renderDashboard();
+    showProfileDataStatus(phone ? 'Dados e WhatsApp atualizados com segurança.' : 'Dados do perfil atualizados. Você pode adicionar o WhatsApp quando quiser.');
+  } catch (error) {
+    console.warn('Não foi possível atualizar os dados do perfil:', error.message);
+    showProfileDataStatus(/row-level security|permission denied/i.test(error.message || '') ? 'A inclusão de WhatsApp ainda precisa ser liberada no banco de dados.' : 'Não foi possível salvar os dados agora. Verifique a conexão e tente novamente.', true);
+  } finally { setAuthBusy('profile-data-form', false); }
+}
+function toggleProfilePassword(open) {
+  const form = el('profile-password-form'), button = el('toggle-profile-password');
+  form.hidden = !open;
+  button.setAttribute('aria-expanded', String(open));
+  button.textContent = open ? 'Fechar' : 'Alterar senha';
+  if (open) setTimeout(() => el('profile-current-password').focus(), 0);
+  else { form.reset(); resetPasswordVisibility(); }
+}
+async function updateProfilePassword(event) {
+  event.preventDefault();
+  if (!activeSupabaseUser?.email || !supabaseClient) return;
+  const currentPassword = el('profile-current-password').value;
+  const newPassword = el('profile-new-password').value;
+  const confirmation = el('profile-confirm-password').value;
+  if (newPassword.length < 8) { showProfileDataStatus('A nova senha precisa ter pelo menos 8 caracteres.', true); return; }
+  if (newPassword !== confirmation) { showProfileDataStatus('A confirmação não é igual à nova senha.', true); return; }
+  if (currentPassword === newPassword) { showProfileDataStatus('Escolha uma senha diferente da atual.', true); return; }
+  setAuthBusy('profile-password-form', true, 'Atualizando…'); showProfileDataStatus('Confirmando sua senha atual…');
+  try {
+    const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email: activeSupabaseUser.email, password: currentPassword });
+    if (signInError) throw signInError;
+    const { data, error } = await supabaseClient.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    if (data?.user) activeSupabaseUser = data.user;
+    toggleProfilePassword(false);
+    showProfileDataStatus(activeUserIsAdmin ? `Senha da conta ${ADMIN_AUTH_EMAIL} alterada com sucesso.` : 'Senha alterada com sucesso.');
+  } catch (error) {
+    showProfileDataStatus(/invalid login credentials/i.test(error.message || '') ? 'A senha atual está incorreta.' : friendlyAuthError(error), true);
+  } finally { setAuthBusy('profile-password-form', false); }
+}
 function renderDashboard() {
-  el('avatar-name').textContent = learnerName(); el('profile-name').textContent = learnerName(); el('profile-points').textContent = `${state.totalPoints} pontos acumulados`; renderAvatarSurfaces();
+  el('avatar-name').textContent = learnerName(); el('profile-name').textContent = learnerName(); el('profile-points').textContent = `${state.totalPoints} pontos acumulados`; renderAvatarSurfaces(); renderProfileData();
   const totals = Object.values(state.subjectStats).reduce((sum, stats) => ({ correct: sum.correct + stats.correct, total: sum.total + stats.total }), { correct: 0, total: 0 }); const accuracy = totals.total ? `${Math.round((totals.correct / totals.total) * 100)}%` : '—'; el('accuracy-stat').textContent = accuracy; el('due-review-stat').textContent = dueReviews().length; el('weekly-stat').textContent = state.weekly?.answered || 0; el('focus-goal-copy').textContent = `Meta atual: ${state.weekly?.goal || 50} questões nesta semana. Você já concluiu ${state.weekly?.answered || 0}.`;
   const rewards = el('rewards-list'); rewards.innerHTML = '';
   const completedPhases = completedAvatarPhases();
-  const avatarRewards = ['outfit', 'accessory'].flatMap((category) => avatarStudio.catalog[category].filter((item) => item.unlock > 0).map((item) => ({
+  const avatarRewards = avatarStudio.unlockableCategories.flatMap((category) => avatarStudio.catalog[category].filter((item) => item.unlock > 0).map((item) => ({
     icon: item.icon || '✦',
     title: item.name,
     description: `Complete ${item.unlock} fase${item.unlock === 1 ? '' : 's'} para liberar`,
@@ -997,7 +1179,7 @@ function navigateBack(fallback = 'setup-screen') {
   if (historyStateIsCurrent() && depth > 0) window.history.back();
   else show(fallback, { historyMode: 'reset' });
 }
-function goToSubjects(options = {}) { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
+function goToSubjects(options = {}) { syncAutomaticCurriculum(); el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
 function openMaterialQuiz() { materialQuizSession = false; show('material-screen'); }
 function startMaterialQuiz(payload) {
   const subject = payload?.subject || 'Minha apostila';
@@ -1008,7 +1190,7 @@ function startMaterialQuiz(payload) {
   current = 0; currentPhase = 1; score = 0; hits = 0; roundStreak = 0; resultAction = 'material'; materialQuizSession = true;
   show('quiz-screen'); renderQuestion();
 }
-function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } curriculum = el('curriculum').value; el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); resetViewport('setup-screen'); }
+function openAdventure() { const subject = el('subject').value; if (!subject) { el('subject').focus(); return; } syncAutomaticCurriculum(); el('lesson-creator').hidden = true; el('adventure-overview').hidden = false; renderPhaseMap(); resetViewport('setup-screen'); }
 function openReview() { renderReviewScreen(); show('review-screen'); }
 async function openFriends() { show('friends-screen'); await friendsHub?.open(); }
 async function openAdmin() {
@@ -1093,6 +1275,7 @@ el('next-question').addEventListener('click', () => {
     el('result-title').textContent = passed ? 'Você dominou esta página!' : 'Sua apostila merece uma revisão';
     el('phase-result').textContent = `Você acertou ${hits}/10 questões criadas a partir do texto conferido.`;
     el('result-message').textContent = passed ? 'Excelente: você localizou e relacionou as informações principais do material.' : 'Leia novamente os trechos comentados e gere outro quiz quando estiver pronto.';
+    el('result-avatar-cheer').textContent = passed ? 'Você transformou sua apostila em conhecimento!' : 'Vamos revisar juntos e tentar outra vez.';
     el('restart').innerHTML = 'Estudar outra foto <span>↻</span>'; renderAvatarUnlockResult([]);
     if (earned.length) setTimeout(() => showToast(earned), 0);
     show('result-screen', { historyMode: 'replace' }); return;
@@ -1122,6 +1305,7 @@ el('next-question').addEventListener('click', () => {
   el('result-title').textContent = passed ? `Fase ${currentPhase} concluída!` : `Fase ${currentPhase}: tente novamente`;
   el('phase-result').textContent = passed ? `Você acertou ${hits}/10 e liberou ${currentPhase < 4 ? `a fase ${currentPhase + 1}` : 'toda a trilha'}!` : `Você acertou ${hits}/10. São necessários 7 acertos para avançar.`;
   el('result-message').textContent = passed ? 'Excelente trabalho: avance para a próxima etapa da trilha.' : 'Revise as explicações, pratique os erros e tente esta fase de novo.';
+  el('result-avatar-cheer').textContent = passed ? (avatarUnlocks.length ? `Conseguimos! Você liberou ${avatarUnlocks.map((item) => item.name).join(' e ')}.` : 'Eu sabia que você conseguiria! Próxima fase!') : 'Foi uma boa tentativa. Vamos aprender com os erros e voltar mais fortes.';
   el('restart').innerHTML = passed && currentPhase < 4 ? 'Ir para a próxima fase <span>→</span>' : passed ? 'Escolher nova trilha <span>↻</span>' : 'Refazer esta fase <span>↻</span>';
   renderAvatarUnlockResult(avatarUnlocks);
   if (earned.length) setTimeout(() => showToast(earned), 0);
@@ -1130,6 +1314,14 @@ el('next-question').addEventListener('click', () => {
 });
 el('restart').addEventListener('click', () => { updateMission(); if (resultAction === 'material') openMaterialQuiz(); else if (resultAction === 'nextPhase') begin(currentPhase + 1); else if (resultAction === 'retry') begin(currentPhase); else { renderPhaseMap(); show('setup-screen', { historyMode: 'replace' }); } }); el('leave-quiz').addEventListener('click', () => { updateMission(); if (materialQuizSession) { show('material-screen'); return; } renderPhaseMap(); navigateBack('setup-screen'); });
 el('open-dashboard').addEventListener('click', () => { renderDashboard(); show('dashboard-screen'); }); el('close-dashboard').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
+el('edit-profile-data').addEventListener('click', () => toggleProfileDataEditor(true));
+el('cancel-profile-data').addEventListener('click', () => toggleProfileDataEditor(false));
+el('profile-data-form').addEventListener('submit', saveProfileData);
+el('profile-edit-whatsapp').addEventListener('blur', () => { const value = normalizedWhatsapp(el('profile-edit-whatsapp').value); if (value) el('profile-edit-whatsapp').value = formattedWhatsapp(value); });
+el('toggle-profile-password').addEventListener('click', () => toggleProfilePassword(el('profile-password-form').hidden));
+el('cancel-profile-password').addEventListener('click', () => toggleProfilePassword(false));
+el('profile-password-form').addEventListener('submit', updateProfilePassword);
+el('change-admin-password').addEventListener('click', () => { toggleProfileDataEditor(false); toggleProfilePassword(true); el('profile-security-block').scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' }); });
 el('save-plan').addEventListener('click', () => { state.plan.minutes = el('daily-minutes').value; saveState(); });
 el('practice-notebook').addEventListener('click', openReview);
 el('review-errors').addEventListener('click', openReview);
@@ -1143,7 +1335,7 @@ el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
 function updateModalBackgroundState() {
-  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden || !el('app-tutorial-modal').hidden || !el('chat-modal').hidden || !el('admin-user-modal').hidden;
+  const anyModalOpen = !el('weekly-goal-modal').hidden || !el('avatar-studio-modal').hidden || !el('app-tutorial-modal').hidden || !el('admin-user-modal').hidden;
   document.body.classList.toggle('modal-open', anyModalOpen);
   document.querySelector('.app-shell')?.toggleAttribute('inert', anyModalOpen);
   el('app-nav')?.toggleAttribute('inert', anyModalOpen);
@@ -1178,12 +1370,13 @@ function openAvatarStudio(options = {}) {
   avatarStudioReturnFocus = document.activeElement;
   avatarDraft = avatarStudio.fitToUnlocks(state.avatarDesign, completedAvatarPhases());
   avatarCategory = 'skin';
+  if (el('avatar-nickname')) el('avatar-nickname').value = state.avatarNickname || '';
   el('avatar-studio-status').textContent = state.avatarCreated ? 'Seu visual atual está pronto para receber novas ideias.' : 'Escolha cada parte e salve seu primeiro avatar.';
   modal.hidden = false;
   updateModalBackgroundState();
   if (!options.fromHistory) updateScreenHistory(activeScreenId(), 'push', { estudaModal: 'avatar-studio' });
   renderAvatarEditor();
-  setTimeout(() => el('avatar-category-tabs')?.querySelector('[role="tab"]')?.focus(), 0);
+  setTimeout(() => el('avatar-gender-choice')?.querySelector('[aria-pressed="true"]')?.focus(), 0);
 }
 function closeAvatarStudio(options = {}) {
   if (!options.fromHistory && historyStateIsCurrent() && window.history.state?.estudaModal === 'avatar-studio') { window.history.back(); return; }
@@ -1193,6 +1386,17 @@ function closeAvatarStudio(options = {}) {
   avatarStudioReturnFocus?.focus?.();
 }
 ['open-avatar-studio-home', 'open-avatar-studio-profile', 'open-avatar-studio-result'].forEach((id) => el(id)?.addEventListener('click', openAvatarStudio));
+document.querySelectorAll('[data-avatar-presentation]').forEach((button) => button.addEventListener('click', () => {
+  if (!avatarDraft) return;
+  avatarDraft.presentation = button.dataset.avatarPresentation;
+  el('avatar-studio-status').textContent = `Avatar ${button.dataset.avatarPresentation === 'feminine' ? 'feminino' : 'masculino'} selecionado. Todas as opções de personalização continuam disponíveis.`;
+  renderAvatarGenderChoice(); renderAvatarStudioPreview();
+}));
+el('avatar-home-interact')?.addEventListener('click', () => playAvatarReaction('wave'));
+el('avatar-home-cheer')?.addEventListener('click', () => playAvatarReaction('celebrate'));
+el('avatar-result-interact')?.addEventListener('click', () => playAvatarReaction('celebrate'));
+document.querySelectorAll('[data-avatar-reaction]').forEach((button) => button.addEventListener('click', () => playAvatarReaction(button.dataset.avatarReaction, { announce: true })));
+el('avatar-nickname')?.addEventListener('input', renderAvatarStudioPreview);
 document.querySelectorAll('[data-close-avatar-studio]').forEach((button) => button.addEventListener('click', closeAvatarStudio));
 el('avatar-studio-modal').addEventListener('click', (event) => { if (event.target === el('avatar-studio-modal')) closeAvatarStudio(); });
 ['open-app-tutorial-home', 'open-app-tutorial-profile'].forEach((id) => el(id)?.addEventListener('click', () => openAppTutorial()));
@@ -1211,6 +1415,7 @@ el('tutorial-next').addEventListener('click', () => {
 el('save-avatar-design').addEventListener('click', () => {
   if (!avatarDraft) return;
   state.avatarDesign = avatarStudio.fitToUnlocks(avatarDraft, completedAvatarPhases());
+  state.avatarNickname = el('avatar-nickname').value.trim().slice(0, 24);
   state.avatarDesignUpdatedAt = new Date().toISOString();
   state.avatarCreated = true;
   saveState();
@@ -1220,13 +1425,12 @@ el('save-avatar-design').addEventListener('click', () => {
   closeAvatarStudio();
 });
 document.addEventListener('keydown', (event) => {
-  const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal'), chatModal = el('chat-modal'), adminUserModal = el('admin-user-modal');
-  const modal = !adminUserModal.hidden ? adminUserModal : !chatModal.hidden ? chatModal : !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
+  const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal'), adminUserModal = el('admin-user-modal');
+  const modal = !adminUserModal.hidden ? adminUserModal : !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;
   if (!modal) return;
   if (event.key === 'Escape') {
     event.preventDefault();
     if (modal === adminUserModal) adminPanel?.closeUser();
-    else if (modal === chatModal) friendsHub?.closeChat();
     else if (modal === tutorialModal) closeAppTutorial();
     else if (modal === avatarModal) closeAvatarStudio();
     else closeWeeklyGoalModal();
@@ -1241,7 +1445,8 @@ document.addEventListener('keydown', (event) => {
 });
 el('app-nav').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
   if (button.dataset.nav === 'subjects') goToSubjects();
-  else if (button.dataset.nav === 'trail') show('setup-screen');
+  else if (button.dataset.nav === 'trail') { syncAutomaticCurriculum(); show('setup-screen'); }
+  else if (button.dataset.nav === 'avatar') openAvatarStudio();
   else if (button.dataset.nav === 'material') openMaterialQuiz();
   else if (button.dataset.nav === 'review') openReview();
   else if (button.dataset.nav === 'friends') openFriends();
@@ -1250,7 +1455,8 @@ el('app-nav').querySelectorAll('button').forEach((button) => button.addEventList
 document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEventListener('click', () => {
   const destination = button.dataset.sideNav;
   if (destination === 'subjects') goToSubjects();
-  else if (destination === 'trail') show('setup-screen');
+  else if (destination === 'trail') { syncAutomaticCurriculum(); show('setup-screen'); }
+  else if (destination === 'avatar') openAvatarStudio();
   else if (destination === 'material') openMaterialQuiz();
   else if (destination === 'review') openReview();
   else if (destination === 'friends') openFriends();
@@ -1268,12 +1474,11 @@ document.querySelectorAll('.access-control').forEach((button) => button.addEvent
 el('toggle-accessibility').addEventListener('click', () => { state.accessibility.font = !state.accessibility.font; saveState(); applyAccessibility(); });
 el('save-teacher-material').addEventListener('click', () => { const title = el('teacher-material-title').value.trim(), note = el('teacher-material-note').value.trim(); if (!title && !note) return; state.materials.unshift({ title: title || 'Orientação de estudo', note: note || 'Sem observações.' }); state.materials = state.materials.slice(0, 10); el('teacher-material-title').value = ''; el('teacher-material-note').value = ''; saveState(); renderTeacherMaterials(); });
 el('toggle-creator').addEventListener('click', () => { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; });
-document.querySelectorAll('.subject-card').forEach((card) => card.addEventListener('click', () => { const subject = card.dataset.subject; el('subject').value = subject; el('topic').value = ''; el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; renderTopicExamples(); renderPhaseMap(); show('setup-screen'); }));
+document.querySelectorAll('.subject-card').forEach((card) => card.addEventListener('click', () => { const subject = card.dataset.subject; syncAutomaticCurriculum(); el('subject').value = subject; el('topic').value = ''; el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; renderTopicExamples(); renderPhaseMap(); show('setup-screen'); }));
 el('back-to-subjects').addEventListener('click', goToSubjects);
 el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'replace' }));
 window.addEventListener('popstate', (event) => {
   const weeklyModal = el('weekly-goal-modal'), avatarModal = el('avatar-studio-modal'), tutorialModal = el('app-tutorial-modal');
-  if (friendsHub?.isChatOpen()) friendsHub.closeChat();
   if (adminPanel?.isUserModalOpen()) adminPanel.closeUser();
   if (!tutorialModal.hidden && event.state?.estudaModal !== 'app-tutorial') { closeAppTutorial({ fromHistory: true }); return; }
   if (!avatarModal.hidden && event.state?.estudaModal !== 'avatar-studio') { closeAvatarStudio({ fromHistory: true }); return; }
@@ -1330,7 +1535,9 @@ function setAuthMode(mode, navigationOptions = {}) {
     reset: ['Proteja sua nova conquista.', 'Escolha uma nova senha para recuperar sua conta.']
   };
   [el('auth-title').textContent, el('auth-subtitle').textContent] = copy[mode];
-  if (mode === 'recovery') el('recovery-email').value = el('login-email').value.trim();
+  if (mode === 'recovery') {
+    el('recovery-email').value = el('login-email').value.trim().toLowerCase();
+  }
   resetPasswordVisibility();
   showAuthNotice('');
   show('auth-screen', { ...navigationOptions, focusHeading: false });

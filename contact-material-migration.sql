@@ -16,11 +16,14 @@ drop policy if exists "Usuario ve o proprio contato" on public.user_contacts;
 create policy "Usuario ve o proprio contato" on public.user_contacts for select to authenticated using ((select auth.uid()) = user_id);
 drop policy if exists "Usuario atualiza o proprio contato" on public.user_contacts;
 create policy "Usuario atualiza o proprio contato" on public.user_contacts for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+drop policy if exists "Usuario insere o proprio contato" on public.user_contacts;
+create policy "Usuario insere o proprio contato" on public.user_contacts for insert to authenticated with check ((select auth.uid()) = user_id);
 drop policy if exists "Administrador ve contatos" on public.user_contacts;
 create policy "Administrador ve contatos" on public.user_contacts for select to authenticated using (public.current_user_is_admin());
 
 revoke all on public.user_contacts from anon;
 grant select on public.user_contacts to authenticated;
+grant insert (user_id, whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at, updated_at) on public.user_contacts to authenticated;
 grant update (whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at, updated_at) on public.user_contacts to authenticated;
 
 create or replace function public.admin_log_whatsapp_contact(p_target_user_id uuid)

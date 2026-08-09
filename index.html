@@ -18,8 +18,9 @@
       <section class="hero-panel">
         <div class="brand"><span class="brand-mark">✦</span> Estuda<span>+</span></div>
         <nav class="side-menu" aria-label="Menu principal">
-          <button type="button" data-side-nav="subjects"><span>⌂</span><b>Início</b></button>
-          <button type="button" data-side-nav="trail"><span>★</span><b>Aprender</b></button>
+          <button type="button" data-side-nav="subjects"><span>⌂</span><b>Aprenda Jogando</b></button>
+          <button type="button" data-side-nav="trail"><span>★</span><b>Configure seu estudo</b></button>
+          <button class="side-avatar-feature" type="button" data-side-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span><b>Meu avatar<small>PERSONALIZAR</small></b></button>
           <button class="side-material-feature" type="button" data-side-nav="material"><span>▣</span><b>Apostila<small>FOTO PARA QUIZ</small></b></button>
           <button type="button" data-side-nav="review"><span>↻</span><b>Revisar</b></button>
           <button type="button" data-side-nav="friends"><span>♧</span><b>Amigos</b><i id="side-friends-badge" hidden>0</i></button>
@@ -46,7 +47,7 @@
             <p id="auth-subtitle" class="subtitle">Crie sua conta para salvar fases, medalhas e evolução.</p>
             <div id="auth-switch" class="auth-switch" role="tablist" aria-label="Acesso à conta"><button id="show-login" class="auth-tab selected" type="button" role="tab" aria-controls="login-form" aria-selected="true">Entrar</button><button id="show-register" class="auth-tab" type="button" role="tab" aria-controls="register-form" aria-selected="false">Criar conta</button></div>
             <form id="login-form" class="auth-form">
-              <label>E-mail<input id="login-email" type="email" autocomplete="email" required placeholder="voce@email.com" /></label>
+              <label>E-mail<input id="login-email" type="email" autocomplete="username" required placeholder="voce@email.com" /></label>
               <label>Senha<span class="password-field"><input id="login-password" type="password" autocomplete="current-password" required placeholder="Sua senha" /><button class="password-toggle" type="button" data-password-target="login-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
               <div class="auth-form-links"><button id="show-recovery" class="auth-link" type="button">Esqueci minha senha</button></div>
               <button class="start-button" type="submit">Entrar na aventura <span>→</span></button>
@@ -80,11 +81,6 @@
         <div id="subject-screen" class="screen subject-screen">
           <div class="subject-welcome"><span class="eyebrow">ESTUDA+ AVENTURA</span><h2>Qual matéria vamos explorar?</h2><p class="subtitle">Escolha uma matéria para montar sua trilha de estudos.</p><button id="open-app-tutorial-home" class="tutorial-help-button is-light" type="button"><span aria-hidden="true">▷</span> Como usar o app</button></div>
           <section id="app-announcement" class="app-announcement" hidden aria-labelledby="app-announcement-title"><span aria-hidden="true">✦</span><div><strong id="app-announcement-title"></strong><p id="app-announcement-body"></p></div><button id="dismiss-announcement" type="button" aria-label="Fechar aviso">×</button></section>
-          <section class="avatar-home-card" aria-labelledby="avatar-home-title">
-            <div id="home-avatar-preview" class="avatar-home-preview"></div>
-            <div class="avatar-home-copy"><span>MEU PERSONAGEM</span><strong id="avatar-home-title">Crie seu avatar</strong><p id="avatar-home-progress">Personalize seu visual e desbloqueie novidades nas fases.</p></div>
-            <button id="open-avatar-studio-home" class="avatar-edit-button" type="button"><span aria-hidden="true">✦</span> Personalizar</button>
-          </section>
           <section class="subject-year-card" aria-label="Escolha do ano escolar">
             <div><span>PRIMEIRO PASSO</span><strong>Em qual ano você está?</strong><small>As matérias e questões serão organizadas para essa etapa.</small></div>
             <label>Ano escolar<select id="subject-school-year" aria-label="Ano escolar na escolha de matéria"></select></label>
@@ -131,25 +127,19 @@
               <label>Ano escolar
                 <select id="school-year" required></select>
               </label>
-              <label>Assunto <span class="optional-tag">Opcional</span>
+              <label class="topic-field">Assunto <span class="optional-tag">Opcional</span>
                 <input id="topic" placeholder="Deixe em branco para uma revisão geral" aria-describedby="topic-auto-hint" />
                 <small id="topic-auto-hint" class="input-help">Se ficar vazio, o app seleciona uma revisão adequada à matéria e ao ano.</small>
               </label>
-              <label>Sistema de ensino
-                <select id="curriculum">
-                  <option value="BNCC">BNCC (referência nacional)</option>
-                  <option value="Base Enem/Inep">Base Enem/Inep (questões públicas)</option>
-                  <option value="AZ">Sistema AZ — modo de estudo</option>
-                  <option value="COC">Sistema COC — modo de estudo</option>
-                  <option value="Anglo">Sistema Anglo — modo de estudo</option>
-                  <option value="SAS">Sistema SAS — modo de estudo</option>
-                  <option value="Personalizado">Material próprio / personalizado</option>
-                </select>
-              </label>
             </div>
+            <select id="curriculum" hidden aria-hidden="true" tabindex="-1">
+              <option value="BNCC">BNCC</option>
+              <option value="Base Enem/Inep">Base Enem/Inep</option>
+              <option value="Personalizado">Material próprio</option>
+            </select>
             <div id="topic-examples" class="topic-examples" aria-label="Sugestões de assunto"></div>
             <p id="school-year-hint" class="school-year-hint">As questões serão selecionadas de acordo com o ano escolar.</p>
-            <p id="curriculum-hint" class="curriculum-hint">Baseado nas habilidades gerais da BNCC para a etapa selecionada.</p>
+            <p id="curriculum-hint" class="curriculum-hint" hidden>Referência curricular selecionada automaticamente conforme o ano escolar.</p>
             <p id="question-bank-status" class="question-bank-promise" role="status"><span aria-hidden="true">∞</span><strong>Banco inteligente sem repetição</strong> — centenas de exercícios por matéria e ano, com histórico salvo no seu perfil.</p>
             <fieldset>
               <legend>Dificuldade</legend>
@@ -205,6 +195,10 @@
           <div class="trophy">🏆</div><span class="eyebrow">DESAFIO CONCLUÍDO</span>
           <h2 id="result-title">Mandou muito bem!</h2>
           <p id="result-message" class="subtitle"></p>
+          <section class="avatar-result-companion" aria-label="Mensagem do seu avatar">
+            <button id="avatar-result-interact" type="button" aria-label="Comemorar com seu avatar"><span id="result-avatar-preview"></span></button>
+            <div><span id="result-avatar-name">SEU PARCEIRO</span><strong id="result-avatar-cheer">Eu sabia que você conseguiria!</strong><small>Toque no avatar para comemorar com ele.</small></div>
+          </section>
           <div id="phase-result" class="phase-result"></div>
           <section id="avatar-unlock-result" class="avatar-unlock-result" hidden aria-live="polite">
             <div id="avatar-unlock-icons" class="avatar-unlock-icons" aria-hidden="true"></div>
@@ -222,7 +216,38 @@
           <section class="profile-card">
             <div id="profile-avatar" class="profile-avatar"></div><div><strong id="profile-name">Explorador</strong><span id="profile-points">0 pontos acumulados</span></div><button id="logout-user" class="logout-button disconnect-button" type="button" aria-label="Desconectar do Estuda+"><span aria-hidden="true">↪</span> Desconectar</button>
           </section>
-          <section id="admin-access-card" class="admin-access-card" hidden><div><span>PAINEL PROTEGIDO</span><strong>Administração do Estuda+</strong><p>Acompanhe usuários, avisos, desempenho e segurança da plataforma.</p></div><button id="open-admin-panel" type="button">Abrir administração</button></section>
+          <section id="admin-access-card" class="admin-access-card" hidden><div><span>ACESSO: ADMIN@ESTUDEMAIS.NET</span><strong>Administração do Estuda+</strong><p>Acompanhe usuários, avisos, desempenho e segurança. A senha não fica exposta no site.</p></div><div class="admin-access-actions"><button id="open-admin-panel" type="button">Abrir administração</button><button id="change-admin-password" type="button">Alterar senha</button></div></section>
+          <h3>Dados do perfil</h3>
+          <section class="profile-data-card" aria-labelledby="profile-data-title">
+            <header><div class="profile-data-heading"><span aria-hidden="true">✓</span><div><small>CONTA E CONTATO</small><strong id="profile-data-title">Confira seus dados</strong><p>Mantenha essas informações atualizadas para recuperar o acesso e receber suporte.</p></div></div><button id="edit-profile-data" type="button">Editar dados</button></header>
+            <div id="profile-data-summary" class="profile-data-summary">
+              <article><span>NOME</span><strong id="profile-data-name">—</strong></article>
+              <article><span>E-MAIL</span><strong id="profile-data-email">—</strong></article>
+              <article><span>FORMA DE ENTRADA</span><strong id="profile-data-access">E-mail</strong></article>
+              <article><span>ANO ESCOLAR</span><strong id="profile-data-year">—</strong></article>
+              <article id="profile-data-whatsapp-card"><span>WHATSAPP</span><strong id="profile-data-whatsapp">Não informado</strong><small id="profile-data-whatsapp-consent">Cadastre um número para suporte.</small></article>
+            </div>
+            <form id="profile-data-form" class="profile-data-form" hidden>
+              <div class="profile-data-form-grid">
+                <label>Nome ou apelido<input id="profile-edit-name" maxlength="80" autocomplete="name" required></label>
+                <label>E-mail da conta<input id="profile-edit-email" type="email" readonly aria-readonly="true"></label>
+                <label>Ano escolar<select id="profile-school-year"></select></label>
+                <label>WhatsApp do usuário ou responsável<input id="profile-edit-whatsapp" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999"></label>
+              </div>
+              <label class="profile-contact-consent"><input id="profile-edit-whatsapp-opt-in" type="checkbox"> Autorizo receber avisos importantes e novidades do Estuda+ pelo WhatsApp.</label>
+              <div class="profile-data-actions"><button id="cancel-profile-data" type="button">Cancelar</button><button type="submit">Salvar alterações <span>✓</span></button></div>
+            </form>
+            <section class="profile-security-block" aria-labelledby="profile-security-title">
+              <div><span>SEGURANÇA</span><strong id="profile-security-title">Senha da conta</strong><p id="profile-security-copy">Você pode trocar sua senha sem sair do aplicativo.</p></div><button id="toggle-profile-password" type="button" aria-expanded="false" aria-controls="profile-password-form">Alterar senha</button>
+              <form id="profile-password-form" hidden>
+                <label>Senha atual<span class="password-field"><input id="profile-current-password" type="password" autocomplete="current-password" minlength="6" required><button class="password-toggle" type="button" data-password-target="profile-current-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
+                <label>Nova senha<span class="password-field"><input id="profile-new-password" type="password" autocomplete="new-password" minlength="8" required placeholder="Pelo menos 8 caracteres"><button class="password-toggle" type="button" data-password-target="profile-new-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
+                <label>Confirmar nova senha<span class="password-field"><input id="profile-confirm-password" type="password" autocomplete="new-password" minlength="8" required><button class="password-toggle" type="button" data-password-target="profile-confirm-password" aria-label="Mostrar senha" aria-pressed="false"><span aria-hidden="true">👁</span></button></span></label>
+                <div class="profile-data-actions"><button id="cancel-profile-password" type="button">Cancelar</button><button type="submit">Atualizar senha <span>✓</span></button></div>
+              </form>
+            </section>
+            <p id="profile-data-status" class="profile-data-status" role="status" aria-live="polite"></p>
+          </section>
           <section class="dashboard-stats" aria-label="Resumo de desempenho"><article><span>PRECISÃO</span><strong id="accuracy-stat">—</strong><small>acertos gerais</small></article><article><span>REVISÕES</span><strong id="due-review-stat">0</strong><small>para hoje</small></article><article><span>SEMANA</span><strong id="weekly-stat">0</strong><small>questões feitas</small></article></section>
           <section class="focus-card"><div><span class="eyebrow">PLANO ENEM</span><strong>Ritmo consistente vence a pressa.</strong><p id="focus-goal-copy">Faça um pouco por dia e use os erros para decidir o que revisar.</p></div><button id="open-review-from-dashboard" type="button">Ver revisões</button></section>
           <h3>Meu avatar</h3>
@@ -356,11 +381,27 @@
         </header>
         <div class="avatar-studio-layout">
           <section class="avatar-preview-stage" aria-label="Prévia do avatar">
+            <span id="avatar-preview-bubble" class="avatar-preview-bubble">Pronto para a próxima aventura!</span>
             <div id="avatar-studio-preview" class="avatar-studio-preview"></div>
             <strong id="avatar-preview-name">Seu explorador</strong>
             <span id="avatar-next-unlock">A próxima fase libera uma novidade.</span>
+            <div class="avatar-reaction-controls" aria-label="Testar reações do avatar">
+              <button type="button" data-avatar-reaction="wave"><span aria-hidden="true">👋</span> Acenar</button>
+              <button type="button" data-avatar-reaction="celebrate"><span aria-hidden="true">🎉</span> Celebrar</button>
+              <button type="button" data-avatar-reaction="focus"><span aria-hidden="true">💡</span> Foco</button>
+            </div>
           </section>
           <section class="avatar-editor-controls">
+            <label class="avatar-name-field">Como seu avatar quer ser chamado?<input id="avatar-nickname" type="text" maxlength="24" autocomplete="off" placeholder="Ex.: Lumin, Bia, Astro"></label>
+            <fieldset class="avatar-gender-card">
+              <legend>Escolha o gênero do avatar</legend>
+              <p>Essa escolha define a apresentação inicial. Todas as roupas, cabelos e acessórios continuam disponíveis.</p>
+              <div id="avatar-gender-choice" class="avatar-gender-choice">
+                <button type="button" data-avatar-presentation="masculine" aria-pressed="false"><span aria-hidden="true">♂</span><strong>Masculino</strong><small>Avatar masculino</small></button>
+                <button type="button" data-avatar-presentation="feminine" aria-pressed="false"><span aria-hidden="true">♀</span><strong>Feminino</strong><small>Avatar feminino</small></button>
+              </div>
+            </fieldset>
+            <p class="avatar-choice-note"><span aria-hidden="true">♥</span> O estilo masculino ou feminino muda a apresentação, mas todos os cabelos, roupas e acessórios ficam disponíveis para qualquer avatar.</p>
             <div id="avatar-category-tabs" class="avatar-category-tabs" role="tablist" aria-label="Parte do avatar"></div>
             <div id="avatar-option-grid" class="avatar-option-grid" role="tabpanel" aria-live="polite"></div>
             <p id="avatar-studio-status" class="avatar-studio-status" role="status" aria-live="polite"></p>
@@ -396,22 +437,36 @@
       </section>
     </div>
     <div id="chat-modal" class="modal-backdrop chat-backdrop" hidden>
-      <section class="modal-panel chat-panel" role="dialog" aria-modal="true" aria-labelledby="chat-friend-name">
-        <header class="chat-heading"><button id="close-chat" class="modal-close" type="button" aria-label="Fechar conversa">×</button><div id="chat-friend-avatar" class="chat-friend-avatar" aria-hidden="true">☺</div><div><span id="chat-presence-label">AMIGO DE ESTUDO</span><h2 id="chat-friend-name">Conversa</h2></div><button id="chat-options" type="button" aria-expanded="false" aria-controls="chat-options-menu">•••</button></header>
+      <section class="modal-panel chat-panel" role="dialog" aria-modal="false" aria-labelledby="chat-friend-name">
+        <header class="chat-heading">
+          <div id="chat-drag-handle" class="chat-drag-handle" tabindex="0" role="group" aria-label="Mover a conversa. Arraste ou use as setas do teclado" title="Arraste para mover a conversa">
+            <div id="chat-friend-avatar" class="chat-friend-avatar" aria-hidden="true">☺</div>
+            <div class="chat-friend-copy"><span id="chat-presence-label">AMIGO DE ESTUDO</span><h2 id="chat-friend-name">Conversa</h2></div>
+          </div>
+          <div class="chat-window-actions">
+            <b id="chat-unread-badge" class="chat-unread-badge" aria-label="Novas mensagens" hidden>0</b>
+            <button id="chat-sound-toggle" class="chat-window-button" type="button" aria-pressed="true" aria-label="Silenciar som de novas mensagens" title="Silenciar notificações">🔊</button>
+            <button id="chat-minimize" class="chat-window-button" type="button" aria-label="Minimizar conversa" title="Minimizar conversa">—</button>
+            <button id="chat-options" class="chat-window-button" type="button" aria-label="Opções da conversa" aria-expanded="false" aria-controls="chat-options-menu">•••</button>
+            <button id="close-chat" class="chat-window-button chat-close-button" type="button" aria-label="Encerrar e fechar conversa" title="Fechar conversa">×</button>
+          </div>
+        </header>
         <div id="chat-options-menu" class="chat-options-menu" hidden><button id="block-chat-user" type="button">Bloquear pessoa</button><button id="report-chat-user" type="button">Denunciar conversa</button><button id="remove-chat-friend" type="button">Remover amizade</button></div>
         <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Mensagens da conversa"></div>
         <div id="chat-question-preview" class="chat-question-preview" hidden><div><span>DÚVIDA DO QUIZ</span><strong id="chat-question-text"></strong></div><button id="remove-chat-question" type="button" aria-label="Remover questão">×</button></div>
         <div class="quick-replies" aria-label="Respostas rápidas"><button type="button" data-quick-reply="Posso explicar 😊">Posso explicar</button><button type="button" data-quick-reply="Vamos resolver juntos!">Vamos resolver juntos</button><button type="button" data-quick-reply="Qual etapa ficou difícil?">Qual etapa?</button></div>
-        <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Mensagem</label><textarea id="chat-input" rows="1" maxlength="1000" placeholder="Escreva uma dúvida ou explicação…"></textarea><button type="submit" aria-label="Enviar mensagem">➤</button></form>
+        <form id="chat-form" class="chat-form"><label class="sr-only" for="chat-input">Mensagem</label><textarea id="chat-input" rows="5" maxlength="1000" placeholder="Escreva sua dúvida ou explicação com detalhes…"></textarea><button type="submit" aria-label="Enviar mensagem">➤</button></form>
         <p id="chat-status" class="chat-status" role="status"></p>
+        <p id="chat-live-alert" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></p>
       </section>
     </div>
     <div id="admin-user-modal" class="modal-backdrop admin-user-backdrop" hidden>
       <section class="modal-panel admin-user-panel" role="dialog" aria-modal="true" aria-labelledby="admin-user-name"><button id="close-admin-user" class="modal-close" type="button" aria-label="Fechar detalhes">×</button><span class="eyebrow">GERENCIAR USUÁRIO</span><h2 id="admin-user-name">Usuário</h2><p id="admin-user-summary"></p><div class="admin-user-actions"><button id="admin-toggle-user-status" type="button"></button><button id="admin-toggle-user-chat" type="button"></button></div><section class="admin-whatsapp-card"><div><span>WHATSAPP CADASTRADO</span><strong id="admin-user-whatsapp">Não informado</strong><small id="admin-user-whatsapp-consent">Sem autorização para receber novidades.</small></div><label>Mensagem<textarea id="admin-whatsapp-message" maxlength="700" placeholder="Escreva a atualização que deseja enviar."></textarea></label><button id="admin-open-whatsapp" type="button">Abrir conversa no WhatsApp <span>↗</span></button></section><label>Observação interna<textarea id="admin-user-note" maxlength="500" placeholder="Anotação visível somente para administradores."></textarea></label><button id="admin-save-user-note" class="start-button" type="button">Salvar observação <span>✓</span></button><small>O envio é confirmado pelo administrador no WhatsApp. Senhas e conversas privadas não ficam disponíveis nesta página.</small></section>
     </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
-      <button type="button" data-nav="subjects"><span>⌂</span>Início</button>
-      <button type="button" data-nav="trail"><span>⌁</span>Trilha</button>
+      <button type="button" data-nav="subjects"><span>⌂</span>Aprenda Jogando</button>
+      <button type="button" data-nav="trail"><span>⌁</span>Configurar</button>
+      <button class="avatar-nav-button" type="button" data-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span>Avatar</button>
       <button class="material-nav-button" type="button" data-nav="material"><span>▣</span>Apostila</button>
       <button type="button" data-nav="review"><span>↻</span>Revisar<b id="nav-review-badge" hidden>0</b></button>
       <button type="button" data-nav="friends"><span>♧</span>Amigos<b id="nav-friends-badge" hidden>0</b></button>

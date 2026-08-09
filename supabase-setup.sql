@@ -397,6 +397,10 @@ drop policy if exists "Usuario atualiza o proprio contato" on public.user_contac
 create policy "Usuario atualiza o proprio contato" on public.user_contacts for update to authenticated
 using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
+drop policy if exists "Usuario insere o proprio contato" on public.user_contacts;
+create policy "Usuario insere o proprio contato" on public.user_contacts for insert to authenticated
+with check ((select auth.uid()) = user_id);
+
 drop policy if exists "Administrador ve contatos" on public.user_contacts;
 create policy "Administrador ve contatos" on public.user_contacts for select to authenticated
 using (public.current_user_is_admin());
@@ -431,6 +435,7 @@ grant select on public.app_announcements to authenticated;
 grant select on public.admin_audit_log to authenticated;
 revoke all on public.user_contacts from anon;
 grant select on public.user_contacts to authenticated;
+grant insert (user_id, whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at, updated_at) on public.user_contacts to authenticated;
 grant update (whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at, updated_at) on public.user_contacts to authenticated;
 grant usage, select on sequence public.admin_audit_log_id_seq to authenticated;
 
