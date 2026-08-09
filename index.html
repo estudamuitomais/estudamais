@@ -41,6 +41,54 @@
 
       <section class="content-panel">
         <div id="auth-screen" class="screen active auth-screen">
+          <section id="landing-home" class="landing-home" aria-labelledby="landing-title">
+            <header class="landing-header">
+              <a class="landing-brand" href="#landing-hero" aria-label="Estuda Mais - início"><span aria-hidden="true">🦉</span><strong>estuda<em>mais</em></strong></a>
+              <nav class="landing-navigation" aria-label="Navegação da apresentação">
+                <button type="button" data-landing-scroll="landing-hero">Início</button>
+                <button type="button" data-landing-scroll="landing-benefits">Questões</button>
+                <button type="button" data-landing-scroll="landing-ranking-feature">Ranking</button>
+                <button type="button" data-landing-scroll="landing-plan-feature">Planos</button>
+              </nav>
+              <div class="landing-account-actions">
+                <button class="landing-login-button" type="button" data-open-auth="login">Entrar</button>
+                <button class="landing-register-button" type="button" data-open-auth="register">Criar conta</button>
+              </div>
+            </header>
+
+            <main id="landing-hero" class="landing-hero">
+              <div class="landing-copy">
+                <span class="landing-kicker">APRENDA JOGANDO</span>
+                <h1 id="landing-title" tabindex="-1">Estude de forma <em>inteligente e divertida</em></h1>
+                <p>Questões comentadas, trilhas por matéria, pontos, medalhas e um avatar que evolui junto com você.</p>
+                <div class="landing-hero-actions">
+                  <button class="landing-primary-action" type="button" data-open-auth="register">Começar agora <span aria-hidden="true">→</span></button>
+                  <button class="landing-secondary-action" type="button" data-open-auth="login">Já tenho uma conta</button>
+                </div>
+                <div class="landing-trust-row" aria-label="Destaques do Estuda Mais"><span>✓ Questões comentadas</span><span>✓ Progresso salvo</span><span>✓ Acesso pelo celular</span></div>
+              </div>
+
+              <div class="landing-mascot-stage" aria-label="Corujinha, companheira de estudos do Estuda Mais">
+                <span class="landing-decoration landing-trophy" aria-hidden="true">🏆</span>
+                <span class="landing-decoration landing-medal" aria-hidden="true">🏅</span>
+                <span class="landing-decoration landing-book" aria-hidden="true">📘</span>
+                <span class="landing-decoration landing-star" aria-hidden="true">★</span>
+                <div class="landing-glow" aria-hidden="true"></div>
+                <div class="landing-owl" aria-hidden="true">🦉</div>
+                <div class="landing-level-card"><span>SEU PRÓXIMO NÍVEL</span><strong>Aprenda, pontue e evolua</strong><i><b></b></i></div>
+              </div>
+            </main>
+
+            <section id="landing-benefits" class="landing-benefits" aria-label="Benefícios do Estuda Mais">
+              <article><span aria-hidden="true">▣</span><div><strong>Questões variadas</strong><small>Por matéria e ano escolar</small></div></article>
+              <article><span aria-hidden="true">☵</span><div><strong>Correções comentadas</strong><small>Entenda cada resposta</small></div></article>
+              <article id="landing-ranking-feature"><span aria-hidden="true">♛</span><div><strong>Ranking e pontos</strong><small>Conquiste medalhas</small></div></article>
+              <article id="landing-plan-feature"><span aria-hidden="true">▤</span><div><strong>Plano de estudo</strong><small>Avance no seu ritmo</small></div></article>
+            </section>
+          </section>
+
+          <section id="landing-auth-shell" class="landing-auth-shell" hidden aria-label="Acesso ao Estuda Mais">
+            <button id="close-landing-auth" class="landing-auth-back" type="button"><span aria-hidden="true">←</span> Voltar para o início</button>
           <section class="auth-card">
             <span class="eyebrow">BEM-VINDO AO ESTUDA+</span>
             <h2 id="auth-title">Uma aventura de estudos começa aqui.</h2>
@@ -75,6 +123,7 @@
             </form>
             <p id="auth-notice" class="auth-notice" role="status"></p>
             <small class="auth-footnote">Conta protegida pelo Supabase. Seu progresso é salvo neste dispositivo e sincronizado com sua conta.</small>
+          </section>
           </section>
         </div>
 

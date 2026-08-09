@@ -1530,9 +1530,34 @@ function resetPasswordVisibility() {
     const icon = button.querySelector('[aria-hidden="true"]'); if (icon) icon.textContent = '👁';
   });
 }
+let landingAuthReturnFocus = null;
+function showLandingAuth() {
+  const home = el('landing-home'), shell = el('landing-auth-shell');
+  if (!home || !shell) return;
+  if (shell.hidden) landingAuthReturnFocus = document.activeElement;
+  home.hidden = true;
+  shell.hidden = false;
+  document.body.classList.add('landing-auth-open');
+}
+function showLandingHome() {
+  const home = el('landing-home'), shell = el('landing-auth-shell');
+  if (!home || !shell) return;
+  shell.hidden = true;
+  home.hidden = false;
+  document.body.classList.remove('landing-auth-open');
+  resetPasswordVisibility();
+  showAuthNotice('');
+  show('auth-screen', { historyMode: 'replace', focusHeading: false });
+  requestAnimationFrame(() => {
+    (landingAuthReturnFocus?.isConnected ? landingAuthReturnFocus : el('landing-title'))?.focus?.({ preventScroll: true });
+    landingAuthReturnFocus = null;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  });
+}
 function setAuthMode(mode, navigationOptions = {}) {
   const forms = { login: 'login-form', register: 'register-form', recovery: 'recovery-form', reset: 'new-password-form' };
   if (!forms[mode]) mode = 'login';
+  showLandingAuth();
   Object.entries(forms).forEach(([name, id]) => { el(id).hidden = name !== mode; });
   const regularMode = mode === 'login' || mode === 'register';
   el('auth-switch').hidden = !regularMode;
@@ -1556,6 +1581,12 @@ function setAuthMode(mode, navigationOptions = {}) {
   const focusTargets = { login: 'login-email', register: 'register-name', recovery: 'recovery-email', reset: 'new-password' };
   setTimeout(() => el(focusTargets[mode])?.focus(), 0);
 }
+document.querySelectorAll('[data-open-auth]').forEach((button) => button.addEventListener('click', () => setAuthMode(button.dataset.openAuth || 'login')));
+document.querySelectorAll('[data-landing-scroll]').forEach((button) => button.addEventListener('click', () => {
+  const target = el(button.dataset.landingScroll);
+  target?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' });
+}));
+el('close-landing-auth')?.addEventListener('click', showLandingHome);
 el('show-login').addEventListener('click', () => setAuthMode('login'));
 el('show-register').addEventListener('click', () => setAuthMode('register'));
 el('show-recovery').addEventListener('click', () => setAuthMode('recovery'));
