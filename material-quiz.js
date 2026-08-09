@@ -109,6 +109,42 @@
     return { subject, overview, keyPoints, numericalFacts, keywords, sourceSentenceCount: sentences.length, selectedSentenceCount: points.length, plainText: lines.join('\n') };
   }
 
+  function buildMindMap(text, subject = 'Conteúdo da apostila', preparedSummary = null) {
+    const normalizedText = normalize(text);
+    const summaryData = preparedSummary || buildSummary(normalizedText, subject);
+    const sourceSentences = sentencesFrom(normalizedText);
+    const importantSentences = [...summaryData.overview, ...summaryData.keyPoints];
+    const candidates = summaryData.keywords.map((term) => {
+      const normalizedTerm = term.toLocaleLowerCase('pt-BR');
+      const details = importantSentences.filter((sentence) => sentence.toLocaleLowerCase('pt-BR').includes(normalizedTerm));
+      const fallback = sourceSentences.filter((sentence) => sentence.toLocaleLowerCase('pt-BR').includes(normalizedTerm));
+      return { term, details: (details.length ? details : fallback).slice(0, 2), coverage: details.length || fallback.length };
+    }).filter((candidate) => candidate.details.length);
+    candidates.sort((a, b) => b.coverage - a.coverage || b.term.length - a.term.length);
+    const branches = [];
+    candidates.forEach((candidate) => {
+      if (branches.length >= 6) return;
+      const lower = candidate.term.toLocaleLowerCase('pt-BR');
+      const overlaps = branches.some((branch) => {
+        const existing = branch.label.toLocaleLowerCase('pt-BR');
+        return existing.includes(lower) || lower.includes(existing);
+      });
+      if (!overlaps) branches.push({ label: candidate.term.charAt(0).toLocaleUpperCase('pt-BR') + candidate.term.slice(1), details: candidate.details });
+    });
+    if (branches.length < 3) {
+      importantSentences.forEach((sentence) => {
+        if (branches.length >= 6) return;
+        const label = wordTokens(sentence).filter((word) => !stopWords.has(word)).sort((a, b) => b.length - a.length)[0];
+        if (!label || branches.some((branch) => branch.label.toLocaleLowerCase('pt-BR') === label)) return;
+        branches.push({ label: label.charAt(0).toLocaleUpperCase('pt-BR') + label.slice(1), details: [sentence] });
+      });
+    }
+    if (branches.length < 3) throw new Error('O texto ainda não tem conceitos suficientes para montar um mapa mental confiável.');
+    const lines = [`MAPA MENTAL — ${subject}`, '', `TEMA CENTRAL: ${subject}`];
+    branches.forEach((branch) => lines.push('', `↳ ${branch.label}`, ...branch.details.map((detail) => `  • ${detail}`)));
+    return { subject, branches, plainText: lines.join('\n') };
+  }
+
   async function imageForOcr(file) {
     const bitmap = globalThis.createImageBitmap ? await globalThis.createImageBitmap(file) : await new Promise((resolve, reject) => {
       const image = new Image();
@@ -287,6 +323,7 @@
         const subject = byId('material-subject').value; const text = normalize(byId('material-extracted-text').value);
         if (!byId('material-text-confirmed').checked || text !== confirmedSnapshot) throw new Error('Confirme que você revisou o texto antes de criar o resumo.');
         summary = buildSummary(text, subject);
+        summary.mindMap = buildMindMap(text, subject, summary);
         const content = byId('material-summary-content'); content.innerHTML = '';
         const appendSection = (title, values, className = '') => {
           if (!values.length) return;
@@ -299,8 +336,29 @@
         appendSection('Pontos principais', summary.keyPoints);
         appendSection('Datas, números e fórmulas', summary.numericalFacts, 'material-summary-numbers');
         appendSection('Termos importantes', summary.keywords, 'material-summary-keywords');
+        const map = byId('material-mind-map-content'); map.innerHTML = '';
+        const center = document.createElement('div'); center.className = 'material-mind-map-center';
+        const centerKicker = document.createElement('span'); centerKicker.textContent = 'TEMA CENTRAL';
+        const centerTitle = document.createElement('strong'); centerTitle.textContent = summary.mindMap.subject;
+        center.append(centerKicker, centerTitle);
+        const branches = document.createElement('div'); branches.className = 'material-mind-map-branches';
+        summary.mindMap.branches.forEach((branch, index) => {
+          const article = document.createElement('article'); article.dataset.tone = String((index % 6) + 1);
+          const button = document.createElement('button'); button.type = 'button'; button.setAttribute('aria-expanded', String(index === 0));
+          const number = document.createElement('span'); number.textContent = String(index + 1).padStart(2, '0');
+          const label = document.createElement('strong'); label.textContent = branch.label;
+          const action = document.createElement('i'); action.textContent = index === 0 ? '−' : '+'; action.setAttribute('aria-hidden', 'true');
+          button.append(number, label, action);
+          const detailBox = document.createElement('div'); detailBox.className = 'material-mind-map-details'; detailBox.hidden = index !== 0;
+          const list = document.createElement('ul');
+          branch.details.forEach((detail) => { const item = document.createElement('li'); item.textContent = detail; list.append(item); });
+          detailBox.append(list); article.append(button, detailBox); article.classList.toggle('active', index === 0);
+          button.addEventListener('click', () => { const expanded = button.getAttribute('aria-expanded') === 'true'; button.setAttribute('aria-expanded', String(!expanded)); action.textContent = expanded ? '+' : '−'; detailBox.hidden = expanded; article.classList.toggle('active', !expanded); });
+          branches.append(article);
+        });
+        map.append(center, branches);
         byId('material-summary-meta').textContent = `${summary.selectedSentenceCount} de ${summary.sourceSentenceCount} frases essenciais, preservadas do texto conferido.`;
-        byId('material-summary-panel').hidden = false; status('Resumo completo criado somente com informações presentes no texto revisado.');
+        byId('material-summary-panel').hidden = false; status('Resumo e mapa mental criados somente com informações presentes no texto revisado.');
         byId('material-summary-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) { status(error.message, true); }
     }
@@ -309,15 +367,21 @@
       try { await navigator.clipboard.writeText(summary.plainText); byId('copy-material-summary').textContent = 'Resumo copiado ✓'; setTimeout(() => { byId('copy-material-summary').textContent = 'Copiar resumo'; }, 1800); }
       catch { status('Não foi possível copiar automaticamente. Selecione o resumo e copie manualmente.', true); }
     }
+    async function copyMindMap() {
+      if (!summary?.mindMap) return;
+      try { await navigator.clipboard.writeText(summary.mindMap.plainText); byId('copy-material-mind-map').textContent = 'Mapa copiado ✓'; setTimeout(() => { byId('copy-material-mind-map').textContent = 'Copiar mapa'; }, 1800); }
+      catch { status('Não foi possível copiar o mapa automaticamente.', true); }
+    }
     byId('material-images')?.addEventListener('change', (event) => { files = [...event.target.files]; summary = null; confirmedSnapshot = ''; byId('material-extracted-text').value = ''; byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; try { validateFiles(files); status(`${files.length} foto(s) selecionada(s). Agora toque em “Ler as fotos”.`); } catch (error) { files = []; event.target.value = ''; status(error.message, true); } updatePreview(); setCreationEnabled(); });
     byId('material-extracted-text')?.addEventListener('input', () => { if (byId('material-text-confirmed').checked) byId('material-text-confirmed').checked = false; confirmedSnapshot = ''; byId('material-summary-panel').hidden = true; setCreationEnabled(); status('Texto alterado. Confira novamente e marque a confirmação para continuar.'); });
     byId('material-text-confirmed')?.addEventListener('change', (event) => { confirmedSnapshot = event.target.checked ? normalize(byId('material-extracted-text').value) : ''; setCreationEnabled(); if (event.target.checked) status('Texto confirmado. Agora você pode criar o resumo completo ou o quiz.'); });
     byId('read-material-images')?.addEventListener('click', readImages);
     byId('generate-material-summary')?.addEventListener('click', renderSummary);
     byId('copy-material-summary')?.addEventListener('click', copySummary);
+    byId('copy-material-mind-map')?.addEventListener('click', copyMindMap);
     byId('material-quiz-form')?.addEventListener('submit', submit);
-    return { reset() { files = []; summary = null; confirmedSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-image-preview').innerHTML = ''; byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; status(''); }, buildQuestions, buildSummary };
+    return { reset() { files = []; summary = null; confirmedSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-image-preview').innerHTML = ''; byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; status(''); }, buildQuestions, buildSummary, buildMindMap };
   }
 
-  window.EstudaMaterialQuiz = { create, buildQuestions, buildSummary, scoreOcrResult };
+  window.EstudaMaterialQuiz = { create, buildQuestions, buildSummary, buildMindMap, scoreOcrResult };
 })();
