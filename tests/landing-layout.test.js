@@ -21,6 +21,7 @@ assert.ok(app.includes("document.querySelectorAll('[data-landing-scroll]')"), 'a
 
 assert.ok(css.includes('/* Nova entrada Estuda+:'), 'o visual da nova entrada deve ficar documentado');
 assert.ok(css.includes('.landing-brand strong b { color: #17121f;') && css.includes('.landing-brand em { color: #7c3aed;'), 'a palavra estuda deve ficar preta e o símbolo mais roxo');
+assert.ok(css.includes('border: 2px solid #e0d5fb;') && css.includes('background: linear-gradient(145deg, #fdfcff, #eee9ff);'), 'o mascote deve ficar dentro de um bloco claro e arredondado');
 assert.ok(css.includes('.landing-hero {') && css.includes('.landing-mascot-stage {'), 'a composição principal e o avatar devem ter estilos dedicados');
 assert.ok(!/\.auth-screen,\s*\r?\n\.auth-screen\.active/.test(css), 'a tela de acesso não pode continuar visível após a navegação');
 assert.ok(css.includes('.auth-screen:not(.active) { display: none !important; }'), 'a tela de acesso inativa deve ser ocultada explicitamente');
