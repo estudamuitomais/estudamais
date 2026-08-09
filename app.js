@@ -18,7 +18,7 @@ let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.loca
 const gradeContent = window.EstudaGradeContent;
 const questionEngine = window.EstudaQuestionExpansion;
 const avatarStudio = window.EstudaAvatarStudio;
-const APP_TUTORIAL_VERSION = 2;
+const APP_TUTORIAL_VERSION = 3;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
 let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null, avatarReactionTimer = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
@@ -27,11 +27,14 @@ const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModa
 const materialQuiz = window.EstudaMaterialQuiz?.create({ onStart: startMaterialQuiz });
 
 const tutorialSteps = [
-  { kicker: 'COMECE AQUI', title: 'Escolha seu ano e uma matéria', description: 'O Estuda+ organiza a aventura de acordo com a etapa escolar da criança.', kind: 'subjects', tips: ['Selecione o ano escolar na tela inicial.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar essas escolhas sempre que quiser.'] },
-  { kicker: 'MONTE SUA TRILHA', title: 'Personalize o desafio', description: 'Antes de começar, escolha como será a rodada de estudos.', kind: 'path', tips: ['O assunto é opcional: em branco, o app faz uma revisão geral.', 'A referência curricular é definida automaticamente pelo ano escolar.', 'Escolha a dificuldade e o formato; cada fase reúne 10 questões variadas.'] },
-  { kicker: 'APRENDA FAZENDO', title: 'Responda e entenda cada solução', description: 'Não basta saber se acertou: o comentário mostra como pensar melhor.', kind: 'question', tips: ['Há cinco alternativas e somente uma resposta correta.', 'Use “Passo a passo” e “Aprofundar” depois de responder.', 'Marque questões difíceis para revisar mais tarde.'] },
-  { kicker: 'EVOLUA NA AVENTURA', title: 'Conclua fases e transforme seu avatar', description: 'Com 7 acertos ou mais, a próxima fase fica disponível e seu parceiro de estudos ganha novidades.', kind: 'avatar', tips: ['Escolha estilo masculino ou feminino, nome, cabelo, olhos e expressão.', 'Roupas, acessórios, companheiros e cenários são conquistados nas fases.', 'Toque no avatar para ele acenar, comemorar e incentivar você.'] },
-  { kicker: 'CONTINUE CRESCENDO', title: 'Acompanhe o progresso e revise', description: 'O Perfil reúne conquistas, desempenho e os temas que merecem atenção.', kind: 'progress', tips: ['Complete missões curtas e acompanhe a evolução por matéria.', 'O caderno de erros traz conteúdos de volta no momento certo.', 'Adultos e professores podem identificar temas para sugerir revisão.'] }
+  { kicker: 'APRENDA JOGANDO', title: 'Escolha seu ano e uma matéria', description: 'Sua aventura começa com conteúdos adequados à etapa escolar.', kind: 'subjects', tips: ['Selecione o ano escolar na tela Aprenda Jogando.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar as escolhas antes de iniciar uma nova trilha.'] },
+  { kicker: 'CONFIGURE SEU ESTUDO', title: 'Monte um desafio do seu jeito', description: 'Ajuste a rodada sem precisar conhecer termos complicados.', kind: 'config', tips: ['O assunto é opcional: deixe em branco para uma revisão geral.', 'Escolha a dificuldade e entre os modos Guiado ou Simulado.', 'A referência BNCC ou Inep/Enem é definida automaticamente pelo ano.'] },
+  { kicker: 'TRILHA DA AVENTURA', title: 'Complete fases e abra caminhos', description: 'Cada etapa é uma missão curta, clara e com objetivo visível.', kind: 'path', tips: ['Cada fase reúne 10 questões variadas sobre o conteúdo escolhido.', 'Acerte pelo menos 7 de 10 questões para liberar a próxima fase.', 'As fases começam em preto e branco e ganham cor quando concluídas.'] },
+  { kicker: 'APRENDA COM O ERRO', title: 'Entenda cada resposta', description: 'O resultado vem acompanhado de explicação para transformar tentativa em aprendizado.', kind: 'question', tips: ['Cada questão tem cinco alternativas e somente uma correta.', 'Use Passo a passo e Aprofundar depois de responder.', 'Salve ou marque questões para voltar ao conteúdo mais tarde.'] },
+  { kicker: 'SUA APOSTILA', title: 'Transforme fotos em estudo', description: 'Use o próprio material escolar para criar uma revisão mais precisa.', kind: 'material', tips: ['Envie fotos nítidas e confira o texto reconhecido antes de gerar.', 'Crie um quiz de 10 questões baseado somente no material enviado.', 'Gere também um resumo completo e um mapa mental do conteúdo.'] },
+  { kicker: 'SEU COMPANHEIRO', title: 'Crie e evolua seu avatar', description: 'O avatar acompanha as conquistas e deixa a rotina mais pessoal.', kind: 'avatar', tips: ['Escolha estilo masculino ou feminino, nome, cabelo, olhos e expressão.', 'Roupas, acessórios, companheiros e cenários são liberados nas fases.', 'Toque no avatar para receber reações e incentivos.'] },
+  { kicker: 'AMIGOS DE ESTUDO', title: 'Tire dúvidas com quem você conhece', description: 'Estudar junto pode deixar um conteúdo difícil mais leve.', kind: 'friends', tips: ['Adicione apenas pessoas conhecidas e aceite convites com cuidado.', 'A conversa flutuante avisa quando chega uma nova mensagem.', 'Compartilhe uma questão e conversem sobre o raciocínio, não só a resposta.'] },
+  { kicker: 'CONTINUE CRESCENDO', title: 'Acompanhe, revise e conquiste', description: 'Seu progresso mostra o esforço de hoje e o melhor próximo passo.', kind: 'progress', tips: ['Complete missões curtas e acompanhe a evolução por matéria.', 'Revise o caderno de erros e conquiste medalhas por sequência.', 'No Perfil, adultos e professores podem identificar temas para revisão.'] }
 ];
 
 const avatars = [
@@ -335,7 +338,7 @@ async function activateUser(user) {
   activeUserIsAdmin = Boolean(profile?.is_admin);
   if (el('admin-access-card')) el('admin-access-card').hidden = !activeUserIsAdmin;
   const tutorialPendingVersion = Math.max(0, Number(user.user_metadata?.tutorial_pending_version) || 0);
-  const shouldAutoOpenTutorial = tutorialPendingVersion >= APP_TUTORIAL_VERSION && state.tutorialSeenVersion < APP_TUTORIAL_VERSION;
+  const shouldAutoOpenTutorial = tutorialPendingVersion > 0 && state.tutorialSeenVersion < APP_TUTORIAL_VERSION;
   setSchoolYear(state.schoolYear, false);
   saveState();
   updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen', { historyMode: 'reset' });
@@ -557,9 +560,12 @@ function renderAvatarUnlockResult(items = []) {
 }
 function tutorialVisualMarkup(kind) {
   if (kind === 'subjects') return '<div class="tutorial-subject-demo"><span>÷</span><span>文</span><span>⌁</span><b>6º ano selecionado</b></div>';
+  if (kind === 'config') return '<div class="tutorial-config-demo"><small>ASSUNTO <b>OPCIONAL</b></small><span>Revisão geral da matéria</span><div><i class="selected">Guiado</i><i>Simulado</i></div><strong>Referência definida automaticamente ✓</strong></div>';
   if (kind === 'path') return '<div class="tutorial-path-demo"><div class="tutorial-path-line"><i class="done">✓</i><span></span><i class="current">2</i><span></span><i>3</i></div><strong>Faça 7 de 10 para avançar</strong></div>';
   if (kind === 'question') return '<div class="tutorial-question-demo"><small>QUESTÃO 3 DE 10</small><strong>Qual alternativa resolve corretamente o desafio?</strong><span>A&nbsp;&nbsp; Primeira possibilidade</span><span class="correct">✓&nbsp;&nbsp; Resposta correta comentada</span></div>';
+  if (kind === 'material') return '<div class="tutorial-material-demo"><div><span>▧</span><b>Foto da apostila</b><small>Texto conferido ✓</small></div><i>→</i><section><span>10</span><b>questões</b><small>Resumo + mapa mental</small></section></div>';
   if (kind === 'avatar') return `<div class="tutorial-avatar-demo">${avatarStudio.render(state.avatarDesign, { decorative: true })}<div class="tutorial-avatar-items"><span><b>☺</b> Masculino ou feminino</span><span><b>⭐</b> Amigos e cenários</span><span><b>👋</b> Reações ao toque</span></div></div>`;
+  if (kind === 'friends') return '<div class="tutorial-friends-demo"><div><b>AM</b><i></i></div><section><span>Vamos resolver juntos?</span><span class="reply">Sim! Eu começo pelo enunciado.</span><small>● Helena está online</small></section></div>';
   return '<div class="tutorial-progress-demo"><article><span>🎯</span><div>Missão diária<i><b style="--demo-progress:80%"></b></i></div><b>4/5</b></article><article><span>↻</span><div>Revisões inteligentes<i><b style="--demo-progress:55%"></b></i></div><b>3</b></article><article><span>★</span><div>Evolução em Matemática<i><b style="--demo-progress:72%"></b></i></div><b>72%</b></article></div>';
 }
 function renderAppTutorial(options = {}) {
@@ -571,7 +577,7 @@ function renderAppTutorial(options = {}) {
   el('tutorial-description').textContent = step.description;
   el('tutorial-tips').innerHTML = step.tips.map((tip) => `<li>${tip}</li>`).join('');
   const visual = el('tutorial-visual'); visual.className = `tutorial-visual is-${step.kind}`; visual.innerHTML = tutorialVisualMarkup(step.kind);
-  const progress = el('tutorial-progress'); progress.setAttribute('aria-valuenow', String(position)); progress.querySelector('i').style.width = `${(position / tutorialSteps.length) * 100}%`;
+  const progress = el('tutorial-progress'); progress.setAttribute('aria-valuemax', String(tutorialSteps.length)); progress.setAttribute('aria-valuenow', String(position)); progress.querySelector('i').style.width = `${(position / tutorialSteps.length) * 100}%`;
   el('tutorial-dots').innerHTML = tutorialSteps.map((_, index) => `<i class="${index === tutorialStep ? 'active' : ''}"></i>`).join('');
   el('tutorial-prev').hidden = tutorialStep === 0;
   el('tutorial-next').innerHTML = tutorialStep === tutorialSteps.length - 1 ? 'Começar a estudar <span>✓</span>' : 'Próximo <span>→</span>';
