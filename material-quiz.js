@@ -257,8 +257,16 @@
       files.forEach((file, index) => {
         const item = document.createElement('article');
         const image = document.createElement('img'); image.src = URL.createObjectURL(file); image.alt = `Prévia da foto ${index + 1}`; image.onload = () => URL.revokeObjectURL(image.src);
-        const copy = document.createElement('div'); const title = document.createElement('strong'); title.textContent = `Página ${index + 1}`; const detail = document.createElement('span'); detail.textContent = `${(file.size / 1048576).toFixed(1)} MB`; const confidence = document.createElement('em'); confidence.dataset.materialConfidence = index; confidence.className = 'material-page-confidence pending'; confidence.textContent = 'Aguardando leitura'; copy.append(title, detail, confidence); item.append(image, copy); box.append(item);
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'material-remove-photo'; remove.textContent = '×'; remove.setAttribute('aria-label', `Remover página ${index + 1}`); remove.disabled = reading; remove.addEventListener('click', () => { files.splice(index, 1); clearGeneratedMaterial(); updatePreview(); status(files.length ? `Página removida. ${files.length} foto(s) pronta(s) para leitura.` : 'Adicione ou escaneie uma página da apostila.'); });
+        const copy = document.createElement('div'); const title = document.createElement('strong'); title.textContent = `Página ${index + 1}`; const detail = document.createElement('span'); detail.textContent = `${(file.size / 1048576).toFixed(1)} MB`; const confidence = document.createElement('em'); confidence.dataset.materialConfidence = index; confidence.className = 'material-page-confidence pending'; confidence.textContent = 'Aguardando leitura'; copy.append(title, detail, confidence); item.append(image, remove, copy); box.append(item);
       });
+      syncCaptureControls();
+    }
+    function syncCaptureControls() {
+      if (byId('material-photo-counter')) byId('material-photo-counter').textContent = `${files.length} de 5 página${files.length === 1 ? '' : 's'}`;
+      if (byId('scan-material-page')) byId('scan-material-page').disabled = reading || files.length >= 5;
+      if (byId('choose-material-images')) byId('choose-material-images').disabled = reading;
+      document.querySelectorAll('.material-remove-photo').forEach((button) => { button.disabled = reading; });
     }
     function validateFiles(nextFiles) {
       if (!nextFiles.length) throw new Error('Escolha pelo menos uma foto da apostila.');
@@ -266,11 +274,32 @@
       if (nextFiles.some((file) => file.size > 8 * 1024 * 1024)) throw new Error('Cada imagem pode ter no máximo 8 MB.');
       if (nextFiles.some((file) => !/^image\/(jpeg|png|webp)$/i.test(file.type))) throw new Error('Use imagens JPG, PNG ou WebP.');
     }
+    function clearGeneratedMaterial() {
+      summary = null; confirmedSnapshot = '';
+      byId('material-extracted-text').value = '';
+      byId('material-text-confirmed').checked = false;
+      byId('material-text-label').hidden = true;
+      byId('material-confirm-wrap').hidden = true;
+      byId('material-summary-panel').hidden = true;
+      byId('material-reading-progress').hidden = true;
+      setCreationEnabled();
+    }
+    function receiveMaterialFiles(nextFiles, { append = false, scanned = false } = {}) {
+      if (reading) { status('Aguarde a leitura atual terminar antes de adicionar outra página.', true); return; }
+      const candidateFiles = append ? [...files, ...nextFiles] : [...nextFiles];
+      try {
+        validateFiles(candidateFiles);
+        files = candidateFiles;
+        clearGeneratedMaterial();
+        updatePreview();
+        status(scanned ? `Página escaneada e adicionada. Você já tem ${files.length} de 5 páginas e pode fotografar outra.` : `${files.length} foto(s) selecionada(s). Agora toque em “Ler com precisão”.`);
+      } catch (error) { status(error.message, true); }
+    }
     async function readImages() {
       if (reading) return;
       try { validateFiles(files); } catch (error) { status(error.message, true); return; }
       if (!globalThis.Tesseract?.createWorker) { status('O leitor de imagens não carregou. Verifique a internet e atualize a página.', true); return; }
-      reading = true; summary = null; confirmedSnapshot = ''; status(''); byId('read-material-images').disabled = true; byId('material-text-confirmed').checked = false; byId('material-summary-panel').hidden = true; setCreationEnabled(); byId('material-reading-progress').hidden = false;
+      reading = true; summary = null; confirmedSnapshot = ''; status(''); byId('read-material-images').disabled = true; byId('material-text-confirmed').checked = false; byId('material-summary-panel').hidden = true; setCreationEnabled(); byId('material-reading-progress').hidden = false; syncCaptureControls();
       const extracted = [];
       const confidences = [];
       let worker;
@@ -307,7 +336,7 @@
         status(weakPages.length ? `Atenção: confira ou refaça ${weakPages.length === 1 ? `a página ${weakPages[0]}` : `as páginas ${weakPages.join(', ')}`}. Confiança geral: ${Math.round(average)}%.` : `Leitura comparativa concluída com ${Math.round(average)}% de confiança. Confira nomes, datas, fórmulas e números.` , Boolean(weakPages.length));
         byId('material-extracted-text').focus();
       } catch (error) { status(error.message || 'Não foi possível ler as fotos.', true); }
-      finally { await worker?.terminate?.(); reading = false; byId('read-material-images').disabled = false; setCreationEnabled(); }
+      finally { await worker?.terminate?.(); reading = false; byId('read-material-images').disabled = false; setCreationEnabled(); syncCaptureControls(); }
     }
     function submit(event) {
       event.preventDefault();
@@ -372,7 +401,10 @@
       try { await navigator.clipboard.writeText(summary.mindMap.plainText); byId('copy-material-mind-map').textContent = 'Mapa copiado ✓'; setTimeout(() => { byId('copy-material-mind-map').textContent = 'Copiar mapa'; }, 1800); }
       catch { status('Não foi possível copiar o mapa automaticamente.', true); }
     }
-    byId('material-images')?.addEventListener('change', (event) => { files = [...event.target.files]; summary = null; confirmedSnapshot = ''; byId('material-extracted-text').value = ''; byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; try { validateFiles(files); status(`${files.length} foto(s) selecionada(s). Agora toque em “Ler as fotos”.`); } catch (error) { files = []; event.target.value = ''; status(error.message, true); } updatePreview(); setCreationEnabled(); });
+    byId('scan-material-page')?.addEventListener('click', () => { if (files.length >= 5) { status('Você já adicionou o limite de cinco páginas. Remova uma foto para escanear outra.', true); return; } byId('material-camera')?.click(); });
+    byId('choose-material-images')?.addEventListener('click', () => byId('material-images')?.click());
+    byId('material-images')?.addEventListener('change', (event) => { receiveMaterialFiles([...event.target.files]); event.target.value = ''; });
+    byId('material-camera')?.addEventListener('change', (event) => { receiveMaterialFiles([...event.target.files], { append: true, scanned: true }); event.target.value = ''; });
     byId('material-extracted-text')?.addEventListener('input', () => { if (byId('material-text-confirmed').checked) byId('material-text-confirmed').checked = false; confirmedSnapshot = ''; byId('material-summary-panel').hidden = true; setCreationEnabled(); status('Texto alterado. Confira novamente e marque a confirmação para continuar.'); });
     byId('material-text-confirmed')?.addEventListener('change', (event) => { confirmedSnapshot = event.target.checked ? normalize(byId('material-extracted-text').value) : ''; setCreationEnabled(); if (event.target.checked) status('Texto confirmado. Agora você pode criar o resumo completo ou o quiz.'); });
     byId('read-material-images')?.addEventListener('click', readImages);
@@ -380,7 +412,7 @@
     byId('copy-material-summary')?.addEventListener('click', copySummary);
     byId('copy-material-mind-map')?.addEventListener('click', copyMindMap);
     byId('material-quiz-form')?.addEventListener('submit', submit);
-    return { reset() { files = []; summary = null; confirmedSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-image-preview').innerHTML = ''; byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; status(''); }, buildQuestions, buildSummary, buildMindMap };
+    return { reset() { files = []; summary = null; confirmedSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; updatePreview(); status(''); }, buildQuestions, buildSummary, buildMindMap };
   }
 
   window.EstudaMaterialQuiz = { create, buildQuestions, buildSummary, buildMindMap, scoreOcrResult };

@@ -370,7 +370,18 @@
           <form id="material-quiz-form" class="material-quiz-form">
             <input id="material-subject" type="hidden" value="Minha apostila" />
             <section class="material-upload-callout"><span aria-hidden="true">▣</span><div><strong>Transforme sua apostila em estudo ativo</strong><p>Envie as páginas e o app preparará questões, resumo e mapa mental sobre o conteúdo encontrado.</p></div></section>
-            <div class="material-form-grid"><label>Fotos da apostila<input id="material-images" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple required /><small>Até 5 imagens nítidas, com no máximo 8 MB cada.</small></label></div>
+            <div class="material-form-grid">
+              <section class="material-capture-panel" aria-labelledby="material-capture-title">
+                <header><div><span>ADICIONE AS PÁGINAS</span><strong id="material-capture-title">Como você quer enviar sua apostila?</strong></div><b id="material-photo-counter">0 de 5 páginas</b></header>
+                <div class="material-capture-actions">
+                  <button id="scan-material-page" class="material-scan-button" type="button"><span aria-hidden="true">📷</span><b>Escanear apostila<small>ABRIR A CÂMERA</small></b></button>
+                  <button id="choose-material-images" class="material-gallery-button" type="button"><span aria-hidden="true">▧</span><b>Escolher fotos<small>ABRIR A GALERIA</small></b></button>
+                </div>
+                <input id="material-images" class="material-native-input" type="file" accept="image/jpeg,image/png,image/webp" multiple tabindex="-1" aria-hidden="true" />
+                <input id="material-camera" class="material-native-input" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true" />
+                <small class="material-capture-hint">No celular ou tablet, use “Escanear apostila” para fotografar uma página por vez. Você pode adicionar até 5 páginas nítidas.</small>
+              </section>
+            </div>
             <div id="material-image-preview" class="material-image-preview" aria-live="polite"></div>
             <section id="material-reading-progress" class="material-reading-progress" hidden><div><strong id="material-progress-title">Lendo sua apostila…</strong><span id="material-progress-percent">0%</span></div><i><b id="material-progress-bar"></b></i><p id="material-progress-detail">Preparando a leitura.</p></section>
             <label id="material-text-label" class="material-text-label" hidden><span>Confira o texto reconhecido <em>etapa obrigatória</em></span><textarea id="material-extracted-text" minlength="250" rows="12" spellcheck="true" placeholder="O texto extraído aparecerá aqui para você corrigir antes de gerar as perguntas."></textarea><small>Compare com as fotos e corrija nomes, acentos, datas, fórmulas e números. O app usará somente este texto.</small></label>

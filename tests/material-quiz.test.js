@@ -33,6 +33,9 @@ const admin = fs.readFileSync(require('path').join(__dirname, '..', 'admin-panel
 const migration = fs.readFileSync(require('path').join(__dirname, '..', 'contact-material-migration.sql'), 'utf8');
 const securityMigration = fs.readFileSync(require('path').join(__dirname, '..', 'security-hardening-migration.sql'), 'utf8');
 assert.ok(html.includes('id="material-images"') && html.includes('id="material-extracted-text"'), 'interface de fotos e revisão deve existir');
+assert.ok(html.includes('id="scan-material-page"') && html.includes('id="material-camera"'), 'celular e tablet devem oferecer captura direta pela câmera');
+assert.ok(html.includes('capture="environment"') && html.includes('id="choose-material-images"'), 'a câmera traseira e a galeria devem ser opções separadas');
+assert.ok(source.includes("{ append: true, scanned: true }") && source.includes('material-remove-photo'), 'novas páginas escaneadas devem ser acumuladas e poder ser removidas');
 assert.ok(html.includes('id="material-text-confirmed"') && html.includes('id="generate-material-summary"') && html.includes('id="material-summary-panel"'), 'confirmação e resumo completo devem existir');
 assert.ok(html.includes('id="material-mind-map-content"') && html.includes('id="copy-material-mind-map"'), 'mapa mental interativo e opção de copiar devem existir');
 assert.ok(html.includes('data-side-nav="material"') && html.includes('data-nav="material"'), 'modo apostila deve estar disponível no menu lateral e móvel');
