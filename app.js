@@ -1103,7 +1103,13 @@ function recordAnswer(question, right) {
 
 document.querySelectorAll('.choice-row').forEach((group) => group.addEventListener('click', (event) => { const button = event.target.closest('.choice'); if (!button) return; group.querySelectorAll('.choice').forEach((item) => item.classList.remove('selected')); button.classList.add('selected'); if (group.id === 'difficulty') difficulty = button.dataset.value; else quizMode = button.dataset.value; }));
 el('curriculum').addEventListener('change', (event) => { curriculum = event.target.value; el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderPhaseMap(); });
-el('subject').addEventListener('change', () => { renderTopicExamples(); renderPhaseMap(); });
+el('subject').addEventListener('change', () => {
+  // Um assunto digitado pertence à matéria anterior. Ao trocar a matéria no seletor,
+  // voltamos para a revisão geral em vez de misturar conteúdos de áreas diferentes.
+  el('topic').value = '';
+  renderTopicExamples();
+  renderPhaseMap();
+});
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
