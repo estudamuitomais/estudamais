@@ -1562,6 +1562,203 @@ body {
 .disconnect-button:hover { background: #ffe4e6 !important; transform: translateY(-1px); }
 .disconnect-button:focus-visible { outline: 3px solid rgba(239,68,68,.28); outline-offset: 2px; }
 
+/* Tipografia unificada: mensagens em destaque, com leitura confortável em qualquer tela. */
+:root {
+  --type-kicker: clamp(.72rem, 1.55vw, .84rem);
+  --type-meta: clamp(.78rem, 1.75vw, .9rem);
+  --type-body: clamp(.95rem, 2vw, 1.06rem);
+  --type-title: clamp(1.28rem, 2.8vw, 1.58rem);
+  --type-display: clamp(1.9rem, 4.7vw, 2.45rem);
+}
+
+body { font-size: var(--type-body); line-height: 1.5; }
+
+/* Chamadas, títulos e instruções principais. */
+.auth-card,
+.subject-welcome,
+.journey-intro,
+.result-screen,
+.subject-year-card > div:first-child,
+.study-brief > div,
+.dashboard-header > div,
+.tutorial-copy,
+.avatar-studio-heading > div:first-child,
+.avatar-preview-stage,
+.app-announcement > div,
+.admin-access-card > div:first-child,
+.guardian-chat-card > div:nth-child(2),
+.friend-code-card > div:first-child,
+.material-privacy-card > div,
+.material-upload-callout > div,
+.material-summary-panel > header > div:first-child,
+.material-mind-map > header > div:first-child,
+.chat-safety-action > div { text-align: center; }
+
+.auth-card > .eyebrow,
+.subject-welcome .eyebrow,
+.study-brief .eyebrow,
+.journey-intro .unit-label,
+.dashboard-header .eyebrow,
+.tutorial-heading .eyebrow,
+.avatar-studio-heading .eyebrow,
+.subject-year-card > div:first-child > span,
+.material-summary-panel > header span,
+.material-mind-map > header span,
+.admin-section-heading span,
+.admin-announcement-form > span {
+  display: block;
+  font-size: var(--type-kicker) !important;
+  line-height: 1.25;
+  letter-spacing: .08em;
+}
+
+.auth-card h2,
+.subject-welcome h2,
+.journey-intro h2,
+.study-brief .creator-title,
+.dashboard-header h2 {
+  font-size: var(--type-display) !important;
+  line-height: 1.08 !important;
+}
+
+.tutorial-copy h2,
+.avatar-studio-heading h2,
+.material-summary-panel > header h3,
+.material-mind-map > header h3,
+.admin-section-heading h3,
+.admin-announcement-form h3 {
+  font-size: var(--type-title) !important;
+  line-height: 1.18 !important;
+}
+
+.auth-card .subtitle,
+.subject-welcome .subtitle,
+.journey-intro p,
+.study-brief .subtitle,
+.school-year-hint,
+.curriculum-hint,
+.question-bank-promise,
+.app-announcement p,
+.guardian-chat-card p,
+.friend-code-card p,
+.add-friend-card p,
+.shared-question-banner p,
+.chat-safety-card p,
+.material-privacy-card p,
+.material-upload-callout p,
+.material-summary-panel > header p,
+.material-mind-map > header p,
+.material-summary-panel > footer,
+.tutorial-copy > p,
+.avatar-studio-heading p,
+.avatar-choice-note,
+.admin-access-card p,
+.friends-screen > .subtitle,
+.review-screen > .subtitle,
+.admin-screen > .subtitle {
+  font-size: var(--type-body) !important;
+  line-height: 1.55 !important;
+}
+
+/* Orientações e retornos do sistema ficam centralizados e fáceis de localizar. */
+.topic-examples,
+.question-bank-promise,
+.feedback,
+.achievement-toast,
+.friends-notice,
+.admin-notice,
+.chat-status,
+.material-status,
+.profile-data-status,
+.avatar-studio-status,
+.modal-error,
+.empty-review,
+.review-item-card.empty { text-align: center; }
+
+.topic-examples,
+.question-bank-promise,
+.feedback,
+.achievement-toast { justify-content: center; justify-items: center; }
+
+.topic-examples > span { font-size: var(--type-meta) !important; text-align: center; }
+.school-year-hint::before { display: inline-block; float: none; margin: 0 7px 0 0; }
+.school-year-hint,
+.curriculum-hint { text-align: center; }
+.question-bank-promise { font-size: var(--type-meta) !important; line-height: 1.5; }
+
+.feedback > strong { font-size: var(--type-title) !important; line-height: 1.18; }
+.option-correction,
+.explanation-extra { text-align: center; font-size: var(--type-body) !important; line-height: 1.55; }
+.feedback-actions { justify-content: center; }
+.question-source { display: block; margin-inline: auto; text-align: center; font-size: var(--type-meta) !important; }
+.achievement-toast { font-size: var(--type-body) !important; line-height: 1.5; }
+.friends-notice,
+.admin-notice,
+.chat-status,
+.material-status,
+.profile-data-status,
+.avatar-studio-status { font-size: var(--type-meta) !important; line-height: 1.45; }
+
+/* Blocos de evolução e avisos: conteúdo central, ações ainda fáceis de alcançar. */
+.profile-card > div:nth-child(2),
+.focus-card > div,
+.review-highlight > div,
+.dashboard-stats article,
+.admin-stats article,
+.admin-section-heading > div:first-child,
+.material-photo-tips > strong,
+.material-photo-tips > p,
+.material-reading-progress > p { text-align: center; }
+
+.dashboard-stats article,
+.admin-stats article { justify-items: center; }
+.profile-card > div:nth-child(2) span,
+.dashboard-stats article small,
+.admin-stats article small { font-size: var(--type-meta) !important; line-height: 1.35; }
+.focus-card p,
+.review-highlight > div > small { font-size: var(--type-meta) !important; line-height: 1.45; }
+.material-photo-tips > strong { display: block; font-size: var(--type-body) !important; }
+.material-reading-progress > p,
+.material-summary-panel > footer { text-align: center; }
+
+/* Tutorial e avatar: a mensagem ocupa o centro visual, sem perder os controles. */
+.tutorial-heading > div,
+.tutorial-actions,
+.avatar-choice-note,
+.avatar-gender-card p { text-align: center; }
+.tutorial-copy ul { justify-items: center; }
+.tutorial-copy li { display: grid; justify-items: center; padding-left: 0 !important; text-align: center; font-size: var(--type-meta) !important; }
+.tutorial-copy li::before { position: static; margin-bottom: 3px; }
+.avatar-choice-note,
+.avatar-gender-card p { font-size: var(--type-meta) !important; line-height: 1.5; }
+
+/* Campos, alternativas e dados ficam alinhados para leitura e preenchimento precisos. */
+.form-grid label,
+.material-form-grid label,
+.material-text-label,
+.profile-data-form label,
+.modal-form label,
+.admin-announcement-form label,
+.admin-whatsapp-card label,
+.answer,
+.material-summary-content,
+.material-mind-map-branches button,
+.chat-messages,
+.chat-form textarea,
+.admin-table-wrap,
+.admin-user-filters { text-align: left; }
+
+@media (max-width: 600px) {
+  .auth-card h2,
+  .subject-welcome h2,
+  .journey-intro h2,
+  .study-brief .creator-title,
+  .dashboard-header h2 { font-size: clamp(1.72rem, 8.3vw, 2.08rem) !important; }
+
+  .tutorial-copy h2,
+  .avatar-studio-heading h2 { font-size: clamp(1.4rem, 6.8vw, 1.72rem) !important; }
+}
+
 @media (max-width: 900px) {
   .profile-data-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .profile-data-summary article:last-child { grid-column: 1 / -1; }
