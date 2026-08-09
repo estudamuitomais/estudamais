@@ -20,6 +20,7 @@
         <nav class="side-menu" aria-label="Menu principal">
           <button type="button" data-side-nav="subjects"><span>⌂</span><b>Início</b></button>
           <button type="button" data-side-nav="trail"><span>★</span><b>Aprender</b></button>
+          <button class="side-material-feature" type="button" data-side-nav="material"><span>▣</span><b>Apostila<small>FOTO PARA QUIZ</small></b></button>
           <button type="button" data-side-nav="review"><span>↻</span><b>Revisar</b></button>
           <button type="button" data-side-nav="friends"><span>♧</span><b>Amigos</b><i id="side-friends-badge" hidden>0</i></button>
           <button type="button" data-side-nav="profile"><span>☺</span><b>Perfil</b></button>
@@ -84,7 +85,6 @@
             <div class="avatar-home-copy"><span>MEU PERSONAGEM</span><strong id="avatar-home-title">Crie seu avatar</strong><p id="avatar-home-progress">Personalize seu visual e desbloqueie novidades nas fases.</p></div>
             <button id="open-avatar-studio-home" class="avatar-edit-button" type="button"><span aria-hidden="true">✦</span> Personalizar</button>
           </section>
-          <section class="material-home-card" aria-labelledby="material-home-title"><div class="material-home-icon" aria-hidden="true">▣</div><div><span>ESTUDO PERSONALIZADO</span><strong id="material-home-title">Transforme sua apostila em quiz</strong><p>Envie fotos das páginas, confira o texto reconhecido e pratique dez questões sobre o conteúdo.</p></div><button id="open-material-quiz" type="button">Usar minha apostila <span>→</span></button></section>
           <section class="subject-year-card" aria-label="Escolha do ano escolar">
             <div><span>PRIMEIRO PASSO</span><strong>Em qual ano você está?</strong><small>As matérias e questões serão organizadas para essa etapa.</small></div>
             <label>Ano escolar<select id="subject-school-year" aria-label="Ano escolar na escolha de matéria"></select></label>
@@ -292,7 +292,9 @@
           <header class="dashboard-header material-header"><button id="close-material-quiz" class="icon-button" type="button" aria-label="Voltar">←</button><div><span class="eyebrow">MODO APOSTILA</span><h2>Da foto para o quiz</h2></div></header>
           <section class="material-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Processamento privado no seu aparelho</strong><p>As imagens não são salvas no Estuda+. Evite fotografar nomes, rostos, escola ou outros dados pessoais.</p></div></section>
           <form id="material-quiz-form" class="material-quiz-form">
-            <div class="material-form-grid"><label>Matéria<select id="material-subject" required><option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option></select></label><label>Fotos da apostila<input id="material-images" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple required /><small>Até 5 imagens nítidas, com no máximo 8 MB cada.</small></label></div>
+            <input id="material-subject" type="hidden" value="Minha apostila" />
+            <section class="material-upload-callout"><span aria-hidden="true">▣</span><div><strong>Transforme sua apostila em estudo ativo</strong><p>Envie as páginas e o app preparará questões, resumo e mapa mental sobre o conteúdo encontrado.</p></div></section>
+            <div class="material-form-grid"><label>Fotos da apostila<input id="material-images" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple required /><small>Até 5 imagens nítidas, com no máximo 8 MB cada.</small></label></div>
             <div id="material-image-preview" class="material-image-preview" aria-live="polite"></div>
             <section id="material-reading-progress" class="material-reading-progress" hidden><div><strong id="material-progress-title">Lendo sua apostila…</strong><span id="material-progress-percent">0%</span></div><i><b id="material-progress-bar"></b></i><p id="material-progress-detail">Preparando a leitura.</p></section>
             <label id="material-text-label" class="material-text-label" hidden><span>Confira o texto reconhecido <em>etapa obrigatória</em></span><textarea id="material-extracted-text" minlength="250" rows="12" spellcheck="true" placeholder="O texto extraído aparecerá aqui para você corrigir antes de gerar as perguntas."></textarea><small>Compare com as fotos e corrija nomes, acentos, datas, fórmulas e números. O app usará somente este texto.</small></label>
@@ -410,6 +412,7 @@
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
       <button type="button" data-nav="subjects"><span>⌂</span>Início</button>
       <button type="button" data-nav="trail"><span>⌁</span>Trilha</button>
+      <button class="material-nav-button" type="button" data-nav="material"><span>▣</span>Apostila</button>
       <button type="button" data-nav="review"><span>↻</span>Revisar<b id="nav-review-badge" hidden>0</b></button>
       <button type="button" data-nav="friends"><span>♧</span>Amigos<b id="nav-friends-badge" hidden>0</b></button>
       <button type="button" data-nav="profile"><span>☺</span>Perfil</button>

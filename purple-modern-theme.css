@@ -712,7 +712,7 @@ input:focus, select:focus, textarea:focus { border-color: #a78bfa !important; }
   .friends-columns { grid-template-columns: 1fr; }
   .chat-backdrop { align-items: flex-end !important; padding: 0 !important; }
   .chat-panel { width: 100% !important; height: min(94dvh, 820px); max-height: 94dvh; border-radius: 24px 24px 0 0 !important; }
-  .app-nav:not([hidden]) { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .app-nav:not([hidden]) { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 600px) {
   .friends-screen { padding: 0 2px 92px; }
@@ -866,7 +866,7 @@ body {
   .auth-screen { min-height: calc(100dvh - 40px) !important; }
   .app-nav:not([hidden]) {
     display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
   .app-nav[hidden],
   body.keyboard-open .app-nav:not([hidden]) { display: none !important; }
@@ -1170,19 +1170,27 @@ body {
 /* Modo Apostila e contato autorizado */
 .auth-consent { display: grid !important; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 9px !important; padding: 11px 12px; border: 1px solid #ddd6fe; border-radius: 12px; background: #f7f5ff; color: #665873 !important; font-size: 11px !important; line-height: 1.4; }
 .auth-consent input { width: 18px !important; height: 18px; margin: 0; accent-color: #7c3aed; }
-.material-home-card { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 16px; margin: 17px 0; padding: 18px; overflow: hidden; border: 2px solid #c4b5fd; border-radius: 22px; background: linear-gradient(135deg, #2e1065, #6d28d9 62%, #8b5cf6); box-shadow: 0 6px 0 #230b4f; }
-.material-home-icon { display: grid; place-items: center; width: 56px; height: 56px; border: 2px solid rgba(255,255,255,.55); border-radius: 17px; background: rgba(255,255,255,.14); color: #fff; font-size: 28px; }
-.material-home-card span { color: #ddd6fe; font-size: 9px; font-weight: 1000; letter-spacing: 1px; }
-.material-home-card strong { display: block; margin-top: 3px; color: #fff; font-size: 18px; font-weight: 1000; }
-.material-home-card p { margin: 4px 0 0; color: #ede9fe; font-size: 11px; line-height: 1.45; }
-.material-home-card button { min-height: 44px; padding: 9px 14px; border: 2px solid #fff; border-radius: 13px; background: #fff; color: #5b21b6; font: 1000 11px Nunito, sans-serif; box-shadow: 0 3px 0 #c4b5fd; cursor: pointer; }
+.side-menu .side-material-feature { position: relative; margin: 5px 0 8px; border: 2px solid #a78bfa !important; background: linear-gradient(135deg,#4c1d95,#7c3aed 65%,#8b5cf6) !important; color: #fff !important; box-shadow: 0 5px 0 #351263, 0 10px 24px rgba(76,29,149,.18); }
+.side-menu .side-material-feature:hover { background: linear-gradient(135deg,#5b21b6,#8b5cf6) !important; transform: translateY(-1px); }
+.side-menu .side-material-feature.active { border-color: #c4b5fd !important; background: linear-gradient(135deg,#3b0764,#6d28d9) !important; color: #fff !important; box-shadow: 0 3px 0 #2e1065, 0 0 0 3px rgba(167,139,250,.22); }
+.side-menu .side-material-feature > span,
+.side-menu .side-material-feature.active > span { color: #fff !important; }
+.side-menu .side-material-feature b { display: grid; gap: 1px; }
+.side-menu .side-material-feature small { color: #ddd6fe; font-size: 7px; font-weight: 1000; letter-spacing: .7px; }
+.app-nav .material-nav-button { color: #6d28d9 !important; }
+.app-nav .material-nav-button > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: linear-gradient(135deg,#6d28d9,#8b5cf6); color: #fff !important; box-shadow: 0 2px 0 #4c1d95; }
+.app-nav .material-nav-button.active > span { background: #fff; color: #6d28d9 !important; box-shadow: 0 0 0 2px #c4b5fd; }
 .material-screen { width: min(100%, 900px) !important; }
 .material-privacy-card { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 12px; margin: 14px 0 18px; padding: 14px; border: 2px solid #bbf7d0; border-radius: 17px; background: #f0fdf4; }
 .material-privacy-card > span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #16a34a; color: #fff; font-size: 21px; }
 .material-privacy-card strong { color: #166534; font-size: 13px; }
 .material-privacy-card p { margin: 3px 0 0; color: #47735a; font-size: 11px; line-height: 1.45; }
 .material-quiz-form { padding: 22px; border: 2px solid #e4dced; border-radius: 23px; background: #fff; box-shadow: 0 5px 0 #ddd5e6; }
-.material-form-grid { display: grid; grid-template-columns: minmax(190px,.65fr) minmax(260px,1.35fr); gap: 13px; }
+.material-upload-callout { display: grid; grid-template-columns: 45px minmax(0,1fr); align-items: center; gap: 12px; margin-bottom: 15px; padding: 14px; border-radius: 16px; background: linear-gradient(135deg,#f5f3ff,#faf8ff); }
+.material-upload-callout > span { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 13px; background: #7c3aed; color: #fff; font-size: 21px; box-shadow: 0 3px 0 #5b21b6; }
+.material-upload-callout strong { color: #4c1d95; font-size: 13px; }
+.material-upload-callout p { margin: 3px 0 0; color: #786b82; font-size: 10px; line-height: 1.4; }
+.material-form-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 13px; }
 .material-form-grid label,
 .material-text-label { display: grid; align-content: start; gap: 6px; color: #5f5269; font-size: 11px; font-weight: 900; }
 .material-form-grid select,
@@ -1276,9 +1284,6 @@ body {
 .admin-whatsapp-card button:disabled { background: #b6c9bc; box-shadow: none; cursor: not-allowed; }
 
 @media (max-width: 700px) {
-  .material-home-card { grid-template-columns: 48px minmax(0,1fr); gap: 12px; }
-  .material-home-icon { width: 46px; height: 46px; }
-  .material-home-card button { grid-column: 1 / -1; width: 100%; }
   .material-form-grid { grid-template-columns: 1fr; }
   .material-image-preview { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .material-actions { flex-direction: column; }

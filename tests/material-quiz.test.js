@@ -34,6 +34,9 @@ const migration = fs.readFileSync(require('path').join(__dirname, '..', 'contact
 assert.ok(html.includes('id="material-images"') && html.includes('id="material-extracted-text"'), 'interface de fotos e revisão deve existir');
 assert.ok(html.includes('id="material-text-confirmed"') && html.includes('id="generate-material-summary"') && html.includes('id="material-summary-panel"'), 'confirmação e resumo completo devem existir');
 assert.ok(html.includes('id="material-mind-map-content"') && html.includes('id="copy-material-mind-map"'), 'mapa mental interativo e opção de copiar devem existir');
+assert.ok(html.includes('data-side-nav="material"') && html.includes('data-nav="material"'), 'modo apostila deve estar disponível no menu lateral e móvel');
+assert.ok(html.includes('id="material-subject" type="hidden" value="Minha apostila"') && !html.includes('<select id="material-subject"'), 'a tela de fotos não deve pedir a escolha de matéria');
+assert.ok(!html.includes('id="material-home-title"'), 'o cartão antigo da tela inicial deve ser removido');
 assert.ok(html.includes('id="register-whatsapp"') && html.includes('id="register-whatsapp-opt-in"'), 'cadastro deve incluir WhatsApp e autorização');
 assert.ok(app.includes('whatsapp_phone: whatsapp') && app.includes('startMaterialQuiz'), 'cadastro e início do quiz precisam estar integrados');
 assert.ok(admin.includes("from('user_contacts')") && admin.includes('admin_log_whatsapp_contact'), 'painel deve consultar contato privado e auditar abertura');

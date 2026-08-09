@@ -924,7 +924,7 @@ const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)
 function activeScreenId() { return document.querySelector('.screen.active')?.id || 'auth-screen'; }
 function screenNavigationKey(id) {
   if (id === 'subject-screen') return 'subjects';
-  if (id === 'material-screen') return 'subjects';
+  if (id === 'material-screen') return 'material';
   if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
   if (id === 'review-screen') return 'review';
   if (id === 'friends-screen') return 'friends';
@@ -1000,9 +1000,10 @@ function navigateBack(fallback = 'setup-screen') {
 function goToSubjects(options = {}) { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
 function openMaterialQuiz() { materialQuizSession = false; show('material-screen'); }
 function startMaterialQuiz(payload) {
-  const subject = payload?.subject || 'Português';
+  const subject = payload?.subject || 'Minha apostila';
   if (!Array.isArray(payload?.questions) || payload.questions.length !== 10) return;
-  el('subject').value = subject; el('topic').value = 'Conteúdo da minha apostila'; el('curriculum').value = 'Personalizado'; curriculum = 'Personalizado';
+  if ([...el('subject').options].some((option) => option.value === subject)) el('subject').value = subject;
+  el('topic').value = 'Conteúdo da minha apostila'; el('curriculum').value = 'Personalizado'; curriculum = 'Personalizado';
   questions = payload.questions.map((question, index) => ({ ...question, id: question.id || `material-${Date.now()}-${index}`, subject, topic: 'Conteúdo da minha apostila', curriculum: 'Personalizado', schoolYear, phase: 1 }));
   current = 0; currentPhase = 1; score = 0; hits = 0; roundStreak = 0; resultAction = 'material'; materialQuizSession = true;
   show('quiz-screen'); renderQuestion();
@@ -1135,7 +1136,7 @@ el('review-errors').addEventListener('click', openReview);
 el('close-review').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('close-friends').addEventListener('click', () => navigateBack('subject-screen'));
 el('close-admin').addEventListener('click', () => navigateBack('dashboard-screen'));
-el('open-material-quiz').addEventListener('click', openMaterialQuiz);
+el('open-material-quiz')?.addEventListener('click', openMaterialQuiz);
 el('close-material-quiz').addEventListener('click', () => navigateBack('subject-screen'));
 el('open-admin-panel').addEventListener('click', openAdmin);
 el('open-review-from-dashboard').addEventListener('click', openReview);
@@ -1241,6 +1242,7 @@ document.addEventListener('keydown', (event) => {
 el('app-nav').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
   if (button.dataset.nav === 'subjects') goToSubjects();
   else if (button.dataset.nav === 'trail') show('setup-screen');
+  else if (button.dataset.nav === 'material') openMaterialQuiz();
   else if (button.dataset.nav === 'review') openReview();
   else if (button.dataset.nav === 'friends') openFriends();
   else { renderDashboard(); show('dashboard-screen'); }
@@ -1249,6 +1251,7 @@ document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEvent
   const destination = button.dataset.sideNav;
   if (destination === 'subjects') goToSubjects();
   else if (destination === 'trail') show('setup-screen');
+  else if (destination === 'material') openMaterialQuiz();
   else if (destination === 'review') openReview();
   else if (destination === 'friends') openFriends();
   else { renderDashboard(); show('dashboard-screen'); }
