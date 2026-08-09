@@ -32,6 +32,7 @@ const app = fs.readFileSync(require('path').join(__dirname, '..', 'app.js'), 'ut
 const admin = fs.readFileSync(require('path').join(__dirname, '..', 'admin-panel.js'), 'utf8');
 const migration = fs.readFileSync(require('path').join(__dirname, '..', 'contact-material-migration.sql'), 'utf8');
 const securityMigration = fs.readFileSync(require('path').join(__dirname, '..', 'security-hardening-migration.sql'), 'utf8');
+const renatoAdminMigration = fs.readFileSync(require('path').join(__dirname, '..', 'admin-renato-migration.sql'), 'utf8');
 assert.ok(html.includes('id="material-images"') && html.includes('id="material-extracted-text"'), 'interface de fotos e revisão deve existir');
 assert.ok(html.includes('id="scan-material-page"') && html.includes('id="material-camera"'), 'celular e tablet devem oferecer captura direta pela câmera');
 assert.ok(html.includes('capture="environment"') && html.includes('id="choose-material-images"'), 'a câmera traseira e a galeria devem ser opções separadas');
@@ -45,8 +46,9 @@ assert.ok(html.includes('id="register-whatsapp"') && html.includes('id="register
 assert.ok(app.includes('whatsapp_phone: whatsapp') && app.includes('startMaterialQuiz'), 'cadastro e início do quiz precisam estar integrados');
 assert.ok(admin.includes("from('user_contacts')") && admin.includes('admin_log_whatsapp_contact'), 'painel deve consultar contato privado e auditar abertura');
 assert.ok(migration.includes('enable row level security') && migration.includes('current_user_is_admin()'), 'contatos precisam de RLS e proteção administrativa');
-assert.ok(app.includes("const ADMIN_AUTH_EMAIL = 'admin@estudemais.net'") && !app.includes('ADMIN_LOGIN_ALIAS'), 'login administrativo deve usar apenas o e-mail solicitado');
-assert.ok(html.includes('ACESSO: ADMIN@ESTUDEMAIS.NET') && html.includes('id="login-email" type="email"'), 'interface deve exibir o e-mail administrativo e validar e-mails');
+assert.ok(app.includes('const activeAdminEmail') && !app.includes('ADMIN_AUTH_EMAIL'), 'interface administrativa deve usar o e-mail autenticado, sem endereço fixo');
+assert.ok(html.includes('id="admin-access-email"') && html.includes('id="login-email" type="email"'), 'interface deve identificar dinamicamente a conta administrativa e validar e-mails');
+assert.ok(renatoAdminMigration.includes("lower(email) = 'renatodagamma@gmail.com'") && renatoAdminMigration.includes('set is_admin = true'), 'migração deve promover a nova conta administrativa solicitada');
 assert.ok(securityMigration.includes('create schema if not exists private') && securityMigration.includes('security invoker'), 'funções expostas devem delegar a implementações privadas');
 assert.ok(securityMigration.includes("revoke all on function public.rls_auto_enable()") && securityMigration.includes('drop function if exists public.handle_new_user()'), 'funções internas não podem ficar executáveis pela API');
 assert.ok(securityMigration.includes("lower(u.email) = 'admin@estudemais.net'") && securityMigration.includes("admin.temporario@estudamais.app"), 'migração deve promover a nova conta e remover o privilégio temporário');

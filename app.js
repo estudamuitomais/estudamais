@@ -2,12 +2,12 @@ const el = (id) => document.getElementById(id);
 let storageKey = 'estuda-mais-profile-v3-guest';
 const supabaseUrl = 'https://wajefwcsnkwzetamjrwi.supabase.co';
 const supabasePublishableKey = 'sb_publishable_jTt4rZEi6LCtVrjuYxk7mQ_SfkCqZfw';
-const ADMIN_AUTH_EMAIL = 'admin@estudemais.net';
 const supabaseClient = globalThis.supabase?.createClient(supabaseUrl, supabasePublishableKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
 let activeSupabaseUser = null;
 let activeUserIsAdmin = false;
+const activeAdminEmail = () => String(activeSupabaseUser?.email || '').trim().toLowerCase() || 'conta administrativa';
 let activeUserContact = null;
 let materialQuizSession = false;
 let remoteSaveTimer = null;
@@ -338,6 +338,7 @@ async function activateUser(user) {
   state.totalPoints = Math.max(state.totalPoints || 0, profile?.points || 0);
   activeUserIsAdmin = Boolean(profile?.is_admin);
   if (el('admin-access-card')) el('admin-access-card').hidden = !activeUserIsAdmin;
+  if (el('admin-access-email')) el('admin-access-email').textContent = activeUserIsAdmin ? `ACESSO: ${activeAdminEmail().toUpperCase()}` : 'ACESSO ADMINISTRATIVO';
   const tutorialPendingVersion = Math.max(0, Number(user.user_metadata?.tutorial_pending_version) || 0);
   const shouldAutoOpenTutorial = tutorialPendingVersion > 0 && state.tutorialSeenVersion < APP_TUTORIAL_VERSION;
   setSchoolYear(state.schoolYear, false);
@@ -975,13 +976,13 @@ function renderProfileData() {
   const phone = activeUserContact?.whatsapp_phone || '';
   el('profile-data-name').textContent = learnerName();
   el('profile-data-email').textContent = activeSupabaseUser.email || 'Não informado';
-  el('profile-data-access').textContent = activeUserIsAdmin ? ADMIN_AUTH_EMAIL : 'E-mail e senha';
+  el('profile-data-access').textContent = activeUserIsAdmin ? activeAdminEmail() : 'E-mail e senha';
   el('profile-data-year').textContent = schoolYearLabel(state.schoolYear || '6EF');
   el('profile-data-whatsapp').textContent = phone ? formattedWhatsapp(phone) : 'Não informado';
   el('profile-data-whatsapp-consent').textContent = phone ? (activeUserContact.whatsapp_opt_in ? 'Avisos importantes autorizados.' : 'Apenas suporte da conta; novidades não autorizadas.') : 'Adicione um número para suporte da conta.';
   el('profile-data-whatsapp-card').classList.toggle('missing', !phone);
   el('edit-profile-data').textContent = phone ? 'Editar dados' : 'Adicionar WhatsApp';
-  el('profile-security-copy').textContent = activeUserIsAdmin ? `Altere aqui a senha protegida da conta ${ADMIN_AUTH_EMAIL}.` : 'Você pode trocar sua senha sem sair do aplicativo.';
+  el('profile-security-copy').textContent = activeUserIsAdmin ? `Altere aqui a senha protegida da conta ${activeAdminEmail()}.` : 'Você pode trocar sua senha sem sair do aplicativo.';
   el('profile-edit-name').value = learnerName();
   el('profile-edit-email').value = activeSupabaseUser.email || '';
   el('profile-school-year').value = state.schoolYear || '6EF';
@@ -1066,7 +1067,7 @@ async function updateProfilePassword(event) {
     if (error) throw error;
     if (data?.user) activeSupabaseUser = data.user;
     toggleProfilePassword(false);
-    showProfileDataStatus(activeUserIsAdmin ? `Senha da conta ${ADMIN_AUTH_EMAIL} alterada com sucesso.` : 'Senha alterada com sucesso.');
+    showProfileDataStatus(activeUserIsAdmin ? `Senha da conta ${activeAdminEmail()} alterada com sucesso.` : 'Senha alterada com sucesso.');
   } catch (error) {
     showProfileDataStatus(/invalid login credentials/i.test(error.message || '') ? 'A senha atual está incorreta.' : friendlyAuthError(error), true);
   } finally { setAuthBusy('profile-password-form', false); }
