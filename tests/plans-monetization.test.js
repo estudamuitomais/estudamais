@@ -34,6 +34,8 @@ const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 [
   '.plans-screen',
+  '.plans-screen:not(.active)',
+  '.plans-screen.active',
   '.plans-tabs',
   '.plans-tab-panel',
   '.plans-grid',

@@ -25,6 +25,7 @@ const css = fs.readFileSync(path.join(root, 'clean-app-layout.css'), 'utf8');
 
 [
   'grid-template-columns: 238px minmax(0, 1fr)',
+  '.hero-panel .side-mascot-interactive',
   '.mobile-more-menu:not([hidden])',
   'grid-template-columns: repeat(6, minmax(0, 1fr))',
   '@media (min-width: 1320px)',

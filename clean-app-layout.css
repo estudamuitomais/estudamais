@@ -105,8 +105,60 @@ body:not([data-screen="auth-screen"]) .app-shell { background: var(--clean-bg) !
   body:not([data-screen="auth-screen"]) .side-menu button small { display: none !important; }
 
   body:not([data-screen="auth-screen"]) .hero-copy,
-  body:not([data-screen="auth-screen"]) .side-mascot-interactive,
   body:not([data-screen="auth-screen"]) .hero-footer { display: none !important; }
+
+  body:not([data-screen="auth-screen"]) .hero-panel .side-mascot-interactive {
+    order: 3 !important;
+    display: block !important;
+    flex: 0 0 132px !important;
+    width: 100% !important;
+    height: 132px !important;
+    min-height: 132px !important;
+    margin: auto 0 0 !important;
+    overflow: visible !important;
+  }
+
+  body:not([data-screen="auth-screen"]) .hero-panel .side-mascot-interactive::before {
+    top: 5px !important;
+    padding: 4px 8px !important;
+    font-size: 7px !important;
+  }
+
+  body:not([data-screen="auth-screen"]) .hero-panel .side-mascot-interactive::after {
+    right: 50% !important;
+    bottom: 2px !important;
+    width: 82px !important;
+    height: 82px !important;
+    border-width: 3px !important;
+    border-radius: 27% 27% 38% 38% !important;
+    font-size: 46px !important;
+    transform: translateX(50%) !important;
+    filter: drop-shadow(0 7px 7px rgba(76, 29, 149, .16)) !important;
+  }
+
+  body:not([data-screen="auth-screen"]) .side-mascot-speech {
+    left: 50% !important;
+    bottom: 91px !important;
+    width: max-content !important;
+    max-width: 190px !important;
+    padding: 7px 10px !important;
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+  }
+
+  body:not([data-screen="auth-screen"]) .side-mascot-wing {
+    bottom: 18px !important;
+    width: 34px !important;
+    height: 43px !important;
+    border-width: 2px !important;
+  }
+  body:not([data-screen="auth-screen"]) .side-mascot-wing.wing-left { left: calc(50% - 54px) !important; }
+  body:not([data-screen="auth-screen"]) .side-mascot-wing.wing-right { right: calc(50% - 54px) !important; }
+  body:not([data-screen="auth-screen"]) .side-mascot-effects i { bottom: 34px !important; font-size: 17px !important; }
+  body:not([data-screen="auth-screen"]) .side-mascot-effects i:nth-child(1) { --effect-x: -42px; }
+  body:not([data-screen="auth-screen"]) .side-mascot-effects i:nth-child(3) { --effect-x: 42px; }
+
+  body[data-screen="plans-screen"] .hero-panel .side-mascot-interactive { display: block !important; }
 
   body:not([data-screen="auth-screen"]) .content-panel {
     width: 100% !important;

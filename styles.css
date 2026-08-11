@@ -284,7 +284,9 @@ legend { margin-bottom: 10px; }
 .access-control.selected { border-color: var(--primary); background: rgba(109, 40, 217, .08); color: var(--primary-dark); box-shadow: inset 0 0 0 1px rgba(109, 40, 217, .08); }
 .preference-control { font-weight: 800; }
 .quiz-sound-toggle.muted { opacity: .78; }
-.plans-screen { display: grid; gap: 18px; width: 100%; min-width: 0; overflow: clip; }
+.plans-screen { gap: 18px; width: 100%; min-width: 0; overflow: clip; }
+.plans-screen:not(.active) { display: none !important; }
+.plans-screen.active { display: grid; }
 .plans-header { grid-template-columns: auto minmax(0, 1fr); }
 .plans-header > div { min-width: 0; }
 .plans-header h2 { margin: 3px 0 0; overflow-wrap: anywhere; }
