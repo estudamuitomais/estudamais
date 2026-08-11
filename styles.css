@@ -317,8 +317,17 @@ legend { margin-bottom: 10px; }
 .plans-screen .section-heading h3 { margin: 0; }
 body[data-screen="plans-screen"] .hero-footer,
 body[data-screen="plans-screen"] .side-mascot-interactive,
-body[data-screen="plans-screen"] .side-mascot-card { display: none !important; }
+body[data-screen="plans-screen"] .side-mascot-card,
+body[data-screen="plans-screen"] .hero-copy { display: none !important; }
 body[data-screen="plans-screen"] .hero-panel { justify-content: flex-start; gap: 18px; }
+.clean-credit-card { grid-column: 1 / -1; }
+.credit-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.credit-options button { min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-weight: 900; }
+.clean-credit-note { display: block; margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.plans-hero-card,
+.plans-grid-section,
+.plans-comparison-card { position: relative; z-index: 1; }
+.plans-screen { overflow-x: clip; }
 .teacher-card { display: grid; gap: 10px; }
 .teacher-card input, .teacher-card textarea { width: 100%; padding: 12px 13px; }
 .teacher-card textarea { min-height: 100px; resize: vertical; }
@@ -387,6 +396,7 @@ body.a11y-calm *, body.a11y-calm *::before, body.a11y-calm *::after { animation:
   .listen-button { display: none; }
   .dashboard-stats { grid-template-columns: 1fr; }
   .plans-grid, .plans-mini-grid, .plans-b2b-grid { grid-template-columns: 1fr; }
+  .credit-options { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {

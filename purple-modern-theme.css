@@ -1607,18 +1607,20 @@ body {
 /* Modo Apostila e contato autorizado */
 .auth-consent { display: grid !important; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 9px !important; padding: 11px 12px; border: 1px solid #ddd6fe; border-radius: 12px; background: #f7f5ff; color: #665873 !important; font-size: 11px !important; line-height: 1.4; }
 .auth-consent input { width: 18px !important; height: 18px; margin: 0; accent-color: #7c3aed; }
-.side-menu .side-material-feature { position: relative; margin: 5px 0 8px; border: 2px solid #a78bfa !important; background: linear-gradient(135deg,#4c1d95,#7c3aed 65%,#8b5cf6) !important; color: #fff !important; box-shadow: 0 5px 0 #351263, 0 10px 24px rgba(76,29,149,.18); }
-.side-menu .side-material-feature:hover { background: linear-gradient(135deg,#5b21b6,#8b5cf6) !important; transform: translateY(-1px); }
-.side-menu .side-material-feature.active { border-color: #c4b5fd !important; background: linear-gradient(135deg,#3b0764,#6d28d9) !important; color: #fff !important; box-shadow: 0 3px 0 #2e1065, 0 0 0 3px rgba(167,139,250,.22); }
+.side-menu .side-material-feature,
+.side-menu .side-avatar-feature { border-color: #e5deee !important; background: #fff !important; color: #6b6078 !important; box-shadow: 0 3px 0 #ded6e8 !important; }
+.side-menu .side-material-feature:hover,
+.side-menu .side-avatar-feature:hover { border-color: #d7ccef !important; background: #faf8ff !important; transform: none !important; }
+.side-menu .side-material-feature.active,
+.side-menu .side-avatar-feature.active { border-color: #cfc0ef !important; background: #f5f1ff !important; color: #5b21b6 !important; box-shadow: 0 3px 0 #ded6e8 !important; }
 .side-menu .side-material-feature > span,
-.side-menu .side-material-feature.active > span { color: #fff !important; }
-.side-menu .side-material-feature b { display: grid; gap: 1px; }
-.side-menu .side-material-feature small { color: #ddd6fe; font-size: 7px; font-weight: 1000; letter-spacing: .7px; }
-.side-menu .side-avatar-feature { border-color: #e9d5ff !important; background: linear-gradient(135deg, #faf5ff, #f5f3ff) !important; color: #5b21b6 !important; }
-.side-menu .side-avatar-feature:hover { border-color: #c4b5fd !important; background: linear-gradient(135deg, #f3e8ff, #ede9fe) !important; }
-.side-menu .side-avatar-feature > span { color: #7c3aed !important; }
+.side-menu .side-avatar-feature > span,
+.side-menu .side-material-feature.active > span,
+.side-menu .side-avatar-feature.active > span { color: inherit !important; }
+.side-menu .side-material-feature b,
 .side-menu .side-avatar-feature b { display: grid; gap: 1px; }
-.side-menu .side-avatar-feature small { color: #9f7aea; font-size: 7px; font-weight: 1000; letter-spacing: .7px; }
+.side-menu .side-material-feature small,
+.side-menu .side-avatar-feature small { color: #9b8fb2; font-size: 7px; font-weight: 1000; letter-spacing: .7px; }
 .side-menu .side-admin-feature { border-color: #d9cff9 !important; background: linear-gradient(135deg, #f8f5ff, #efe9ff) !important; color: #4c1d95 !important; }
 .side-menu .side-admin-feature:hover { border-color: #c4b5fd !important; background: linear-gradient(135deg, #f1ebff, #e8deff) !important; }
 .side-menu .side-admin-feature > span { color: #6d28d9 !important; }

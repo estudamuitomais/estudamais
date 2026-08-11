@@ -1319,6 +1319,14 @@ function openPlans() {
   renderPlansScreen();
   show('plans-screen');
 }
+function normalizePlansUi() {
+  const sideMenu = document.querySelector('.side-menu');
+  const plansButton = sideMenu?.querySelector('[data-side-nav="plans"]');
+  if (sideMenu && plansButton) sideMenu.append(plansButton);
+  document.querySelector('.material-upsell-card')?.remove();
+  const setupUpsells = document.querySelectorAll('#setup-screen .plans-promo-card, #setup-screen .material-upsell-card, #setup-screen [data-side-nav="plans"]');
+  setupUpsells.forEach((item) => item.remove());
+}
 function renderPlansScreen() {
   const grid = el('plans-grid');
   const creditGrid = el('credit-packs-grid');
@@ -1339,6 +1347,48 @@ function renderPlansScreen() {
   b2bGrid.innerHTML = monetizationB2B.map((offer) => `<article class="plan-b2b-card"><span>ESTUDA+ PRO</span><strong>${offer.title}</strong><b>${offer.price}</b><p>${offer.description}</p><button type="button" data-sales-interest="${offer.title}" data-sales-price="${offer.price}">${offer.cta}</button></article>`).join('');
   comparison.innerHTML = `<table><thead><tr><th>Recurso</th><th>Grátis</th><th>Premium</th><th>Família</th></tr></thead><tbody>${monetizationComparison.map((item) => `<tr><td>${item.feature}</td><td>${item.free}</td><td>${item.premium}</td><td>${item.family}</td></tr>`).join('')}</tbody></table>`;
   faq.innerHTML = monetizationFaq.map((item) => `<article class="plans-faq-item"><strong>${item.question}</strong><p>${item.answer}</p></article>`).join('');
+  document.querySelectorAll('[data-plan-interest]').forEach((button) => {
+    const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
+    if (!plan) return;
+    button.onclick = () => openSalesConversation(plan.label, plan.price);
+  });
+  document.querySelectorAll('[data-sales-interest]').forEach((button) => {
+    button.onclick = () => openSalesConversation(button.dataset.salesInterest, button.dataset.salesPrice);
+  });
+}
+function renderPlansScreen() {
+  const grid = el('plans-grid');
+  const creditGrid = el('credit-packs-grid');
+  const servicesGrid = el('premium-services-grid');
+  const b2bGrid = el('school-plans-grid');
+  const comparison = el('plans-comparison-table');
+  const faq = el('plans-faq-list');
+  const title = el('plans-grid-title');
+  const heroKicker = document.querySelector('#plans-screen .plans-hero-card span');
+  const heroTitle = document.querySelector('#plans-screen .plans-hero-card strong');
+  const heroCopy = document.querySelector('#plans-screen .plans-hero-card p');
+  normalizePlansUi();
+  if (!grid || !creditGrid || !servicesGrid || !b2bGrid || !comparison || !faq) return;
+  if (title) title.textContent = 'Compare os planos lado a lado';
+  if (heroKicker) heroKicker.textContent = 'ESCOLHA O MELHOR PARA VOCÊ';
+  if (heroTitle) heroTitle.textContent = 'Mais recursos para estudar do seu jeito';
+  if (heroCopy) heroCopy.textContent = 'Compare os planos, veja o que está incluído em cada um e escolha a opção ideal para sua rotina de estudos.';
+  grid.innerHTML = [
+    `<article class="plan-card-item soft"><div class="plan-card-top"><span>ESSENCIAL</span><strong>Grátis</strong><small>Para começar</small></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><p>Uma ótima forma de conhecer o app e começar sua rotina de estudos.</p><ul><li>Questões diárias limitadas</li><li>Trilha gamificada e ranking</li><li>Avatar básico</li><li>Revisão inicial</li><li>Poucos usos da apostila por foto</li><li>Resumo e mapa mental básicos</li><li>Suporte padrão</li></ul><button type="button" data-plan-interest="free">Continuar no grátis</button></article>`,
+    `<article class="plan-card-item primary"><div class="plan-card-top"><span>RECOMENDADO</span><strong>Premium</strong><small>Mais recursos para estudar</small></div><div class="plan-card-price"><b>R$ 19,90/mês</b><small>ou R$ 149,90/ano</small></div><p>Ideal para quem quer estudar com mais liberdade, praticar mais e acompanhar melhor a evolução.</p><ul><li>Trilhas ilimitadas</li><li>Mais questões inéditas</li><li>Mais usos da apostila por foto</li><li>Resumo e mapa mental completos</li><li>Relatórios completos de desempenho</li><li>Mais personalização do avatar</li><li>Revisões inteligentes avançadas</li><li>Suporte prioritário</li></ul><button type="button" data-plan-interest="premium">Quero o Premium</button></article>`,
+    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>PARA A FAMÍLIA</span><strong>Família</strong><small>Mais de um estudante</small></div><div class="plan-card-price"><b>R$ 34,90/mês</b><small>ou R$ 299,90/ano</small></div><p>Perfeito para responsáveis que acompanham mais de um aluno e querem tudo organizado no mesmo lugar.</p><ul><li>Até 4 perfis</li><li>Relatórios por filho e por matéria</li><li>Painel do responsável</li><li>Mais usos da apostila por foto</li><li>Resumo e mapa mental completos</li><li>Metas e revisões por perfil</li><li>Avatar premium para todos</li><li>Suporte prioritário para a família</li></ul><button type="button" data-plan-interest="family">Quero o Família</button></article>`
+  ].join('');
+  const creditTitle = el('credit-packs-title');
+  if (creditTitle) creditTitle.textContent = 'Mais usos da apostila por foto';
+  creditGrid.innerHTML = `<article class="plan-mini-card clean-credit-card"><span>APOSTILA POR FOTO</span><strong>Escolha a quantidade ideal para seu ritmo</strong><p>Se você usa bastante a apostila por foto, pode escolher um pacote extra simples e sem complicação.</p><div class="credit-options"><button type="button" data-sales-interest="10 usos da apostila por foto" data-sales-price="R$ 9,90">10 usos · R$ 9,90</button><button type="button" data-sales-interest="25 usos da apostila por foto" data-sales-price="R$ 19,90">25 usos · R$ 19,90</button><button type="button" data-sales-interest="60 usos da apostila por foto" data-sales-price="R$ 39,90">60 usos · R$ 39,90</button></div><small class="clean-credit-note">Ideal para semanas de prova, muitos resumos e bastante prática com material próprio.</small></article>`;
+  servicesGrid.innerHTML = monetizationServices.map((service) => `<article class="plan-mini-card"><span>PREMIUM</span><strong>${service.title}</strong><b>${service.price}</b><p>${service.description}</p><button type="button" data-sales-interest="${service.title}" data-sales-price="${service.price}">${service.cta}</button></article>`).join('');
+  b2bGrid.innerHTML = monetizationB2B.map((offer) => `<article class="plan-b2b-card"><span>ESTUDA+ PRO</span><strong>${offer.title}</strong><b>${offer.price}</b><p>${offer.description}</p><button type="button" data-sales-interest="${offer.title}" data-sales-price="${offer.price}">${offer.cta}</button></article>`).join('');
+  comparison.innerHTML = `<table><thead><tr><th>Recurso</th><th>Grátis</th><th>Premium</th><th>Família</th></tr></thead><tbody>${monetizationComparison.map((item) => `<tr><td>${item.feature}</td><td>${item.free}</td><td>${item.premium}</td><td>${item.family}</td></tr>`).join('')}</tbody></table>`;
+  faq.innerHTML = [
+    { question: 'Qual plano combina mais com quem está começando?', answer: 'O plano grátis é ótimo para conhecer o app e criar uma rotina de estudos.' },
+    { question: 'Quando vale a pena assinar o Premium?', answer: 'Quando o aluno quer mais questões, mais usos da apostila e relatórios completos de desempenho.' },
+    { question: 'Quando o plano Família faz mais sentido?', answer: 'Quando há mais de um estudante em casa e o responsável quer acompanhar tudo em um só lugar.' }
+  ].map((item) => `<article class="plans-faq-item"><strong>${item.question}</strong><p>${item.answer}</p></article>`).join('');
   document.querySelectorAll('[data-plan-interest]').forEach((button) => {
     const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
     if (!plan) return;
@@ -2061,6 +2111,7 @@ el('recovery-form').addEventListener('submit', requestPasswordReset);
 el('new-password-form').addEventListener('submit', updateRecoveredPassword);
 el('logout-user').addEventListener('click', logoutUser);
 async function initializeApp() {
+  normalizePlansUi();
   populateSchoolYearControls(); setSchoolYear(state.schoolYear || '6EF', false); normalizeDay(); updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); applyAccessibility();
   if (!supabaseClient) { showAuthNotice('Não foi possível carregar o serviço de acesso. Verifique sua conexão e atualize a página.', true); return; }
   supabaseClient.auth.onAuthStateChange((event, session) => {
