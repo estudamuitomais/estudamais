@@ -12,6 +12,10 @@ let activeUserContact = null;
 let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
+let globalLeaderboard = [];
+let leaderboardRefreshTimer = null;
+let leaderboardRequestInFlight = false;
+let leaderboardBackendReady = true;
 const createNavigationSessionId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 let navigationSessionId = createNavigationSessionId();
 let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.location.search}${window.location.hash}`);
@@ -276,10 +280,12 @@ async function syncStateToSupabase() {
   };
   const { error } = await supabaseClient.from('profiles').update(payload).eq('id', activeSupabaseUser.id);
   if (error) { console.warn('Não foi possível sincronizar o progresso:', error.message); return false; }
+  void loadGlobalLeaderboard({ silent: true });
   return true;
 }
 async function activateUser(user) {
   activeSupabaseUser = user;
+  leaderboardBackendReady = true;
   const userStorageKey = `estuda-mais-profile-v3-${user.id}`;
   const legacyStorageKey = `estuda-mais-profile-v3-${user.email}`;
   if (!localStorage.getItem(userStorageKey) && localStorage.getItem(legacyStorageKey)) localStorage.setItem(userStorageKey, localStorage.getItem(legacyStorageKey));
@@ -346,6 +352,7 @@ async function activateUser(user) {
   updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); show('subject-screen', { historyMode: 'reset' });
   if (friendsHub) void friendsHub.init(user);
   if (adminPanel) void adminPanel.init(user, activeUserIsAdmin);
+  void loadGlobalLeaderboard();
   if (shouldAutoOpenTutorial) requestAnimationFrame(() => openAppTutorial({ automatic: true }));
   return true;
 }
@@ -429,6 +436,7 @@ async function updateRecoveredPassword(event) {
 }
 async function logoutUser() {
   clearTimeout(remoteSaveTimer);
+  stopLeaderboardRefresh();
   toggleProfileDataEditor(false);
   toggleProfilePassword(false);
   if (friendsHub) await friendsHub.stop();
@@ -438,6 +446,10 @@ async function logoutUser() {
   activeSupabaseUser = null;
   activeUserIsAdmin = false;
   activeUserContact = null;
+  globalLeaderboard = [];
+  leaderboardBackendReady = true;
+  leaderboardRequestInFlight = false;
+  renderLeaderboardHighlights();
   if (el('admin-access-card')) el('admin-access-card').hidden = true;
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
@@ -943,6 +955,88 @@ function updateLearningRail() {
 }
 function updateMission() { normalizeDay(); normalizeWeek(); const count = Math.min(state.answeredToday, 5); el('mission-count').textContent = `${count}/5`; el('mission-progress').style.width = `${count * 20}%`; el('mission-copy').textContent = count === 5 ? 'Missão cumprida. Muito bem!' : 'Responda 5 questões hoje'; updateStudySnapshot(); updateLearningRail(); }
 function learnerName() { return state.userName || 'Estudante'; }
+function leaderboardYearLabel(code = '') {
+  const found = (gradeContent?.schoolYears || []).find((item) => item.code === code);
+  return found?.short || found?.label || '';
+}
+function renderLeaderboardCollection(listId, rows, emptyMessage) {
+  const list = el(listId); if (!list) return;
+  if (!rows.length) {
+    list.innerHTML = `<li class="leaderboard-empty">${escapeHTML(emptyMessage)}</li>`;
+    return;
+  }
+  list.innerHTML = '';
+  rows.forEach((row) => {
+    const item = document.createElement('li');
+    const year = leaderboardYearLabel(row.schoolYear);
+    const badge = row.isCurrentUser ? 'Você' : year || 'Estudante';
+    item.className = `leaderboard-row${row.position === 1 ? ' leader' : ''}${row.isCurrentUser ? ' current-user' : ''}`;
+    item.innerHTML = `<span class="leaderboard-position">#${row.position}</span><div class="leaderboard-person"><strong>${escapeHTML(row.displayName)}</strong><small>${escapeHTML(badge)}</small></div><div class="leaderboard-score"><span class="leaderboard-avatar" aria-hidden="true">${escapeHTML(row.avatar || '🧑‍🚀')}</span><b>${Number(row.points) || 0}</b></div>`;
+    list.append(item);
+  });
+}
+function renderLeaderboardHighlights(message = '') {
+  const leader = globalLeaderboard[0];
+  const emptyMessage = message || (leaderboardBackendReady ? 'Acumule pontos para entrar entre os destaques.' : 'Ranking geral sendo preparado para todos os estudantes.');
+  const setHighlight = (nameId, pointsId) => {
+    const name = el(nameId), points = el(pointsId); if (!name || !points) return;
+    if (!leader) {
+      name.textContent = leaderboardBackendReady ? 'Ainda sem líder definido' : 'Ranking sendo preparado';
+      points.textContent = emptyMessage;
+      return;
+    }
+    name.textContent = leader.isCurrentUser ? 'Você está em 1º lugar!' : leader.displayName;
+    points.textContent = `${leader.points} pontos${leader.isCurrentUser ? ' · liderança atual' : ' · 1º lugar geral'}`;
+  };
+  setHighlight('leaderboard-champion-name', 'leaderboard-champion-points');
+  setHighlight('mobile-leaderboard-champion-name', 'mobile-leaderboard-champion-points');
+  renderLeaderboardCollection('leaderboard-list', globalLeaderboard, emptyMessage);
+  renderLeaderboardCollection('mobile-leaderboard-list', globalLeaderboard, emptyMessage);
+}
+function stopLeaderboardRefresh() {
+  clearTimeout(leaderboardRefreshTimer);
+  leaderboardRefreshTimer = null;
+}
+function scheduleLeaderboardRefresh(delay = 45000) {
+  stopLeaderboardRefresh();
+  if (!activeSupabaseUser || !supabaseClient || !leaderboardBackendReady) return;
+  leaderboardRefreshTimer = setTimeout(() => { void loadGlobalLeaderboard({ silent: true, delay }); }, delay);
+}
+async function loadGlobalLeaderboard(options = {}) {
+  const { silent = false, delay = 45000 } = options;
+  if (!activeSupabaseUser || !supabaseClient) { globalLeaderboard = []; renderLeaderboardHighlights(); return []; }
+  if (!leaderboardBackendReady) { renderLeaderboardHighlights('Ranking geral sendo preparado para todos os estudantes.'); return globalLeaderboard; }
+  if (leaderboardRequestInFlight) return globalLeaderboard;
+  leaderboardRequestInFlight = true;
+  try {
+    const { data, error } = await supabaseClient.from('public_leaderboard').select('user_id, display_name, avatar, points, school_year').order('points', { ascending: false }).order('display_name', { ascending: true }).limit(6);
+    if (error) throw error;
+    globalLeaderboard = (data || []).map((item, index) => ({
+      position: index + 1,
+      userId: item.user_id,
+      displayName: String(item.display_name || 'Estudante').trim() || 'Estudante',
+      avatar: item.avatar || '🧑‍🚀',
+      points: Math.max(0, Number(item.points) || 0),
+      schoolYear: item.school_year || '',
+      isCurrentUser: item.user_id === activeSupabaseUser?.id
+    }));
+    renderLeaderboardHighlights();
+  } catch (error) {
+    const rawMessage = String(error?.message || '');
+    console.warn('Não foi possível carregar o ranking global:', rawMessage || error);
+    if (/public_leaderboard|does not exist|could not find the table/i.test(rawMessage)) {
+      leaderboardBackendReady = false;
+      renderLeaderboardHighlights('Ranking geral sendo preparado para todos os estudantes.');
+      stopLeaderboardRefresh();
+      leaderboardRequestInFlight = false;
+      return globalLeaderboard;
+    }
+    if (!silent) renderLeaderboardHighlights('Não foi possível atualizar o ranking agora.');
+  }
+  leaderboardRequestInFlight = false;
+  scheduleLeaderboardRefresh(delay);
+  return globalLeaderboard;
+}
 function updateHome() {
   el('top-name').textContent = learnerName();
   if (el('avatar-name')) el('avatar-name').textContent = learnerName();
@@ -1092,7 +1186,10 @@ function renderDashboard() {
   if (!topics.length) review.innerHTML = '<div class="empty-review">Ainda não há erros registrados. Continue praticando!</div>';
   topics.forEach(([topic, mistakes]) => { const row = document.createElement('div'); row.className = 'review-item'; const label = document.createElement('span'); label.textContent = topic; const value = document.createElement('span'); value.textContent = `${mistakes} erro${mistakes > 1 ? 's' : ''}`; row.append(label, value); review.append(row); });
   renderPlan(); renderNotebook(); renderSavedQuestions(); renderTeacherMaterials();
-  el('personal-ranking').textContent = state.rounds ? `Seu melhor resultado é ${state.bestScore} pontos em ${state.rounds} desafio${state.rounds > 1 ? 's' : ''}.` : 'Complete sua primeira rodada para criar seu recorde.';
+  const leader = globalLeaderboard[0];
+  const personalBest = state.rounds ? `Seu melhor resultado é ${state.bestScore} pontos em ${state.rounds} desafio${state.rounds > 1 ? 's' : ''}.` : 'Complete sua primeira rodada para criar seu recorde.';
+  const leaderboardNote = leader ? (leader.isCurrentUser ? ` Você também lidera o ranking geral com ${leader.points} pontos.` : ` Líder atual: ${leader.displayName} com ${leader.points} pontos.`) : ' O ranking geral aparece na lateral da trilha.';
+  el('personal-ranking').textContent = `${personalBest}${leaderboardNote}`;
 }
 function renderPlan() { const picker = el('week-picker'); picker.innerHTML = ''; ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach((day, index) => { const button = document.createElement('button'); button.type = 'button'; button.className = `day-button ${state.plan.days.includes(String(index)) ? 'selected' : ''}`; button.textContent = day; button.addEventListener('click', () => { const key = String(index); state.plan.days = state.plan.days.includes(key) ? state.plan.days.filter((item) => item !== key) : [...state.plan.days, key]; saveState(); renderPlan(); }); picker.append(button); }); el('daily-minutes').value = state.plan.minutes; }
 function renderNotebook() {

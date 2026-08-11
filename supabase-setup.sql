@@ -94,6 +94,15 @@ create table if not exists public.user_presence (
   last_seen timestamptz not null default now()
 );
 
+create table if not exists public.public_leaderboard (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null default 'Estudante',
+  avatar text not null default '🧑‍🚀',
+  points integer not null default 0,
+  school_year text,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.conversations (
   id uuid primary key default gen_random_uuid(),
   user_a uuid not null references auth.users(id) on delete cascade,
@@ -170,11 +179,77 @@ as $$
   );
 $$;
 
+create or replace function public.sync_public_leaderboard()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' then
+    delete from public.public_leaderboard
+    where user_id = old.id;
+    return old;
+  end if;
+
+  if new.account_status = 'active' then
+    insert into public.public_leaderboard (user_id, display_name, avatar, points, school_year, updated_at)
+    values (
+      new.id,
+      coalesce(nullif(left(btrim(new.name), 60), ''), 'Estudante'),
+      coalesce(nullif(new.avatar, ''), '🧑‍🚀'),
+      greatest(coalesce(new.points, 0), 0),
+      new.school_year,
+      coalesce(new.updated_at, now())
+    )
+    on conflict (user_id) do update
+      set display_name = excluded.display_name,
+          avatar = excluded.avatar,
+          points = excluded.points,
+          school_year = excluded.school_year,
+          updated_at = excluded.updated_at;
+  else
+    delete from public.public_leaderboard
+    where user_id = new.id;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_public_leaderboard_from_profiles on public.profiles;
+create trigger sync_public_leaderboard_from_profiles
+after insert or update or delete on public.profiles
+for each row execute procedure public.sync_public_leaderboard();
+
+insert into public.public_leaderboard (user_id, display_name, avatar, points, school_year, updated_at)
+select
+  id,
+  coalesce(nullif(left(btrim(name), 60), ''), 'Estudante'),
+  coalesce(nullif(avatar, ''), '🧑‍🚀'),
+  greatest(coalesce(points, 0), 0),
+  school_year,
+  coalesce(updated_at, now())
+from public.profiles
+where account_status = 'active'
+on conflict (user_id) do update
+  set display_name = excluded.display_name,
+      avatar = excluded.avatar,
+      points = excluded.points,
+      school_year = excluded.school_year,
+      updated_at = excluded.updated_at;
+
+delete from public.public_leaderboard
+where user_id not in (
+  select id from public.profiles where account_status = 'active'
+);
+
 alter table public.profiles enable row level security;
 alter table public.progress enable row level security;
 alter table public.question_history enable row level security;
 alter table public.friendships enable row level security;
 alter table public.user_presence enable row level security;
+alter table public.public_leaderboard enable row level security;
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
 alter table public.user_blocks enable row level security;
@@ -260,6 +335,11 @@ drop policy if exists "Administrador vê presenças" on public.user_presence;
 create policy "Administrador vê presenças"
 on public.user_presence for select to authenticated
 using (public.current_user_is_admin());
+
+drop policy if exists "Usuários veem o ranking global" on public.public_leaderboard;
+create policy "Usuários veem o ranking global"
+on public.public_leaderboard for select to authenticated
+using (true);
 
 drop policy if exists "Amigos veem conversas" on public.conversations;
 create policy "Amigos veem conversas"
@@ -410,6 +490,7 @@ revoke all on public.progress from anon;
 revoke all on public.question_history from anon;
 revoke all on public.friendships from anon;
 revoke all on public.user_presence from anon;
+revoke all on public.public_leaderboard from anon;
 revoke all on public.conversations from anon;
 revoke all on public.messages from anon;
 revoke all on public.user_blocks from anon;
@@ -424,6 +505,7 @@ grant select, insert on public.question_history to authenticated;
 grant usage, select on sequence public.progress_id_seq to authenticated;
 grant select, delete on public.friendships to authenticated;
 grant select, insert, update on public.user_presence to authenticated;
+grant select on public.public_leaderboard to authenticated;
 grant select on public.conversations to authenticated;
 grant select, insert on public.messages to authenticated;
 grant update (read_at) on public.messages to authenticated;
@@ -688,6 +770,7 @@ end;
 $$;
 
 revoke all on function public.current_user_is_admin() from public, anon;
+revoke all on function public.sync_public_leaderboard() from public, anon, authenticated;
 revoke all on function public.admin_dashboard_summary() from public, anon;
 revoke all on function public.admin_update_user(uuid, text, text) from public, anon;
 revoke all on function public.admin_update_report(bigint, text) from public, anon;
