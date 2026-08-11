@@ -13,24 +13,20 @@ const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
   'id="plans-screen"',
   'id="plans-grid"',
   'id="credit-packs-grid"',
-  'id="premium-services-grid"',
-  'id="school-plans-grid"',
-  'id="plans-comparison-table"',
-  'id="plans-faq-list"',
-  'id="open-plans-from-material"'
+  'data-plans-tab="subscriptions"',
+  'data-plans-tab="credits"',
+  'data-plans-tab="commercial"',
+  'id="plans-panel-commercial"',
+  'id="plans-contact-button"'
 ].forEach((token) => assert.ok(html.includes(token), `elemento ausente: ${token}`));
 
 [
   'const monetizationPlans =',
-  'const monetizationCreditPacks =',
-  'const monetizationServices =',
-  'const monetizationB2B =',
-  'const monetizationComparison =',
-  'const monetizationFaq =',
-  'function plansSummaryText()',
   'function openSalesConversation(',
   'function renderPlansScreen()',
   'function openPlans()',
+  "document.querySelectorAll('[data-credit-amount]')",
+  "document.querySelectorAll('[data-plans-tab]')",
   "if (id === 'plans-screen') return 'plans';",
   "else if (button.dataset.nav === 'plans') openPlans();",
   "else if (destination === 'plans') openPlans();"
@@ -38,11 +34,16 @@ const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 [
   '.plans-screen',
-  '.plans-hero-card',
+  '.plans-tabs',
+  '.plans-tab-panel',
   '.plans-grid',
-  '.plans-mini-grid',
-  '.plans-b2b-grid',
-  '.plans-comparison-table'
+  '.plans-credit-purchase',
+  '.plans-commercial-card'
 ].forEach((token) => assert.ok(css.includes(token), `estilo ausente: ${token}`));
+
+['premium-services-grid', 'school-plans-grid', 'plans-comparison-table', 'plans-faq-list', 'material-upsell-card']
+  .forEach((token) => assert.ok(!html.includes(token), `bloco antigo ainda presente: ${token}`));
+
+assert.strictEqual((app.match(/function renderPlansScreen\(\)/g) || []).length, 1, 'deve existir apenas uma implementação da tela de planos');
 
 console.log('plans-monetization.test.js: todos os testes passaram');

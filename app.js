@@ -99,39 +99,8 @@ const weeklyThemes = [
 ];
 const salesContact = { whatsapp: '5548984536316', label: '(48) 98453-6316', email: 'contato@estudamais.net' };
 const monetizationPlans = [
-  { id: 'free', label: 'Grátis', price: 'R$ 0', billing: 'para atrair e engajar', badge: 'Entrada', accent: 'soft', cta: 'Manter grátis', description: 'Perfeito para crescer base, gerar hábito e mostrar valor rápido para a família.', features: ['Questões diárias limitadas', 'Trilha gamificada e ranking', 'Avatar básico e revisões iniciais', 'Uso reduzido da apostila com foto'], offer: 'Plano de aquisição' },
-  { id: 'premium', label: 'Premium', price: 'R$ 19,90/mês', billing: 'ou R$ 149,90/ano', badge: 'Recomendado', accent: 'primary', cta: 'Quero o Premium', description: 'Plano principal para a maior parte dos alunos: acessível, forte e com ótimo valor percebido.', features: ['Trilhas ilimitadas e mais questões inéditas', 'Resumo + mapa mental com mais créditos', 'Relatórios completos de desempenho', 'Mais personalização do avatar e revisões'], offer: 'Melhor conversão' },
-  { id: 'family', label: 'Família', price: 'R$ 34,90/mês', billing: 'ou R$ 299,90/ano', badge: 'Pais', accent: 'highlight', cta: 'Quero o Família', description: 'Ideal para responsáveis com 2 ou mais alunos e foco em acompanhamento próximo.', features: ['Até 4 perfis em uma conta', 'Painel do responsável', 'Relatórios por filho e por matéria', 'Acompanhamento de metas e revisões'], offer: 'Maior ticket B2C' }
-];
-const monetizationCreditPacks = [
-  { id: 'credit-10', title: '10 créditos de apostila', price: 'R$ 9,90', description: 'Para alunos que usam foto da apostila de vez em quando.', cta: 'Quero 10 créditos' },
-  { id: 'credit-25', title: '25 créditos de apostila', price: 'R$ 19,90', description: 'Bom equilíbrio entre preço e frequência de uso.', cta: 'Quero 25 créditos' },
-  { id: 'credit-60', title: '60 créditos de apostila', price: 'R$ 39,90', description: 'Perfeito para semanas de prova, simulados e muitos resumos.', cta: 'Quero 60 créditos' }
-];
-const monetizationServices = [
-  { id: 'essay', title: 'Correção premium', price: 'R$ 9,90 por redação', description: 'Correção detalhada com nota por competência e plano de melhoria.', cta: 'Quero correção premium' },
-  { id: 'essay-pack', title: 'Pacote com 4 correções', price: 'R$ 29,90', description: 'Modelo ideal para Enem e vestibular, com treino recorrente.', cta: 'Quero pacote de redação' },
-  { id: 'avatar-shop', title: 'Loja do avatar', price: 'R$ 2,90 a R$ 24,90', description: 'Itens especiais, roupas, companheiros e coleções sazonais.', cta: 'Quero loja do avatar' }
-];
-const monetizationB2B = [
-  { id: 'teacher', title: 'Professor individual', price: 'R$ 29,90/mês', description: 'Para professores que querem acompanhar turmas pequenas e enviar missões.', cta: 'Quero plano professor' },
-  { id: 'school-small', title: 'Escola pequena', price: 'R$ 199 a R$ 399/mês', description: 'Boa para validar com 1 unidade, reforço escolar ou curso local.', cta: 'Quero proposta escolar' },
-  { id: 'school-medium', title: 'Escola média', price: 'R$ 500 a R$ 1.500/mês', description: 'Com painel de desempenho, gestão de turmas e uso institucional.', cta: 'Quero proposta completa' },
-  { id: 'sponsor', title: 'Parcerias e patrocínios', price: 'sob consulta', description: 'Missões patrocinadas, papelarias, cursinhos e editoras parceiras.', cta: 'Quero parcerias' }
-];
-const monetizationComparison = [
-  { feature: 'Questões por dia', free: 'Limitadas', premium: 'Ilimitadas', family: 'Ilimitadas para todos os perfis' },
-  { feature: 'Apostila por foto', free: 'Poucos usos', premium: 'Mais créditos mensais', family: 'Créditos ampliados por família' },
-  { feature: 'Resumo + mapa mental', free: 'Básico', premium: 'Completo', family: 'Completo + acompanhamento' },
-  { feature: 'Relatórios de desempenho', free: 'Essenciais', premium: 'Completos', family: 'Com visão do responsável' },
-  { feature: 'Avatar e itens raros', free: 'Básico', premium: 'Mais itens', family: 'Mais itens para todos' },
-  { feature: 'Suporte ao estudo', free: 'Padrão', premium: 'Prioritário', family: 'Prioritário + família' }
-];
-const monetizationFaq = [
-  { question: 'Qual plano mais fácil de vender no começo?', answer: 'O Premium de R$ 19,90/mês, porque ele resolve a dor principal do aluno sem assustar no preço.' },
-  { question: 'O que mais aumenta conversão no Estuda+?', answer: 'Apostila por foto, resumo, mapa mental, relatório de erros e acompanhamento dos pais.' },
-  { question: 'Como aumentar ticket médio sem parecer caro?', answer: 'Ofereça plano Família, créditos extras de apostila e pacote premium de redação.' },
-  { question: 'Como vender para escola?', answer: 'Mostre relatório por turma, trilhas por tema, acompanhamento do professor e uso do próprio material escolar.' }
+  { id: 'premium', label: 'plano Premium', price: 'R$ 19,90/mês' },
+  { id: 'family', label: 'plano Família', price: 'R$ 34,90/mês' }
 ];
 const subjectIcons = { Matemática: '➗', Português: '📖', História: '🏛️', Geografia: '🌎', Biologia: '🧬', Física: '⚛️', Química: '🧪' };
 const phaseNames = ['Fundamentos', 'Aplicação', 'Raciocínio', 'Missão final'];
@@ -1259,61 +1228,9 @@ function formattedWhatsapp(value = '') {
   if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return value || 'Não informado';
 }
-function copyText(text) {
-  const value = String(text || '').trim();
-  if (!value) return Promise.resolve(false);
-  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value).then(() => true).catch(() => false);
-  const input = document.createElement('textarea');
-  input.value = value;
-  input.setAttribute('readonly', '');
-  input.style.position = 'fixed';
-  input.style.opacity = '0';
-  document.body.append(input);
-  input.select();
-  let success = false;
-  try { success = document.execCommand('copy'); } catch {}
-  input.remove();
-  return Promise.resolve(success);
-}
-function plansSummaryText() {
-  return [
-    'Proposta comercial Estuda+',
-    '',
-    ...monetizationPlans.map((plan) => `• ${plan.label}: ${plan.price} ${plan.billing ? `(${plan.billing})` : ''}`.trim()),
-    '',
-    'Pacotes extras:',
-    ...monetizationCreditPacks.map((pack) => `• ${pack.title}: ${pack.price}`),
-    ...monetizationServices.map((service) => `• ${service.title}: ${service.price}`),
-    '',
-    'B2B:',
-    ...monetizationB2B.map((offer) => `• ${offer.title}: ${offer.price}`),
-    '',
-    'Contato comercial:',
-    `WhatsApp ${salesContact.label} | ${salesContact.email}`
-  ].join('\n');
-}
 function openSalesConversation(topic = 'Planos Estuda+', price = '') {
-  const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Quero saber como contratar e começar a vender essa oferta.`);
+  const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Gostaria de saber mais.`);
   window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
-}
-function planCardTemplate(plan) {
-  return `<article class="plan-card-item ${plan.accent || 'soft'}"><div class="plan-card-top"><span>${plan.badge}</span><strong>${plan.label}</strong><small>${plan.offer}</small></div><div class="plan-card-price"><b>${plan.price}</b><small>${plan.billing || ''}</small></div><p>${plan.description}</p><ul>${plan.features.map((feature) => `<li>${feature}</li>`).join('')}</ul><button type="button" data-plan-interest="${plan.id}">${plan.cta}</button></article>`;
-}
-function renderPlansScreen() {
-  const grid = el('plans-grid'), creditGrid = el('credit-packs-grid'), servicesGrid = el('premium-services-grid'), b2bGrid = el('school-plans-grid'), comparison = el('plans-comparison-table'), faq = el('plans-faq-list');
-  if (!grid || !creditGrid || !servicesGrid || !b2bGrid || !comparison || !faq) return;
-  grid.innerHTML = monetizationPlans.map(planCardTemplate).join('');
-  creditGrid.innerHTML = monetizationCreditPacks.map((pack) => `<article class="plan-mini-card"><span>CRÉDITOS</span><strong>${pack.title}</strong><b>${pack.price}</b><p>${pack.description}</p><button type="button" data-sales-interest="${pack.title}" data-sales-price="${pack.price}">${pack.cta}</button></article>`).join('');
-  servicesGrid.innerHTML = monetizationServices.map((service) => `<article class="plan-mini-card"><span>PREMIUM</span><strong>${service.title}</strong><b>${service.price}</b><p>${service.description}</p><button type="button" data-sales-interest="${service.title}" data-sales-price="${service.price}">${service.cta}</button></article>`).join('');
-  b2bGrid.innerHTML = monetizationB2B.map((offer) => `<article class="plan-b2b-card"><span>ESTUDA+ PRO</span><strong>${offer.title}</strong><b>${offer.price}</b><p>${offer.description}</p><button type="button" data-sales-interest="${offer.title}" data-sales-price="${offer.price}">${offer.cta}</button></article>`).join('');
-  comparison.innerHTML = `<table><thead><tr><th>Recurso</th><th>Grátis</th><th>Premium</th><th>Família</th></tr></thead><tbody>${monetizationComparison.map((item) => `<tr><td>${item.feature}</td><td>${item.free}</td><td>${item.premium}</td><td>${item.family}</td></tr>`).join('')}</tbody></table>`;
-  faq.innerHTML = monetizationFaq.map((item) => `<article class="plans-faq-item"><strong>${item.question}</strong><p>${item.answer}</p></article>`).join('');
-  document.querySelectorAll('[data-plan-interest]').forEach((button) => {
-    const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
-    if (!plan) return;
-    button.addEventListener('click', () => openSalesConversation(plan.label, plan.price));
-  });
-  document.querySelectorAll('[data-sales-interest]').forEach((button) => button.addEventListener('click', () => openSalesConversation(button.dataset.salesInterest, button.dataset.salesPrice)));
 }
 function openPlans() {
   renderPlansScreen();
@@ -1323,79 +1240,38 @@ function normalizePlansUi() {
   const sideMenu = document.querySelector('.side-menu');
   const plansButton = sideMenu?.querySelector('[data-side-nav="plans"]');
   if (sideMenu && plansButton) sideMenu.append(plansButton);
-  document.querySelector('.material-upsell-card')?.remove();
-  const setupUpsells = document.querySelectorAll('#setup-screen .plans-promo-card, #setup-screen .material-upsell-card, #setup-screen [data-side-nav="plans"]');
-  setupUpsells.forEach((item) => item.remove());
+  document.querySelectorAll('.material-upsell-card, #setup-screen .plans-promo-card').forEach((item) => item.remove());
 }
 function renderPlansScreen() {
   const grid = el('plans-grid');
   const creditGrid = el('credit-packs-grid');
-  const servicesGrid = el('premium-services-grid');
-  const b2bGrid = el('school-plans-grid');
-  const comparison = el('plans-comparison-table');
-  const faq = el('plans-faq-list');
-  const title = el('plans-grid-title');
-  if (!grid || !creditGrid || !servicesGrid || !b2bGrid || !comparison || !faq) return;
-  if (title) title.textContent = 'Compare os planos lado a lado';
-  grid.innerHTML = [
-    `<article class="plan-card-item soft"><div class="plan-card-top"><span>ENTRADA</span><strong>Grátis</strong><small>Para atrair e engajar</small></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><p>Ótimo para o aluno conhecer o app, criar hábito e entender o valor antes de assinar.</p><ul><li>Questões diárias limitadas</li><li>Trilha gamificada e ranking</li><li>Avatar básico</li><li>Revisão inicial</li><li>Poucos usos da apostila com foto</li><li>Resumo e mapa mental básicos</li><li>Suporte padrão</li></ul><button type="button" data-plan-interest="free">Manter grátis</button></article>`,
-    `<article class="plan-card-item primary"><div class="plan-card-top"><span>RECOMENDADO</span><strong>Premium</strong><small>Melhor conversão</small></div><div class="plan-card-price"><b>R$ 19,90/mês</b><small>ou R$ 149,90/ano</small></div><p>O plano ideal para a maioria dos alunos: acessível e com muitos recursos premium percebidos.</p><ul><li>Trilhas ilimitadas</li><li>Mais questões inéditas</li><li>Mais créditos para apostila por foto</li><li>Resumo e mapa mental completos</li><li>Relatórios completos de desempenho</li><li>Mais personalização do avatar</li><li>Revisões inteligentes avançadas</li><li>Suporte prioritário</li></ul><button type="button" data-plan-interest="premium">Quero o Premium</button></article>`,
-    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>PAIS</span><strong>Família</strong><small>Maior ticket B2C</small></div><div class="plan-card-price"><b>R$ 34,90/mês</b><small>ou R$ 299,90/ano</small></div><p>Perfeito para responsáveis com mais de um estudante e foco em acompanhamento próximo.</p><ul><li>Até 4 perfis</li><li>Relatórios por filho e por matéria</li><li>Painel do responsável</li><li>Mais créditos de apostila</li><li>Resumo e mapa mental completos</li><li>Metas e revisões por perfil</li><li>Avatar premium para todos</li><li>Suporte prioritário família</li></ul><button type="button" data-plan-interest="family">Quero o Família</button></article>`
-  ].join('');
-  creditGrid.innerHTML = monetizationCreditPacks.map((pack) => `<article class="plan-mini-card"><span>CRÉDITOS</span><strong>${pack.title}</strong><b>${pack.price}</b><p>${pack.description}</p><button type="button" data-sales-interest="${pack.title}" data-sales-price="${pack.price}">${pack.cta}</button></article>`).join('');
-  servicesGrid.innerHTML = monetizationServices.map((service) => `<article class="plan-mini-card"><span>PREMIUM</span><strong>${service.title}</strong><b>${service.price}</b><p>${service.description}</p><button type="button" data-sales-interest="${service.title}" data-sales-price="${service.price}">${service.cta}</button></article>`).join('');
-  b2bGrid.innerHTML = monetizationB2B.map((offer) => `<article class="plan-b2b-card"><span>ESTUDA+ PRO</span><strong>${offer.title}</strong><b>${offer.price}</b><p>${offer.description}</p><button type="button" data-sales-interest="${offer.title}" data-sales-price="${offer.price}">${offer.cta}</button></article>`).join('');
-  comparison.innerHTML = `<table><thead><tr><th>Recurso</th><th>Grátis</th><th>Premium</th><th>Família</th></tr></thead><tbody>${monetizationComparison.map((item) => `<tr><td>${item.feature}</td><td>${item.free}</td><td>${item.premium}</td><td>${item.family}</td></tr>`).join('')}</tbody></table>`;
-  faq.innerHTML = monetizationFaq.map((item) => `<article class="plans-faq-item"><strong>${item.question}</strong><p>${item.answer}</p></article>`).join('');
-  document.querySelectorAll('[data-plan-interest]').forEach((button) => {
-    const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
-    if (!plan) return;
-    button.onclick = () => openSalesConversation(plan.label, plan.price);
-  });
-  document.querySelectorAll('[data-sales-interest]').forEach((button) => {
-    button.onclick = () => openSalesConversation(button.dataset.salesInterest, button.dataset.salesPrice);
-  });
-}
-function renderPlansScreen() {
-  const grid = el('plans-grid');
-  const creditGrid = el('credit-packs-grid');
-  const servicesGrid = el('premium-services-grid');
-  const b2bGrid = el('school-plans-grid');
-  const comparison = el('plans-comparison-table');
-  const faq = el('plans-faq-list');
-  const title = el('plans-grid-title');
-  const heroKicker = document.querySelector('#plans-screen .plans-hero-card span');
-  const heroTitle = document.querySelector('#plans-screen .plans-hero-card strong');
-  const heroCopy = document.querySelector('#plans-screen .plans-hero-card p');
   normalizePlansUi();
-  if (!grid || !creditGrid || !servicesGrid || !b2bGrid || !comparison || !faq) return;
-  if (title) title.textContent = 'Compare os planos lado a lado';
-  if (heroKicker) heroKicker.textContent = 'ESCOLHA O MELHOR PARA VOCÊ';
-  if (heroTitle) heroTitle.textContent = 'Mais recursos para estudar do seu jeito';
-  if (heroCopy) heroCopy.textContent = 'Compare os planos, veja o que está incluído em cada um e escolha a opção ideal para sua rotina de estudos.';
+  if (!grid || !creditGrid) return;
   grid.innerHTML = [
-    `<article class="plan-card-item soft"><div class="plan-card-top"><span>ESSENCIAL</span><strong>Grátis</strong><small>Para começar</small></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><p>Uma ótima forma de conhecer o app e começar sua rotina de estudos.</p><ul><li>Questões diárias limitadas</li><li>Trilha gamificada e ranking</li><li>Avatar básico</li><li>Revisão inicial</li><li>Poucos usos da apostila por foto</li><li>Resumo e mapa mental básicos</li><li>Suporte padrão</li></ul><button type="button" data-plan-interest="free">Continuar no grátis</button></article>`,
-    `<article class="plan-card-item primary"><div class="plan-card-top"><span>RECOMENDADO</span><strong>Premium</strong><small>Mais recursos para estudar</small></div><div class="plan-card-price"><b>R$ 19,90/mês</b><small>ou R$ 149,90/ano</small></div><p>Ideal para quem quer estudar com mais liberdade, praticar mais e acompanhar melhor a evolução.</p><ul><li>Trilhas ilimitadas</li><li>Mais questões inéditas</li><li>Mais usos da apostila por foto</li><li>Resumo e mapa mental completos</li><li>Relatórios completos de desempenho</li><li>Mais personalização do avatar</li><li>Revisões inteligentes avançadas</li><li>Suporte prioritário</li></ul><button type="button" data-plan-interest="premium">Quero o Premium</button></article>`,
-    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>PARA A FAMÍLIA</span><strong>Família</strong><small>Mais de um estudante</small></div><div class="plan-card-price"><b>R$ 34,90/mês</b><small>ou R$ 299,90/ano</small></div><p>Perfeito para responsáveis que acompanham mais de um aluno e querem tudo organizado no mesmo lugar.</p><ul><li>Até 4 perfis</li><li>Relatórios por filho e por matéria</li><li>Painel do responsável</li><li>Mais usos da apostila por foto</li><li>Resumo e mapa mental completos</li><li>Metas e revisões por perfil</li><li>Avatar premium para todos</li><li>Suporte prioritário para a família</li></ul><button type="button" data-plan-interest="family">Quero o Família</button></article>`
+    `<article class="plan-card-item soft"><div class="plan-card-top"><span>PARA COMEÇAR</span><strong>Grátis</strong></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><ul><li>Questões diárias</li><li>Trilha, pontos e ranking</li><li>Avatar básico</li><li>Revisões essenciais</li></ul><button type="button" disabled aria-disabled="true">Plano atual</button></article>`,
+    `<article class="plan-card-item primary"><div class="plan-card-top"><span>MAIS ESCOLHIDO</span><strong>Premium</strong></div><div class="plan-card-price"><b>R$ 19,90</b><small>por mês ou R$ 149,90 por ano</small></div><ul><li>Questões e trilhas ilimitadas</li><li>Apostila por foto com mais usos</li><li>Resumo e mapa mental completos</li><li>Relatórios de desempenho</li><li>Avatar com mais personalizações</li></ul><button type="button" data-plan-interest="premium">Escolher Premium</button></article>`,
+    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>ATÉ 4 PESSOAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>Até 4 perfis de estudante</li><li>Acompanhamento por aluno</li><li>Metas e relatórios separados</li><li>Avatares Premium para todos</li></ul><button type="button" data-plan-interest="family">Escolher Família</button></article>`
   ].join('');
-  const creditTitle = el('credit-packs-title');
-  if (creditTitle) creditTitle.textContent = 'Mais usos da apostila por foto';
-  creditGrid.innerHTML = `<article class="plan-mini-card clean-credit-card"><span>APOSTILA POR FOTO</span><strong>Escolha a quantidade ideal para seu ritmo</strong><p>Se você usa bastante a apostila por foto, pode escolher um pacote extra simples e sem complicação.</p><div class="credit-options"><button type="button" data-sales-interest="10 usos da apostila por foto" data-sales-price="R$ 9,90">10 usos · R$ 9,90</button><button type="button" data-sales-interest="25 usos da apostila por foto" data-sales-price="R$ 19,90">25 usos · R$ 19,90</button><button type="button" data-sales-interest="60 usos da apostila por foto" data-sales-price="R$ 39,90">60 usos · R$ 39,90</button></div><small class="clean-credit-note">Ideal para semanas de prova, muitos resumos e bastante prática com material próprio.</small></article>`;
-  servicesGrid.innerHTML = monetizationServices.map((service) => `<article class="plan-mini-card"><span>PREMIUM</span><strong>${service.title}</strong><b>${service.price}</b><p>${service.description}</p><button type="button" data-sales-interest="${service.title}" data-sales-price="${service.price}">${service.cta}</button></article>`).join('');
-  b2bGrid.innerHTML = monetizationB2B.map((offer) => `<article class="plan-b2b-card"><span>ESTUDA+ PRO</span><strong>${offer.title}</strong><b>${offer.price}</b><p>${offer.description}</p><button type="button" data-sales-interest="${offer.title}" data-sales-price="${offer.price}">${offer.cta}</button></article>`).join('');
-  comparison.innerHTML = `<table><thead><tr><th>Recurso</th><th>Grátis</th><th>Premium</th><th>Família</th></tr></thead><tbody>${monetizationComparison.map((item) => `<tr><td>${item.feature}</td><td>${item.free}</td><td>${item.premium}</td><td>${item.family}</td></tr>`).join('')}</tbody></table>`;
-  faq.innerHTML = [
-    { question: 'Qual plano combina mais com quem está começando?', answer: 'O plano grátis é ótimo para conhecer o app e criar uma rotina de estudos.' },
-    { question: 'Quando vale a pena assinar o Premium?', answer: 'Quando o aluno quer mais questões, mais usos da apostila e relatórios completos de desempenho.' },
-    { question: 'Quando o plano Família faz mais sentido?', answer: 'Quando há mais de um estudante em casa e o responsável quer acompanhar tudo em um só lugar.' }
-  ].map((item) => `<article class="plans-faq-item"><strong>${item.question}</strong><p>${item.answer}</p></article>`).join('');
+  creditGrid.innerHTML = `<div class="credit-choice-list" role="radiogroup" aria-label="Quantidade de créditos"><button class="selected" type="button" role="radio" aria-checked="true" data-credit-amount="10" data-credit-price="R$ 9,90"><strong>10 créditos</strong><span>R$ 9,90</span></button><button type="button" role="radio" aria-checked="false" data-credit-amount="25" data-credit-price="R$ 19,90"><strong>25 créditos</strong><span>R$ 19,90</span><small>Mais escolhido</small></button><button type="button" role="radio" aria-checked="false" data-credit-amount="60" data-credit-price="R$ 39,90"><strong>60 créditos</strong><span>R$ 39,90</span></button></div><button id="buy-selected-credits" class="start-button" type="button">Comprar 10 créditos · R$ 9,90</button><small class="credit-purchase-note">Compra avulsa. Os créditos ficam disponíveis na sua conta.</small>`;
   document.querySelectorAll('[data-plan-interest]').forEach((button) => {
     const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
     if (!plan) return;
     button.onclick = () => openSalesConversation(plan.label, plan.price);
   });
-  document.querySelectorAll('[data-sales-interest]').forEach((button) => {
-    button.onclick = () => openSalesConversation(button.dataset.salesInterest, button.dataset.salesPrice);
+  document.querySelectorAll('[data-credit-amount]').forEach((button) => {
+    button.onclick = () => {
+      document.querySelectorAll('[data-credit-amount]').forEach((item) => { item.classList.toggle('selected', item === button); item.setAttribute('aria-checked', String(item === button)); });
+      const buyButton = el('buy-selected-credits');
+      if (buyButton) buyButton.textContent = `Comprar ${button.dataset.creditAmount} créditos · ${button.dataset.creditPrice}`;
+    };
+  });
+  el('buy-selected-credits').onclick = () => { const selected = document.querySelector('[data-credit-amount].selected'); openSalesConversation(`${selected?.dataset.creditAmount || 10} créditos da apostila`, selected?.dataset.creditPrice || 'R$ 9,90'); };
+  document.querySelectorAll('[data-plans-tab]').forEach((button) => {
+    button.onclick = () => {
+      const tab = button.dataset.plansTab;
+      document.querySelectorAll('[data-plans-tab]').forEach((item) => { item.classList.toggle('selected', item === button); item.setAttribute('aria-selected', String(item === button)); });
+      document.querySelectorAll('[data-plans-panel]').forEach((panel) => { panel.hidden = panel.dataset.plansPanel !== tab; });
+    };
   });
 }
 function showProfileDataStatus(message = '', error = false) {
@@ -1655,11 +1531,13 @@ function show(id, options = {}) {
   const nav = el('app-nav');
   if (nav) {
     nav.hidden = ['auth-screen', 'quiz-screen'].includes(id);
+    const moreDestinations = new Set(['avatar', 'review', 'plans']);
     nav.querySelectorAll('button').forEach((button) => {
-      const active = button.dataset.nav === activeNavigation;
+      const active = button.dataset.nav === activeNavigation || (button.dataset.nav === 'more' && moreDestinations.has(activeNavigation));
       button.classList.toggle('active', active);
       if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     });
+    closeMobileMoreMenu();
   }
   document.querySelectorAll('.side-menu [data-side-nav]').forEach((button) => {
     const active = button.dataset.sideNav === activeNavigation;
@@ -1832,13 +1710,7 @@ el('close-plans').addEventListener('click', () => navigateBack('subject-screen')
 el('close-admin').addEventListener('click', () => navigateBack('dashboard-screen'));
 el('open-material-quiz')?.addEventListener('click', openMaterialQuiz);
 el('close-material-quiz').addEventListener('click', () => navigateBack('subject-screen'));
-el('open-plans-from-material')?.addEventListener('click', openPlans);
-el('plans-contact-button')?.addEventListener('click', () => openSalesConversation('planos e monetização do Estuda+'));
-el('open-plans-whatsapp')?.addEventListener('click', () => openSalesConversation('implantação completa dos planos do Estuda+'));
-el('copy-plans-summary')?.addEventListener('click', async () => {
-  const success = await copyText(plansSummaryText());
-  if (success) showToast([{ icon: '📋', title: 'Proposta copiada', description: 'A estratégia comercial do Estuda+ já pode ser enviada para parceiros e responsáveis.' }]);
-});
+el('plans-contact-button')?.addEventListener('click', () => openSalesConversation('uma solução para escola ou professor'));
 el('open-admin-panel').addEventListener('click', openAdmin);
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
@@ -1955,7 +1827,23 @@ document.addEventListener('keydown', (event) => {
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 });
+function closeMobileMoreMenu() {
+  const menu = el('mobile-more-menu'), toggle = el('mobile-more-toggle');
+  if (!menu || !toggle) return;
+  menu.hidden = true;
+  toggle.setAttribute('aria-expanded', 'false');
+}
+function toggleMobileMoreMenu() {
+  const menu = el('mobile-more-menu'), toggle = el('mobile-more-toggle');
+  if (!menu || !toggle) return;
+  const willOpen = menu.hidden;
+  menu.hidden = !willOpen;
+  toggle.setAttribute('aria-expanded', String(willOpen));
+  if (willOpen) menu.querySelector('button')?.focus();
+}
 el('app-nav').querySelectorAll('button').forEach((button) => button.addEventListener('click', () => {
+  if (button.dataset.nav === 'more') { toggleMobileMoreMenu(); return; }
+  closeMobileMoreMenu();
   if (button.dataset.nav === 'subjects') goToSubjects();
   else if (button.dataset.nav === 'trail') { syncAutomaticCurriculum(); show('setup-screen'); }
   else if (button.dataset.nav === 'avatar') openAvatarStudio();
@@ -1965,6 +1853,11 @@ el('app-nav').querySelectorAll('button').forEach((button) => button.addEventList
   else if (button.dataset.nav === 'friends') openFriends();
   else { renderDashboard(); show('dashboard-screen'); }
 }));
+document.addEventListener('click', (event) => {
+  const nav = el('app-nav');
+  if (!nav?.contains(event.target)) closeMobileMoreMenu();
+});
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMobileMoreMenu(); });
 document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEventListener('click', () => {
   const destination = button.dataset.sideNav;
   if (destination === 'subjects') goToSubjects();
