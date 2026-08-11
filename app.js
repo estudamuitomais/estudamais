@@ -31,6 +31,7 @@ let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum
 let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null, avatarReactionTimer = null;
 let sideMascotReactionIndex = 0, sideMascotReactionTimer = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
+let quizAudioContext = null;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const materialQuiz = window.EstudaMaterialQuiz?.create({ onStart: startMaterialQuiz });
@@ -164,6 +165,15 @@ function mergeQuestionSequences(local = {}, cloud = {}) {
 }
 function loadState() { try { return mergeState(JSON.parse(localStorage.getItem(storageKey))); } catch { return blankState(); } }
 let state = loadState();
+function ensureFeedbackPreferences(target = state) {
+  if (!target || typeof target !== 'object') return { sound: true, vibration: true };
+  target.feedback = {
+    sound: target.feedback?.sound !== false,
+    vibration: target.feedback?.vibration !== false
+  };
+  return target.feedback;
+}
+ensureFeedbackPreferences(state);
 schoolYear = state.schoolYear || '6EF';
 function normalizeDay() { if (state.day !== today()) { state.day = today(); state.answeredToday = 0; state.energy = 5; saveState(); } }
 function normalizeWeek() { if (!state.weekly || state.weekly.id !== weekKey()) { state.weekly = { id: weekKey(), answered: 0, goal: state.weekly?.goal || 50 }; saveState(); } }
@@ -325,6 +335,7 @@ async function activateUser(user) {
   if (profile?.app_state && Object.keys(profile.app_state).length) {
     const cloudState = mergeState(profile.app_state);
     state = cloudState;
+    ensureFeedbackPreferences(state);
     state.phaseProgress = mergePhaseProgress(localState.phaseProgress, cloudState.phaseProgress);
     const localAvatarTime = Date.parse(localState.avatarDesignUpdatedAt || '') || 0, cloudAvatarTime = Date.parse(cloudState.avatarDesignUpdatedAt || '') || 0;
     const avatarSource = localAvatarTime > cloudAvatarTime ? localState : cloudState;
@@ -339,7 +350,10 @@ async function activateUser(user) {
     state.seenQuestionIds = [...new Set([...(localState.seenQuestionIds || []), ...(cloudState.seenQuestionIds || [])])];
     state.seenQuestionFingerprints = [...new Set([...(localState.seenQuestionFingerprints || []), ...(cloudState.seenQuestionFingerprints || [])])];
     state.questionSequences = mergeQuestionSequences(localState.questionSequences, cloudState.questionSequences);
-  } else state = localState;
+  } else {
+    state = localState;
+    ensureFeedbackPreferences(state);
+  }
   mergeReservedQuestionHistory(reservedHistory);
   state.userName = profile?.name || user.user_metadata?.name || state.userName || user.email?.split('@')[0] || 'Estudante';
   state.schoolYear = profile?.school_year || state.schoolYear || '6EF';
@@ -459,6 +473,7 @@ async function logoutUser() {
   if (el('admin-access-card')) el('admin-access-card').hidden = true;
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
+  ensureFeedbackPreferences(state);
   questions = []; current = 0; currentPhase = 1; resultAction = 'home'; hits = 0; score = 0; roundStreak = 0;
   materialQuizSession = false;
   setAuthMode('login', { historyMode: 'reset' });
@@ -525,6 +540,131 @@ function speakSideMascot(message) {
   speech.pitch = 1.12;
   speech.volume = .82;
   window.speechSynthesis.speak(speech);
+}
+function feedbackPreferences() {
+  return ensureFeedbackPreferences(state);
+}
+function feedbackSoundEnabled() {
+  return feedbackPreferences().sound !== false;
+}
+function feedbackVibrationEnabled() {
+  return feedbackPreferences().vibration !== false;
+}
+function supportsVibration() {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+function triggerQuizVibration(kind = 'correct') {
+  if (!feedbackVibrationEnabled() || !supportsVibration()) return;
+  const pattern = kind === 'phase'
+    ? [18, 44, 24]
+    : kind === 'wrong'
+      ? [24, 54, 16]
+      : 18;
+  navigator.vibrate(pattern);
+}
+function getQuizAudioContext() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return null;
+  if (!quizAudioContext || quizAudioContext.state === 'closed') quizAudioContext = new AudioContext();
+  return quizAudioContext;
+}
+function primeQuizAudio() {
+  const context = getQuizAudioContext();
+  if (context?.state === 'suspended') void context.resume().catch(() => {});
+  return context;
+}
+function playQuizTones(tones) {
+  if (!feedbackSoundEnabled()) return;
+  const context = primeQuizAudio();
+  if (!context) return;
+  const play = () => {
+    const now = context.currentTime;
+    tones.forEach((tone) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = tone.type;
+      oscillator.frequency.setValueAtTime(tone.frequency, now + tone.delay);
+      gain.gain.setValueAtTime(0.0001, now + tone.delay);
+      gain.gain.exponentialRampToValueAtTime(tone.gain, now + tone.delay + tone.attack);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + tone.delay + tone.release);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(now + tone.delay);
+      oscillator.stop(now + tone.delay + tone.release + 0.02);
+    });
+  };
+  if (context.state === 'suspended') void context.resume().then(play).catch(() => {});
+  else play();
+}
+function playQuizFeedbackSound(kind = 'correct') {
+  const tones = kind === 'wrong'
+    ? [{ delay: 0, frequency: 246.94, type: 'sine', attack: 0.014, release: 0.14, gain: 0.032 }, { delay: 0.085, frequency: 196.0, type: 'sine', attack: 0.014, release: 0.16, gain: 0.026 }]
+    : [{ delay: 0, frequency: 659.25, type: 'sine', attack: 0.015, release: 0.12, gain: 0.028 }, { delay: 0.1, frequency: 783.99, type: 'sine', attack: 0.015, release: 0.13, gain: 0.024 }];
+  playQuizTones(tones);
+}
+function playPhaseAdvanceSound() {
+  playQuizTones([
+    { delay: 0, frequency: 523.25, type: 'triangle', attack: 0.015, release: 0.12, gain: 0.024 },
+    { delay: 0.1, frequency: 659.25, type: 'triangle', attack: 0.015, release: 0.14, gain: 0.024 },
+    { delay: 0.2, frequency: 783.99, type: 'triangle', attack: 0.016, release: 0.17, gain: 0.022 },
+    { delay: 0.33, frequency: 987.77, type: 'sine', attack: 0.02, release: 0.24, gain: 0.018 }
+  ]);
+}
+function ensureFeedbackPreferenceUI() {
+  const questionTools = document.querySelector('#quiz-screen .question-tools');
+  if (questionTools && !el('toggle-quiz-sound')) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'toggle-quiz-sound';
+    button.className = 'quiz-sound-toggle';
+    button.addEventListener('click', () => toggleFeedbackPreference('sound'));
+    questionTools.append(button);
+  }
+  const accessibilityCard = document.querySelector('#dashboard-screen .accessibility-card');
+  if (accessibilityCard && !accessibilityCard.querySelector('[data-feedback="sound"]')) {
+    const buildButton = (key) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'access-control preference-control';
+      button.dataset.feedback = key;
+      button.addEventListener('click', () => toggleFeedbackPreference(key));
+      return button;
+    };
+    accessibilityCard.append(buildButton('sound'), buildButton('vibration'));
+  }
+}
+function renderFeedbackPreferenceControls() {
+  ensureFeedbackPreferenceUI();
+  const soundEnabled = feedbackSoundEnabled();
+  const vibrationEnabled = feedbackVibrationEnabled();
+  const quizButton = el('toggle-quiz-sound');
+  if (quizButton) {
+    quizButton.setAttribute('aria-pressed', String(soundEnabled));
+    quizButton.classList.toggle('active', soundEnabled);
+    quizButton.classList.toggle('muted', !soundEnabled);
+    quizButton.setAttribute('aria-label', soundEnabled ? 'Desativar sons sutis da trilha' : 'Ativar sons sutis da trilha');
+    quizButton.setAttribute('title', soundEnabled ? 'Desativar sons sutis da trilha' : 'Ativar sons sutis da trilha');
+    quizButton.innerHTML = `${soundEnabled ? '🔊' : '🔈'} ${soundEnabled ? 'Som ligado' : 'Som desligado'}`;
+  }
+  document.querySelectorAll('[data-feedback]').forEach((button) => {
+    const key = button.dataset.feedback;
+    const enabled = key === 'vibration' ? vibrationEnabled : soundEnabled;
+    button.classList.toggle('selected', enabled);
+    button.setAttribute('aria-pressed', String(enabled));
+    if (key === 'sound') {
+      button.textContent = `${enabled ? '🔊' : '🔈'} Som da trilha`;
+      button.title = enabled ? 'Desativar sons sutis da trilha' : 'Ativar sons sutis da trilha';
+    } else {
+      button.textContent = `${enabled ? '📳' : '📴'} Vibração leve`;
+      button.title = supportsVibration() ? (enabled ? 'Desativar vibração leve' : 'Ativar vibração leve') : 'Seu navegador atual pode não vibrar, mas a preferência ficará salva.';
+    }
+  });
+}
+function toggleFeedbackPreference(key) {
+  const prefs = feedbackPreferences();
+  if (!(key in prefs)) return;
+  prefs[key] = !prefs[key];
+  saveState();
+  renderFeedbackPreferenceControls();
 }
 function playSideMascotReaction() {
   const mascot = el('side-mascot');
@@ -1051,6 +1191,7 @@ function updateHome() {
   el('gem-count').textContent = Math.floor(state.totalPoints / 100);
   renderAvatarSurfaces();
   updateLearningRail();
+  renderFeedbackPreferenceControls();
 }
 function updateStudySnapshot() { const theme = currentTheme(), weekly = state.weekly || { answered: 0, goal: 50 }, percent = Math.min(100, Math.round((weekly.answered / weekly.goal) * 100)); if (el('weekly-theme-title')) { el('weekly-theme-title').textContent = theme.title; el('weekly-theme-copy').textContent = theme.copy; el('weekly-goal-copy').textContent = `${weekly.answered}/${weekly.goal} questões`; el('weekly-goal-progress').style.width = `${percent}%`; } if (el('nav-review-badge')) { const due = dueReviews().length; el('nav-review-badge').hidden = due === 0; el('nav-review-badge').textContent = due > 9 ? '9+' : due; } }
 function normalizedWhatsapp(value = '') {
@@ -1173,7 +1314,7 @@ async function updateProfilePassword(event) {
   } finally { setAuthBusy('profile-password-form', false); }
 }
 function renderDashboard() {
-  el('avatar-name').textContent = learnerName(); el('profile-name').textContent = learnerName(); el('profile-points').textContent = `${state.totalPoints} pontos acumulados`; renderAvatarSurfaces(); renderProfileData();
+  el('avatar-name').textContent = learnerName(); el('profile-name').textContent = learnerName(); el('profile-points').textContent = `${state.totalPoints} pontos acumulados`; renderAvatarSurfaces(); renderProfileData(); renderFeedbackPreferenceControls();
   const totals = Object.values(state.subjectStats).reduce((sum, stats) => ({ correct: sum.correct + stats.correct, total: sum.total + stats.total }), { correct: 0, total: 0 }); const accuracy = totals.total ? `${Math.round((totals.correct / totals.total) * 100)}%` : '—'; el('accuracy-stat').textContent = accuracy; el('due-review-stat').textContent = dueReviews().length; el('weekly-stat').textContent = state.weekly?.answered || 0; el('focus-goal-copy').textContent = `Meta atual: ${state.weekly?.goal || 50} questões nesta semana. Você já concluiu ${state.weekly?.answered || 0}.`;
   const rewards = el('rewards-list'); rewards.innerHTML = '';
   const completedPhases = completedAvatarPhases();
@@ -1409,7 +1550,7 @@ function revealFeedback(feedback) {
     feedback.focus({ preventScroll: true });
   });
 }
-function completeAlternate(right, question, open) { if (open) { const text = el('open-response').value.trim(); if (!text) return; } const rewards = recordAnswer(question, right); if (right) { score += 100; hits++; } el('score').textContent = score; const feedback = el('feedback'); feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`; feedback.innerHTML = `<strong>${open ? 'Guia de resposta' : right ? '✓ Ordem correta!' : '↗ Quase lá!'}</strong>${question.note}`; if (rewards.length) showToast(rewards); el('next-question').hidden = false; el('next-question').innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>'; revealFeedback(feedback); }
+function completeAlternate(right, question, open) { if (open) { const text = el('open-response').value.trim(); if (!text) return; } const rewards = recordAnswer(question, right); playQuizFeedbackSound(right ? 'correct' : 'wrong'); triggerQuizVibration(right ? 'correct' : 'wrong'); if (right) { score += 100; hits++; } el('score').textContent = score; const feedback = el('feedback'); feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`; feedback.innerHTML = `<strong>${open ? 'Guia de resposta' : right ? '✓ Ordem correta!' : '↗ Quase lá!'}</strong>${question.note}`; if (rewards.length) showToast(rewards); el('next-question').hidden = false; el('next-question').innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>'; revealFeedback(feedback); }
 function showFeedback(question, right, rewards, selectedIndex) {
   const feedback = el('feedback'), source = question.source || curriculumSources[question.curriculum]; feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`;
   const optionComment = question.optionNotes?.[selectedIndex];
@@ -1425,7 +1566,7 @@ function answer(index) {
   const question = questions[current], right = index === question.correct;
   document.querySelectorAll('.answer').forEach((button, answerIndex) => { button.disabled = true; if (answerIndex === question.correct) button.classList.add('correct'); if (answerIndex === index && !right) button.classList.add('wrong'); if (quizMode === 'Prova' && answerIndex === index) button.classList.add('selected-answer'); });
   if (right) { score += difficulty === 'Difícil' ? 150 : difficulty === 'Médio' ? 120 : 100; hits++; }
-  const rewards = recordAnswer(question, right); el('score').textContent = score; showFeedback(question, right, rewards, index);
+  const rewards = recordAnswer(question, right); playQuizFeedbackSound(right ? 'correct' : 'wrong'); triggerQuizVibration(right ? 'correct' : 'wrong'); el('score').textContent = score; showFeedback(question, right, rewards, index);
   const next = el('next-question'); next.hidden = false; next.innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>';
 }
 el('quiz-form').addEventListener('submit', (event) => { event.preventDefault(); openAdventure(); });
@@ -1436,6 +1577,7 @@ el('next-question').addEventListener('click', () => {
     const passed = hits >= 7;
     state.rounds++; state.bestScore = Math.max(state.bestScore, score); resultAction = 'material';
     const earned = checkAchievements(); saveState(); updateHome();
+    if (passed) { playPhaseAdvanceSound(); triggerQuizVibration('phase'); }
     el('final-score').textContent = score; el('correct-count').textContent = hits;
     el('result-title').textContent = passed ? 'Você dominou esta página!' : 'Sua apostila merece uma revisão';
     el('phase-result').textContent = `Você acertou ${hits}/10 questões criadas a partir do texto conferido.`;
@@ -1465,6 +1607,7 @@ el('next-question').addEventListener('click', () => {
   const earned = checkAchievements();
   saveState();
   updateHome();
+  if (passed) { playPhaseAdvanceSound(); triggerQuizVibration('phase'); }
   el('final-score').textContent = score;
   el('correct-count').textContent = hits;
   el('result-title').textContent = passed ? `Fase ${currentPhase} concluída!` : `Fase ${currentPhase}: tente novamente`;
@@ -1590,6 +1733,8 @@ el('save-avatar-design').addEventListener('click', () => {
   if (activeSupabaseUser && supabaseClient) void syncStateToSupabase();
   closeAvatarStudio();
 });
+document.addEventListener('pointerdown', primeQuizAudio, { capture: true, once: true });
+document.addEventListener('keydown', primeQuizAudio, { capture: true, once: true });
 document.addEventListener('keydown', (event) => {
   const tutorialModal = el('app-tutorial-modal'), avatarModal = el('avatar-studio-modal'), weeklyModal = el('weekly-goal-modal'), adminUserModal = el('admin-user-modal');
   const modal = !adminUserModal.hidden ? adminUserModal : !tutorialModal.hidden ? tutorialModal : !avatarModal.hidden ? avatarModal : !weeklyModal.hidden ? weeklyModal : null;

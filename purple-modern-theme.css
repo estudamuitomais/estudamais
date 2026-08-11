@@ -303,7 +303,7 @@ input:focus, select:focus, textarea:focus { border-color: #a78bfa !important; }
 .review-steps span.active { background: #ede9fe !important; color: #5b21b6 !important; }
 .review-highlight > div > strong { color: #6d28d9 !important; }
 .review-item-card button, .small-action { border-color: #cfc0ef !important; background: #f3efff !important; color: #5b21b6 !important; }
-.day-button.selected, .access-control:hover { border-color: #a78bfa !important; background: #f3efff !important; color: #6d28d9 !important; }
+.day-button.selected, .access-control:hover, .access-control.selected { border-color: #a78bfa !important; background: #f3efff !important; color: #6d28d9 !important; }
 
 /* Modal */
 .modal-backdrop { background: rgba(36, 18, 61, .62) !important; }

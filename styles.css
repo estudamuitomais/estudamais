@@ -281,6 +281,9 @@ legend { margin-bottom: 10px; }
 .ranking-card { display: flex; justify-content: space-between; gap: 14px; margin-top: 12px; }
 .notebook-card .small-action { margin-top: 12px; }
 .access-control { flex: 1 1 160px; min-height: 42px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
+.access-control.selected { border-color: var(--primary); background: rgba(109, 40, 217, .08); color: var(--primary-dark); box-shadow: inset 0 0 0 1px rgba(109, 40, 217, .08); }
+.preference-control { font-weight: 800; }
+.quiz-sound-toggle.muted { opacity: .78; }
 .teacher-card { display: grid; gap: 10px; }
 .teacher-card input, .teacher-card textarea { width: 100%; padding: 12px 13px; }
 .teacher-card textarea { min-height: 100px; resize: vertical; }
