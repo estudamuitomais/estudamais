@@ -32,6 +32,7 @@ let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null,
 let sideMascotReactionIndex = 0, sideMascotReactionTimer = null;
 let tutorialStep = 0, tutorialReturnFocus = null, tutorialOpenedAutomatically = false;
 let quizAudioContext = null;
+let quizAudioUnlocked = false;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const materialQuiz = window.EstudaMaterialQuiz?.create({ onStart: startMaterialQuiz });
@@ -570,8 +571,24 @@ function getQuizAudioContext() {
 }
 function primeQuizAudio() {
   const context = getQuizAudioContext();
-  if (context?.state === 'suspended') void context.resume().catch(() => {});
+  if (context?.state === 'suspended') void context.resume().then(() => unlockQuizAudio(context)).catch(() => {});
+  else unlockQuizAudio(context);
   return context;
+}
+function unlockQuizAudio(context = getQuizAudioContext()) {
+  if (!context || quizAudioUnlocked) return;
+  try {
+    const now = context.currentTime;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.01);
+    quizAudioUnlocked = true;
+  } catch {}
 }
 function playQuizTones(tones) {
   if (!feedbackSoundEnabled()) return;
@@ -597,16 +614,16 @@ function playQuizTones(tones) {
 }
 function playQuizFeedbackSound(kind = 'correct') {
   const tones = kind === 'wrong'
-    ? [{ delay: 0, frequency: 246.94, type: 'sine', attack: 0.014, release: 0.14, gain: 0.032 }, { delay: 0.085, frequency: 196.0, type: 'sine', attack: 0.014, release: 0.16, gain: 0.026 }]
-    : [{ delay: 0, frequency: 659.25, type: 'sine', attack: 0.015, release: 0.12, gain: 0.028 }, { delay: 0.1, frequency: 783.99, type: 'sine', attack: 0.015, release: 0.13, gain: 0.024 }];
+    ? [{ delay: 0, frequency: 246.94, type: 'triangle', attack: 0.012, release: 0.16, gain: 0.05 }, { delay: 0.09, frequency: 196.0, type: 'triangle', attack: 0.012, release: 0.18, gain: 0.042 }]
+    : [{ delay: 0, frequency: 659.25, type: 'triangle', attack: 0.014, release: 0.14, gain: 0.046 }, { delay: 0.1, frequency: 783.99, type: 'triangle', attack: 0.014, release: 0.16, gain: 0.04 }];
   playQuizTones(tones);
 }
 function playPhaseAdvanceSound() {
   playQuizTones([
-    { delay: 0, frequency: 523.25, type: 'triangle', attack: 0.015, release: 0.12, gain: 0.024 },
-    { delay: 0.1, frequency: 659.25, type: 'triangle', attack: 0.015, release: 0.14, gain: 0.024 },
-    { delay: 0.2, frequency: 783.99, type: 'triangle', attack: 0.016, release: 0.17, gain: 0.022 },
-    { delay: 0.33, frequency: 987.77, type: 'sine', attack: 0.02, release: 0.24, gain: 0.018 }
+    { delay: 0, frequency: 523.25, type: 'triangle', attack: 0.015, release: 0.13, gain: 0.034 },
+    { delay: 0.1, frequency: 659.25, type: 'triangle', attack: 0.015, release: 0.15, gain: 0.034 },
+    { delay: 0.2, frequency: 783.99, type: 'triangle', attack: 0.016, release: 0.18, gain: 0.032 },
+    { delay: 0.33, frequency: 987.77, type: 'sine', attack: 0.02, release: 0.26, gain: 0.028 }
   ]);
 }
 function ensureFeedbackPreferenceUI() {
