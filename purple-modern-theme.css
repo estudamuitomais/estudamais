@@ -1619,6 +1619,11 @@ body {
 .side-menu .side-avatar-feature > span { color: #7c3aed !important; }
 .side-menu .side-avatar-feature b { display: grid; gap: 1px; }
 .side-menu .side-avatar-feature small { color: #9f7aea; font-size: 7px; font-weight: 1000; letter-spacing: .7px; }
+.side-menu .side-admin-feature { border-color: #d9cff9 !important; background: linear-gradient(135deg, #f8f5ff, #efe9ff) !important; color: #4c1d95 !important; }
+.side-menu .side-admin-feature:hover { border-color: #c4b5fd !important; background: linear-gradient(135deg, #f1ebff, #e8deff) !important; }
+.side-menu .side-admin-feature > span { color: #6d28d9 !important; }
+.side-menu .side-admin-feature b { display: grid; gap: 1px; }
+.side-menu .side-admin-feature small { color: #8b5cf6; font-size: 7px; font-weight: 1000; letter-spacing: .7px; }
 .app-nav .material-nav-button { color: #6d28d9 !important; }
 .app-nav .material-nav-button > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: linear-gradient(135deg,#6d28d9,#8b5cf6); color: #fff !important; box-shadow: 0 2px 0 #4c1d95; }
 .app-nav .material-nav-button.active > span { background: #fff; color: #6d28d9 !important; box-shadow: 0 0 0 2px #c4b5fd; }

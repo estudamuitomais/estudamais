@@ -8,6 +8,10 @@ const supabaseClient = globalThis.supabase?.createClient(supabaseUrl, supabasePu
 let activeSupabaseUser = null;
 let activeUserIsAdmin = false;
 const activeAdminEmail = () => String(activeSupabaseUser?.email || '').trim().toLowerCase() || 'conta administrativa';
+function updateAdminNavigationVisibility() {
+  const sideAdminButton = el('side-admin-button');
+  if (sideAdminButton) sideAdminButton.hidden = !activeUserIsAdmin;
+}
 let activeUserContact = null;
 let materialQuizSession = false;
 let remoteSaveTimer = null;
@@ -343,6 +347,7 @@ async function activateUser(user) {
   state.avatarDesign = avatarStudio.fitToUnlocks(state.avatarDesign, completedPhaseCountFrom(state.phaseProgress));
   state.totalPoints = Math.max(state.totalPoints || 0, profile?.points || 0);
   activeUserIsAdmin = Boolean(profile?.is_admin);
+  updateAdminNavigationVisibility();
   if (el('admin-access-card')) el('admin-access-card').hidden = !activeUserIsAdmin;
   if (el('admin-access-email')) el('admin-access-email').textContent = activeUserIsAdmin ? `ACESSO: ${activeAdminEmail().toUpperCase()}` : 'ACESSO ADMINISTRATIVO';
   const tutorialPendingVersion = Math.max(0, Number(user.user_metadata?.tutorial_pending_version) || 0);
@@ -445,6 +450,7 @@ async function logoutUser() {
   if (supabaseClient) await supabaseClient.auth.signOut();
   activeSupabaseUser = null;
   activeUserIsAdmin = false;
+  updateAdminNavigationVisibility();
   activeUserContact = null;
   globalLeaderboard = [];
   leaderboardBackendReady = true;
@@ -1269,7 +1275,7 @@ function screenNavigationKey(id) {
   if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
   if (id === 'review-screen') return 'review';
   if (id === 'friends-screen') return 'friends';
-  if (id === 'admin-screen') return 'profile';
+  if (id === 'admin-screen') return 'admin';
   if (id === 'dashboard-screen') return 'profile';
   return '';
 }
@@ -1620,6 +1626,7 @@ document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEvent
   else if (destination === 'material') openMaterialQuiz();
   else if (destination === 'review') openReview();
   else if (destination === 'friends') openFriends();
+  else if (destination === 'admin') openAdmin();
   else { renderDashboard(); show('dashboard-screen'); }
 }));
 el('ask-friend-question').addEventListener('click', () => {
