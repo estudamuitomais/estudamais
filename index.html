@@ -22,6 +22,7 @@
           <button type="button" data-side-nav="trail"><span>★</span><b>Configure seu estudo</b></button>
           <button class="side-avatar-feature" type="button" data-side-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span><b>Meu avatar<small>PERSONALIZAR</small></b></button>
           <button class="side-material-feature" type="button" data-side-nav="material"><span>▣</span><b>Apostila<small>FOTO PARA QUIZ</small></b></button>
+          <button type="button" data-side-nav="plans"><span>✦</span><b>Planos<small>ASSINAR</small></b></button>
           <button type="button" data-side-nav="review"><span>↻</span><b>Revisar</b></button>
           <button type="button" data-side-nav="friends"><span>♧</span><b>Amigos</b><i id="side-friends-badge" hidden>0</i></button>
           <button type="button" data-side-nav="profile"><span>☺</span><b>Perfil</b></button>
@@ -411,7 +412,22 @@
             <div class="material-actions"><button id="read-material-images" class="modal-secondary" type="button">Ler com precisão</button><button id="generate-material-summary" class="material-summary-button" type="button" disabled>Criar resumo + mapa mental</button><button id="generate-material-quiz" class="start-button" type="submit" disabled>Criar 10 questões <span>→</span></button></div>
           </form>
           <section id="material-summary-panel" class="material-summary-panel" hidden><header><div><span>REVISÃO DA APOSTILA</span><h3>Resumo completo e mapa mental</h3><p id="material-summary-meta"></p></div><div class="material-summary-tools"><button id="copy-material-summary" type="button">Copiar resumo</button><button id="copy-material-mind-map" type="button">Copiar mapa</button></div></header><div id="material-summary-content" class="material-summary-content"></div><section class="material-mind-map" aria-labelledby="material-mind-map-title"><header><div><span>CONEXÕES DO CONTEÚDO</span><h3 id="material-mind-map-title">Mapa mental</h3><p>Toque em cada conceito para revisar as informações relacionadas.</p></div><span class="material-mind-map-hint">Explore os ramos</span></header><div id="material-mind-map-content" class="material-mind-map-content"></div></section><footer>O resumo e o mapa são extrativos: usam o texto que você conferiu, sem acrescentar fatos externos.</footer></section>
+          <section class="plans-promo-card material-upsell-card"><div><span>RECURSOS PREMIUM</span><strong>Mais páginas, mais créditos e revisão recorrente da apostila</strong><p>No Premium e nos pacotes extras, o aluno destrava mais usos da IA, leituras frequentes da apostila e apoio ideal nas semanas de prova.</p></div><button id="open-plans-from-material" type="button">Ver planos e créditos</button></section>
           <section class="material-photo-tips"><strong>Para uma leitura mais exata</strong><ul><li>Use luz uniforme, sem reflexos ou sombras sobre as palavras.</li><li>Fotografe uma página por imagem, paralela à câmera e sem cortes.</li><li>Evite páginas curvadas; aproxime até as letras ficarem nítidas.</li><li>Compare a transcrição com a foto antes de confirmar.</li></ul></section>
+        </div>
+
+        <div id="plans-screen" class="screen plans-screen">
+          <header class="dashboard-header plans-header"><button id="close-plans" class="icon-button" aria-label="Voltar">←</button><div><span class="eyebrow">PLANOS ESTUDA+</span><h2>Monetização pronta para vender</h2></div><button id="plans-contact-button" class="tutorial-help-button" type="button"><span aria-hidden="true">✦</span> Falar com vendas</button></header>
+          <section class="plans-hero-card">
+            <div><span>ESTRATÉGIA RECOMENDADA</span><strong>Plano grátis forte + upgrades inteligentes</strong><p>Você pode engajar com uma versão gratuita excelente, converter com Premium acessível e aumentar o ticket com família, créditos de apostila, redação e escolas.</p></div>
+            <div class="plans-hero-actions"><button id="open-plans-whatsapp" class="start-button" type="button">Quero vender agora <span>↗</span></button><button id="copy-plans-summary" class="modal-secondary" type="button">Copiar proposta</button></div>
+          </section>
+          <section class="plans-grid-section" aria-labelledby="plans-grid-title"><div class="section-heading"><span>ASSINATURAS PRINCIPAIS</span><h3 id="plans-grid-title">Planos para alunos e famílias</h3></div><div id="plans-grid" class="plans-grid"></div></section>
+          <section class="plans-grid-section" aria-labelledby="credit-packs-title"><div class="section-heading"><span>CRÉDITOS AVULSOS</span><h3 id="credit-packs-title">Pacotes para apostila por foto</h3></div><div id="credit-packs-grid" class="plans-mini-grid"></div></section>
+          <section class="plans-grid-section" aria-labelledby="premium-services-title"><div class="section-heading"><span>EXTRAS DE ALTO VALOR</span><h3 id="premium-services-title">Serviços premium e itens especiais</h3></div><div id="premium-services-grid" class="plans-mini-grid"></div></section>
+          <section class="plans-grid-section" aria-labelledby="school-plans-title"><div class="section-heading"><span>B2B E ESCOLAS</span><h3 id="school-plans-title">Ofertas para professor, escola e parceria</h3></div><div id="school-plans-grid" class="plans-b2b-grid"></div></section>
+          <section class="plans-comparison-card" aria-labelledby="plans-comparison-title"><div class="section-heading"><span>COMPARAÇÃO</span><h3 id="plans-comparison-title">O que fica grátis e o que vira pago</h3></div><div id="plans-comparison-table" class="plans-comparison-table"></div></section>
+          <section class="plans-grid-section" aria-labelledby="plans-faq-title"><div class="section-heading"><span>FAQ COMERCIAL</span><h3 id="plans-faq-title">Argumentos prontos para vender melhor</h3></div><div id="plans-faq-list" class="plans-faq-list"></div></section>
         </div>
 
         <div id="admin-screen" class="screen admin-screen">
@@ -556,6 +572,7 @@
       <button type="button" data-nav="trail"><span>⌁</span>Configurar</button>
       <button class="avatar-nav-button" type="button" data-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span>Avatar</button>
       <button class="material-nav-button" type="button" data-nav="material"><span>▣</span>Apostila</button>
+      <button type="button" data-nav="plans"><span>✦</span>Planos</button>
       <button type="button" data-nav="review"><span>↻</span>Revisar<b id="nav-review-badge" hidden>0</b></button>
       <button type="button" data-nav="friends"><span>♧</span>Amigos<b id="nav-friends-badge" hidden>0</b></button>
       <button type="button" data-nav="profile"><span>☺</span>Perfil</button>

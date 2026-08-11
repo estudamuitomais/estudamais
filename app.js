@@ -97,6 +97,42 @@ const weeklyThemes = [
   { title: 'Cidade que se transforma', copy: 'Conecte mapas, história, ambiente e escolhas das pessoas no mesmo desafio.' },
   { title: 'Comunicação que convence', copy: 'Leia com atenção: tese, evidência e intenção mudam a força de um texto.' }
 ];
+const salesContact = { whatsapp: '5548984536316', label: '(48) 98453-6316', email: 'contato@estudamais.net' };
+const monetizationPlans = [
+  { id: 'free', label: 'Grátis', price: 'R$ 0', billing: 'para atrair e engajar', badge: 'Entrada', accent: 'soft', cta: 'Manter grátis', description: 'Perfeito para crescer base, gerar hábito e mostrar valor rápido para a família.', features: ['Questões diárias limitadas', 'Trilha gamificada e ranking', 'Avatar básico e revisões iniciais', 'Uso reduzido da apostila com foto'], offer: 'Plano de aquisição' },
+  { id: 'premium', label: 'Premium', price: 'R$ 19,90/mês', billing: 'ou R$ 149,90/ano', badge: 'Recomendado', accent: 'primary', cta: 'Quero o Premium', description: 'Plano principal para a maior parte dos alunos: acessível, forte e com ótimo valor percebido.', features: ['Trilhas ilimitadas e mais questões inéditas', 'Resumo + mapa mental com mais créditos', 'Relatórios completos de desempenho', 'Mais personalização do avatar e revisões'], offer: 'Melhor conversão' },
+  { id: 'family', label: 'Família', price: 'R$ 34,90/mês', billing: 'ou R$ 299,90/ano', badge: 'Pais', accent: 'highlight', cta: 'Quero o Família', description: 'Ideal para responsáveis com 2 ou mais alunos e foco em acompanhamento próximo.', features: ['Até 4 perfis em uma conta', 'Painel do responsável', 'Relatórios por filho e por matéria', 'Acompanhamento de metas e revisões'], offer: 'Maior ticket B2C' }
+];
+const monetizationCreditPacks = [
+  { id: 'credit-10', title: '10 créditos de apostila', price: 'R$ 9,90', description: 'Para alunos que usam foto da apostila de vez em quando.', cta: 'Quero 10 créditos' },
+  { id: 'credit-25', title: '25 créditos de apostila', price: 'R$ 19,90', description: 'Bom equilíbrio entre preço e frequência de uso.', cta: 'Quero 25 créditos' },
+  { id: 'credit-60', title: '60 créditos de apostila', price: 'R$ 39,90', description: 'Perfeito para semanas de prova, simulados e muitos resumos.', cta: 'Quero 60 créditos' }
+];
+const monetizationServices = [
+  { id: 'essay', title: 'Correção premium', price: 'R$ 9,90 por redação', description: 'Correção detalhada com nota por competência e plano de melhoria.', cta: 'Quero correção premium' },
+  { id: 'essay-pack', title: 'Pacote com 4 correções', price: 'R$ 29,90', description: 'Modelo ideal para Enem e vestibular, com treino recorrente.', cta: 'Quero pacote de redação' },
+  { id: 'avatar-shop', title: 'Loja do avatar', price: 'R$ 2,90 a R$ 24,90', description: 'Itens especiais, roupas, companheiros e coleções sazonais.', cta: 'Quero loja do avatar' }
+];
+const monetizationB2B = [
+  { id: 'teacher', title: 'Professor individual', price: 'R$ 29,90/mês', description: 'Para professores que querem acompanhar turmas pequenas e enviar missões.', cta: 'Quero plano professor' },
+  { id: 'school-small', title: 'Escola pequena', price: 'R$ 199 a R$ 399/mês', description: 'Boa para validar com 1 unidade, reforço escolar ou curso local.', cta: 'Quero proposta escolar' },
+  { id: 'school-medium', title: 'Escola média', price: 'R$ 500 a R$ 1.500/mês', description: 'Com painel de desempenho, gestão de turmas e uso institucional.', cta: 'Quero proposta completa' },
+  { id: 'sponsor', title: 'Parcerias e patrocínios', price: 'sob consulta', description: 'Missões patrocinadas, papelarias, cursinhos e editoras parceiras.', cta: 'Quero parcerias' }
+];
+const monetizationComparison = [
+  { feature: 'Questões por dia', free: 'Limitadas', premium: 'Ilimitadas', family: 'Ilimitadas para todos os perfis' },
+  { feature: 'Apostila por foto', free: 'Poucos usos', premium: 'Mais créditos mensais', family: 'Créditos ampliados por família' },
+  { feature: 'Resumo + mapa mental', free: 'Básico', premium: 'Completo', family: 'Completo + acompanhamento' },
+  { feature: 'Relatórios de desempenho', free: 'Essenciais', premium: 'Completos', family: 'Com visão do responsável' },
+  { feature: 'Avatar e itens raros', free: 'Básico', premium: 'Mais itens', family: 'Mais itens para todos' },
+  { feature: 'Suporte ao estudo', free: 'Padrão', premium: 'Prioritário', family: 'Prioritário + família' }
+];
+const monetizationFaq = [
+  { question: 'Qual plano mais fácil de vender no começo?', answer: 'O Premium de R$ 19,90/mês, porque ele resolve a dor principal do aluno sem assustar no preço.' },
+  { question: 'O que mais aumenta conversão no Estuda+?', answer: 'Apostila por foto, resumo, mapa mental, relatório de erros e acompanhamento dos pais.' },
+  { question: 'Como aumentar ticket médio sem parecer caro?', answer: 'Ofereça plano Família, créditos extras de apostila e pacote premium de redação.' },
+  { question: 'Como vender para escola?', answer: 'Mostre relatório por turma, trilhas por tema, acompanhamento do professor e uso do próprio material escolar.' }
+];
 const subjectIcons = { Matemática: '➗', Português: '📖', História: '🏛️', Geografia: '🌎', Biologia: '🧬', Física: '⚛️', Química: '🧪' };
 const phaseNames = ['Fundamentos', 'Aplicação', 'Raciocínio', 'Missão final'];
 const learningBank = [
@@ -1223,6 +1259,66 @@ function formattedWhatsapp(value = '') {
   if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return value || 'Não informado';
 }
+function copyText(text) {
+  const value = String(text || '').trim();
+  if (!value) return Promise.resolve(false);
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value).then(() => true).catch(() => false);
+  const input = document.createElement('textarea');
+  input.value = value;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.append(input);
+  input.select();
+  let success = false;
+  try { success = document.execCommand('copy'); } catch {}
+  input.remove();
+  return Promise.resolve(success);
+}
+function plansSummaryText() {
+  return [
+    'Proposta comercial Estuda+',
+    '',
+    ...monetizationPlans.map((plan) => `• ${plan.label}: ${plan.price} ${plan.billing ? `(${plan.billing})` : ''}`.trim()),
+    '',
+    'Pacotes extras:',
+    ...monetizationCreditPacks.map((pack) => `• ${pack.title}: ${pack.price}`),
+    ...monetizationServices.map((service) => `• ${service.title}: ${service.price}`),
+    '',
+    'B2B:',
+    ...monetizationB2B.map((offer) => `• ${offer.title}: ${offer.price}`),
+    '',
+    'Contato comercial:',
+    `WhatsApp ${salesContact.label} | ${salesContact.email}`
+  ].join('\n');
+}
+function openSalesConversation(topic = 'Planos Estuda+', price = '') {
+  const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Quero saber como contratar e começar a vender essa oferta.`);
+  window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
+}
+function planCardTemplate(plan) {
+  return `<article class="plan-card-item ${plan.accent || 'soft'}"><div class="plan-card-top"><span>${plan.badge}</span><strong>${plan.label}</strong><small>${plan.offer}</small></div><div class="plan-card-price"><b>${plan.price}</b><small>${plan.billing || ''}</small></div><p>${plan.description}</p><ul>${plan.features.map((feature) => `<li>${feature}</li>`).join('')}</ul><button type="button" data-plan-interest="${plan.id}">${plan.cta}</button></article>`;
+}
+function renderPlansScreen() {
+  const grid = el('plans-grid'), creditGrid = el('credit-packs-grid'), servicesGrid = el('premium-services-grid'), b2bGrid = el('school-plans-grid'), comparison = el('plans-comparison-table'), faq = el('plans-faq-list');
+  if (!grid || !creditGrid || !servicesGrid || !b2bGrid || !comparison || !faq) return;
+  grid.innerHTML = monetizationPlans.map(planCardTemplate).join('');
+  creditGrid.innerHTML = monetizationCreditPacks.map((pack) => `<article class="plan-mini-card"><span>CRÉDITOS</span><strong>${pack.title}</strong><b>${pack.price}</b><p>${pack.description}</p><button type="button" data-sales-interest="${pack.title}" data-sales-price="${pack.price}">${pack.cta}</button></article>`).join('');
+  servicesGrid.innerHTML = monetizationServices.map((service) => `<article class="plan-mini-card"><span>PREMIUM</span><strong>${service.title}</strong><b>${service.price}</b><p>${service.description}</p><button type="button" data-sales-interest="${service.title}" data-sales-price="${service.price}">${service.cta}</button></article>`).join('');
+  b2bGrid.innerHTML = monetizationB2B.map((offer) => `<article class="plan-b2b-card"><span>ESTUDA+ PRO</span><strong>${offer.title}</strong><b>${offer.price}</b><p>${offer.description}</p><button type="button" data-sales-interest="${offer.title}" data-sales-price="${offer.price}">${offer.cta}</button></article>`).join('');
+  comparison.innerHTML = `<table><thead><tr><th>Recurso</th><th>Grátis</th><th>Premium</th><th>Família</th></tr></thead><tbody>${monetizationComparison.map((item) => `<tr><td>${item.feature}</td><td>${item.free}</td><td>${item.premium}</td><td>${item.family}</td></tr>`).join('')}</tbody></table>`;
+  faq.innerHTML = monetizationFaq.map((item) => `<article class="plans-faq-item"><strong>${item.question}</strong><p>${item.answer}</p></article>`).join('');
+  document.querySelectorAll('[data-plan-interest]').forEach((button) => {
+    const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
+    if (!plan) return;
+    button.addEventListener('click', () => openSalesConversation(plan.label, plan.price));
+  });
+  document.querySelectorAll('[data-sales-interest]').forEach((button) => button.addEventListener('click', () => openSalesConversation(button.dataset.salesInterest, button.dataset.salesPrice)));
+}
+function openPlans() {
+  renderPlansScreen();
+  show('plans-screen');
+}
 function showProfileDataStatus(message = '', error = false) {
   const target = el('profile-data-status'); if (!target) return;
   target.textContent = message;
@@ -1424,12 +1520,13 @@ el('subject').addEventListener('change', () => {
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
-const appScreenIds = new Set(['auth-screen', 'subject-screen', 'material-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen', 'admin-screen']);
+const appScreenIds = new Set(['auth-screen', 'subject-screen', 'material-screen', 'plans-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen', 'admin-screen']);
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('a11y-calm');
 function activeScreenId() { return document.querySelector('.screen.active')?.id || 'auth-screen'; }
 function screenNavigationKey(id) {
   if (id === 'subject-screen') return 'subjects';
   if (id === 'material-screen') return 'material';
+  if (id === 'plans-screen') return 'plans';
   if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
   if (id === 'review-screen') return 'review';
   if (id === 'friends-screen') return 'friends';
@@ -1652,9 +1749,17 @@ el('practice-notebook').addEventListener('click', openReview);
 el('review-errors').addEventListener('click', openReview);
 el('close-review').addEventListener('click', () => { updateMission(); navigateBack('setup-screen'); });
 el('close-friends').addEventListener('click', () => navigateBack('subject-screen'));
+el('close-plans').addEventListener('click', () => navigateBack('subject-screen'));
 el('close-admin').addEventListener('click', () => navigateBack('dashboard-screen'));
 el('open-material-quiz')?.addEventListener('click', openMaterialQuiz);
 el('close-material-quiz').addEventListener('click', () => navigateBack('subject-screen'));
+el('open-plans-from-material')?.addEventListener('click', openPlans);
+el('plans-contact-button')?.addEventListener('click', () => openSalesConversation('planos e monetização do Estuda+'));
+el('open-plans-whatsapp')?.addEventListener('click', () => openSalesConversation('implantação completa dos planos do Estuda+'));
+el('copy-plans-summary')?.addEventListener('click', async () => {
+  const success = await copyText(plansSummaryText());
+  if (success) showToast([{ icon: '📋', title: 'Proposta copiada', description: 'A estratégia comercial do Estuda+ já pode ser enviada para parceiros e responsáveis.' }]);
+});
 el('open-admin-panel').addEventListener('click', openAdmin);
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
@@ -1776,6 +1881,7 @@ el('app-nav').querySelectorAll('button').forEach((button) => button.addEventList
   else if (button.dataset.nav === 'trail') { syncAutomaticCurriculum(); show('setup-screen'); }
   else if (button.dataset.nav === 'avatar') openAvatarStudio();
   else if (button.dataset.nav === 'material') openMaterialQuiz();
+  else if (button.dataset.nav === 'plans') openPlans();
   else if (button.dataset.nav === 'review') openReview();
   else if (button.dataset.nav === 'friends') openFriends();
   else { renderDashboard(); show('dashboard-screen'); }
@@ -1786,6 +1892,7 @@ document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEvent
   else if (destination === 'trail') { syncAutomaticCurriculum(); show('setup-screen'); }
   else if (destination === 'avatar') openAvatarStudio();
   else if (destination === 'material') openMaterialQuiz();
+  else if (destination === 'plans') openPlans();
   else if (destination === 'review') openReview();
   else if (destination === 'friends') openFriends();
   else if (destination === 'admin') openAdmin();
@@ -1826,6 +1933,7 @@ window.addEventListener('popstate', (event) => {
   if (destination === 'dashboard-screen') renderDashboard();
   if (destination === 'review-screen') renderReviewScreen();
   if (destination === 'friends-screen') friendsHub?.open();
+  if (destination === 'plans-screen') renderPlansScreen();
   if (destination === 'admin-screen' && activeUserIsAdmin) adminPanel?.open();
   if (destination === 'setup-screen' || destination === 'subject-screen') renderPhaseMap();
   show(destination, { historyMode: 'none' });
