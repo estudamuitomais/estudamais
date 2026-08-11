@@ -295,7 +295,7 @@ legend { margin-bottom: 10px; }
 .plans-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .plans-mini-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .plans-b2b-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.plan-card-item, .plan-mini-card, .plan-b2b-card, .plans-faq-item { border: 1px solid var(--line); border-radius: 18px; background: #fff; padding: 18px; }
+.plan-card-item, .plan-mini-card, .plan-b2b-card, .plans-faq-item { border: 1px solid var(--line); border-radius: 18px; background: #fff; padding: 18px; min-width: 0; overflow: hidden; }
 .plan-card-top, .section-heading { display: grid; gap: 5px; }
 .plan-card-top span, .section-heading span, .plan-mini-card span, .plan-b2b-card span { font-size: 11px; font-weight: 900; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
 .plan-card-top strong, .plan-mini-card strong, .plan-b2b-card strong, .plans-faq-item strong { font-size: 21px; line-height: 1.15; }
@@ -303,15 +303,22 @@ legend { margin-bottom: 10px; }
 .plan-card-price { display: grid; gap: 2px; margin: 14px 0 10px; }
 .plan-card-price b, .plan-mini-card b, .plan-b2b-card b { font-size: 28px; line-height: 1; color: var(--primary-dark); }
 .plan-card-item p, .plan-mini-card p, .plan-b2b-card p, .plans-faq-item p { color: var(--muted); }
+.plan-card-item { display: grid; align-content: start; gap: 10px; min-height: 100%; }
 .plan-card-item ul { display: grid; gap: 9px; margin: 14px 0 18px; padding-left: 18px; }
 .plan-card-item li { color: var(--text); }
-.plan-card-item button, .plan-mini-card button, .plan-b2b-card button, .plans-promo-card button { min-height: 44px; border-radius: 12px; }
-.plan-card-item.primary { transform: translateY(-4px); }
+.plan-card-item button, .plan-mini-card button, .plan-b2b-card button, .plans-promo-card button { min-height: 44px; border-radius: 12px; width: 100%; }
+.plan-card-item.primary { transform: translateY(-4px); border-width: 2px; }
+.plan-card-item.highlight { border-width: 2px; }
 .plans-comparison-table { overflow: auto; }
 .plans-comparison-table table { width: 100%; border-collapse: collapse; min-width: 620px; }
 .plans-comparison-table th, .plans-comparison-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .plans-comparison-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .material-upsell-card button { white-space: nowrap; }
+.plans-screen .section-heading h3 { margin: 0; }
+body[data-screen="plans-screen"] .hero-footer,
+body[data-screen="plans-screen"] .side-mascot-interactive,
+body[data-screen="plans-screen"] .side-mascot-card { display: none !important; }
+body[data-screen="plans-screen"] .hero-panel { justify-content: flex-start; gap: 18px; }
 .teacher-card { display: grid; gap: 10px; }
 .teacher-card input, .teacher-card textarea { width: 100%; padding: 12px 13px; }
 .teacher-card textarea { min-height: 100px; resize: vertical; }

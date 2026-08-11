@@ -1319,6 +1319,35 @@ function openPlans() {
   renderPlansScreen();
   show('plans-screen');
 }
+function renderPlansScreen() {
+  const grid = el('plans-grid');
+  const creditGrid = el('credit-packs-grid');
+  const servicesGrid = el('premium-services-grid');
+  const b2bGrid = el('school-plans-grid');
+  const comparison = el('plans-comparison-table');
+  const faq = el('plans-faq-list');
+  const title = el('plans-grid-title');
+  if (!grid || !creditGrid || !servicesGrid || !b2bGrid || !comparison || !faq) return;
+  if (title) title.textContent = 'Compare os planos lado a lado';
+  grid.innerHTML = [
+    `<article class="plan-card-item soft"><div class="plan-card-top"><span>ENTRADA</span><strong>Grátis</strong><small>Para atrair e engajar</small></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><p>Ótimo para o aluno conhecer o app, criar hábito e entender o valor antes de assinar.</p><ul><li>Questões diárias limitadas</li><li>Trilha gamificada e ranking</li><li>Avatar básico</li><li>Revisão inicial</li><li>Poucos usos da apostila com foto</li><li>Resumo e mapa mental básicos</li><li>Suporte padrão</li></ul><button type="button" data-plan-interest="free">Manter grátis</button></article>`,
+    `<article class="plan-card-item primary"><div class="plan-card-top"><span>RECOMENDADO</span><strong>Premium</strong><small>Melhor conversão</small></div><div class="plan-card-price"><b>R$ 19,90/mês</b><small>ou R$ 149,90/ano</small></div><p>O plano ideal para a maioria dos alunos: acessível e com muitos recursos premium percebidos.</p><ul><li>Trilhas ilimitadas</li><li>Mais questões inéditas</li><li>Mais créditos para apostila por foto</li><li>Resumo e mapa mental completos</li><li>Relatórios completos de desempenho</li><li>Mais personalização do avatar</li><li>Revisões inteligentes avançadas</li><li>Suporte prioritário</li></ul><button type="button" data-plan-interest="premium">Quero o Premium</button></article>`,
+    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>PAIS</span><strong>Família</strong><small>Maior ticket B2C</small></div><div class="plan-card-price"><b>R$ 34,90/mês</b><small>ou R$ 299,90/ano</small></div><p>Perfeito para responsáveis com mais de um estudante e foco em acompanhamento próximo.</p><ul><li>Até 4 perfis</li><li>Relatórios por filho e por matéria</li><li>Painel do responsável</li><li>Mais créditos de apostila</li><li>Resumo e mapa mental completos</li><li>Metas e revisões por perfil</li><li>Avatar premium para todos</li><li>Suporte prioritário família</li></ul><button type="button" data-plan-interest="family">Quero o Família</button></article>`
+  ].join('');
+  creditGrid.innerHTML = monetizationCreditPacks.map((pack) => `<article class="plan-mini-card"><span>CRÉDITOS</span><strong>${pack.title}</strong><b>${pack.price}</b><p>${pack.description}</p><button type="button" data-sales-interest="${pack.title}" data-sales-price="${pack.price}">${pack.cta}</button></article>`).join('');
+  servicesGrid.innerHTML = monetizationServices.map((service) => `<article class="plan-mini-card"><span>PREMIUM</span><strong>${service.title}</strong><b>${service.price}</b><p>${service.description}</p><button type="button" data-sales-interest="${service.title}" data-sales-price="${service.price}">${service.cta}</button></article>`).join('');
+  b2bGrid.innerHTML = monetizationB2B.map((offer) => `<article class="plan-b2b-card"><span>ESTUDA+ PRO</span><strong>${offer.title}</strong><b>${offer.price}</b><p>${offer.description}</p><button type="button" data-sales-interest="${offer.title}" data-sales-price="${offer.price}">${offer.cta}</button></article>`).join('');
+  comparison.innerHTML = `<table><thead><tr><th>Recurso</th><th>Grátis</th><th>Premium</th><th>Família</th></tr></thead><tbody>${monetizationComparison.map((item) => `<tr><td>${item.feature}</td><td>${item.free}</td><td>${item.premium}</td><td>${item.family}</td></tr>`).join('')}</tbody></table>`;
+  faq.innerHTML = monetizationFaq.map((item) => `<article class="plans-faq-item"><strong>${item.question}</strong><p>${item.answer}</p></article>`).join('');
+  document.querySelectorAll('[data-plan-interest]').forEach((button) => {
+    const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
+    if (!plan) return;
+    button.onclick = () => openSalesConversation(plan.label, plan.price);
+  });
+  document.querySelectorAll('[data-sales-interest]').forEach((button) => {
+    button.onclick = () => openSalesConversation(button.dataset.salesInterest, button.dataset.salesPrice);
+  });
+}
 function showProfileDataStatus(message = '', error = false) {
   const target = el('profile-data-status'); if (!target) return;
   target.textContent = message;
