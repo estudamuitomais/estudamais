@@ -52,32 +52,6 @@ alter table public.user_subscriptions enable row level security;
 alter table public.user_credit_wallets enable row level security;
 alter table public.user_credit_transactions enable row level security;
 
-create or replace function public.estuda_payments_is_admin()
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_result boolean := false;
-begin
-  if to_regprocedure('private.current_user_is_admin()') is not null then
-    execute 'select private.current_user_is_admin()' into v_result;
-    return coalesce(v_result, false);
-  end if;
-
-  if to_regprocedure('public.current_user_is_admin()') is not null then
-    execute 'select public.current_user_is_admin()' into v_result;
-    return coalesce(v_result, false);
-  end if;
-
-  return false;
-end;
-$$;
-
-revoke all on function public.estuda_payments_is_admin() from public, anon;
-grant execute on function public.estuda_payments_is_admin() to authenticated;
-
 drop policy if exists "Usuario le propria assinatura" on public.user_subscriptions;
 create policy "Usuario le propria assinatura"
 on public.user_subscriptions for select to authenticated
@@ -96,22 +70,42 @@ using ((select auth.uid()) = user_id);
 drop policy if exists "Administrador le eventos Hotmart" on public.hotmart_webhook_events;
 create policy "Administrador le eventos Hotmart"
 on public.hotmart_webhook_events for select to authenticated
-using ((select public.estuda_payments_is_admin()));
+using (exists (
+  select 1 from public.profiles
+   where id = (select auth.uid())
+     and is_admin = true
+     and account_status = 'active'
+));
 
 drop policy if exists "Administrador le assinaturas" on public.user_subscriptions;
 create policy "Administrador le assinaturas"
 on public.user_subscriptions for select to authenticated
-using ((select public.estuda_payments_is_admin()));
+using (exists (
+  select 1 from public.profiles
+   where id = (select auth.uid())
+     and is_admin = true
+     and account_status = 'active'
+));
 
 drop policy if exists "Administrador le carteiras" on public.user_credit_wallets;
 create policy "Administrador le carteiras"
 on public.user_credit_wallets for select to authenticated
-using ((select public.estuda_payments_is_admin()));
+using (exists (
+  select 1 from public.profiles
+   where id = (select auth.uid())
+     and is_admin = true
+     and account_status = 'active'
+));
 
 drop policy if exists "Administrador le transacoes de creditos" on public.user_credit_transactions;
 create policy "Administrador le transacoes de creditos"
 on public.user_credit_transactions for select to authenticated
-using ((select public.estuda_payments_is_admin()));
+using (exists (
+  select 1 from public.profiles
+   where id = (select auth.uid())
+     and is_admin = true
+     and account_status = 'active'
+));
 
 create or replace function public.apply_hotmart_purchase(
   p_event_id text,
@@ -221,7 +215,6 @@ $$;
 
 revoke all on function public.apply_hotmart_purchase(text, text, text, text, text, text, text, text, integer, jsonb) from public, anon, authenticated;
 grant execute on function public.apply_hotmart_purchase(text, text, text, text, text, text, text, text, integer, jsonb) to service_role;
-grant execute on function public.estuda_payments_is_admin() to service_role;
 
 revoke all on public.hotmart_webhook_events from anon;
 revoke all on public.user_subscriptions from anon;
