@@ -13,6 +13,7 @@ function updateAdminNavigationVisibility() {
   if (sideAdminButton) sideAdminButton.hidden = !activeUserIsAdmin;
 }
 let activeUserContact = null;
+let activePaymentEntitlements = { planLabel: 'Plano grátis', planStatus: 'free', credits: 0 };
 let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
@@ -99,9 +100,16 @@ const weeklyThemes = [
 ];
 const salesContact = { whatsapp: '5548984536316', label: '(48) 98453-6316', email: 'contato@estudamais.net' };
 const monetizationPlans = [
-  { id: 'premium', label: 'plano Premium', price: 'R$ 19,90/mês' },
-  { id: 'family', label: 'plano Família', price: 'R$ 34,90/mês' }
+  { id: 'premium-monthly', label: 'Premium Mensal', price: 'R$ 19,90/mês', productId: '8296795', offerCode: '30uc8atl' },
+  { id: 'premium-annual', label: 'Premium Anual', price: 'R$ 149,90/ano', productId: '8296795', offerCode: 'a0e3ryfd' },
+  { id: 'family-monthly', label: 'Família Mensal', price: 'R$ 34,90/mês', productId: '8296795', offerCode: 'vdqbfpv9' },
+  { id: 'family-annual', label: 'Família Anual', price: 'R$ 299,90/ano', productId: '8296795', offerCode: '9i2k4f9f' }
 ];
+const hotmartCreditOffers = {
+  10: { label: '10 créditos', price: 'R$ 9,90', productId: '8296816', offerCode: '1bpijdg2' },
+  25: { label: '25 créditos', price: 'R$ 19,90', productId: '8296816', offerCode: 'm3fy8v03' },
+  60: { label: '60 créditos', price: 'R$ 39,90', productId: '8296816', offerCode: 'ey24917x' }
+};
 const subjectIcons = { Matemática: '➗', Português: '📖', História: '🏛️', Geografia: '🌎', Biologia: '🧬', Física: '⚛️', Química: '🧪' };
 const phaseNames = ['Fundamentos', 'Aplicação', 'Raciocínio', 'Missão final'];
 const learningBank = [
@@ -245,6 +253,36 @@ async function fetchUserContact(user) {
   if (!supabaseClient) return { data: null, error: new Error('Serviço de contatos indisponível.') };
   return supabaseClient.from('user_contacts').select('whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at').eq('user_id', user.id).maybeSingle();
 }
+async function fetchPaymentEntitlements(user) {
+  const fallback = { planLabel: 'Plano grátis', planStatus: 'free', credits: 0 };
+  if (!user || !supabaseClient) return fallback;
+  try {
+    const [subscriptionResult, walletResult] = await Promise.all([
+      supabaseClient
+        .from('user_subscriptions')
+        .select('plan_label, status, updated_at')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseClient
+        .from('user_credit_wallets')
+        .select('credits')
+        .eq('user_id', user.id)
+        .maybeSingle()
+    ]);
+    if (subscriptionResult.error && subscriptionResult.error.code !== 'PGRST116') throw subscriptionResult.error;
+    if (walletResult.error && walletResult.error.code !== 'PGRST116') throw walletResult.error;
+    return {
+      planLabel: subscriptionResult.data?.plan_label || fallback.planLabel,
+      planStatus: subscriptionResult.data?.status || fallback.planStatus,
+      credits: Math.max(0, Number(walletResult.data?.credits) || 0)
+    };
+  } catch (error) {
+    console.warn('Não foi possível carregar plano e créditos:', error.message);
+    return fallback;
+  }
+}
 async function fetchQuestionHistory(user = activeSupabaseUser) {
   if (!user || !supabaseClient) return { data: [], error: new Error('Histórico de questões indisponível.') };
   const rows = [];
@@ -330,6 +368,7 @@ async function activateUser(user) {
   const { data: contact, error: contactError } = await fetchUserContact(user);
   activeUserContact = contact || null;
   if (contactError) console.warn('Não foi possível carregar o contato do perfil:', contactError.message);
+  activePaymentEntitlements = await fetchPaymentEntitlements(user);
   const { data: reservedHistory, error: historyError } = await fetchQuestionHistory(user);
   if (historyError) {
     console.warn('Não foi possível carregar o histórico atômico de questões:', historyError.message);
@@ -472,6 +511,7 @@ async function logoutUser() {
   activeUserIsAdmin = false;
   updateAdminNavigationVisibility();
   activeUserContact = null;
+  activePaymentEntitlements = { planLabel: 'Plano grátis', planStatus: 'free', credits: 0 };
   globalLeaderboard = [];
   leaderboardBackendReady = true;
   leaderboardRequestInFlight = false;
@@ -1232,6 +1272,32 @@ function openSalesConversation(topic = 'Planos Estuda+', price = '') {
   const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Gostaria de saber mais.`);
   window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
 }
+function hotmartCheckoutUrl(offer) {
+  if (!offer?.productId || !offer?.offerCode) return '';
+  return `https://pay.hotmart.com/${offer.productId}?off=${encodeURIComponent(offer.offerCode)}`;
+}
+function openHotmartCheckout(offer, kind = 'checkout') {
+  const url = hotmartCheckoutUrl(offer);
+  if (!url) {
+    openSalesConversation(offer?.label || 'Planos Estuda+', offer?.price || '');
+    return;
+  }
+  try {
+    localStorage.setItem('estuda-mais-last-checkout', JSON.stringify({
+      kind,
+      label: offer.label,
+      price: offer.price,
+      productId: offer.productId,
+      offerCode: offer.offerCode,
+      userId: activeSupabaseUser?.id || '',
+      email: activeSupabaseUser?.email || '',
+      createdAt: new Date().toISOString()
+    }));
+  } catch (error) {
+    console.warn('Não foi possível registrar a tentativa de checkout:', error);
+  }
+  window.open(url, '_blank', 'noopener');
+}
 function openPlans() {
   renderPlansScreen();
   show('plans-screen');
@@ -1249,14 +1315,14 @@ function renderPlansScreen() {
   if (!grid || !creditGrid) return;
   grid.innerHTML = [
     `<article class="plan-card-item soft"><div class="plan-card-top"><span>PARA COMEÇAR</span><strong>Grátis</strong></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><ul><li>Questões diárias</li><li>Trilha, pontos e ranking</li><li>Avatar básico</li><li>Revisões essenciais</li></ul><button type="button" disabled aria-disabled="true">Plano atual</button></article>`,
-    `<article class="plan-card-item primary"><div class="plan-card-top"><span>MAIS ESCOLHIDO</span><strong>Premium</strong></div><div class="plan-card-price"><b>R$ 19,90</b><small>por mês ou R$ 149,90 por ano</small></div><ul><li>Questões e trilhas ilimitadas</li><li>Apostila por foto com mais usos</li><li>Resumo e mapa mental completos</li><li>Relatórios de desempenho</li><li>Avatar com mais personalizações</li></ul><button type="button" data-plan-interest="premium">Escolher Premium</button></article>`,
-    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>ATÉ 4 PESSOAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>Até 4 perfis de estudante</li><li>Acompanhamento por aluno</li><li>Metas e relatórios separados</li><li>Avatares Premium para todos</li></ul><button type="button" data-plan-interest="family">Escolher Família</button></article>`
+    `<article class="plan-card-item primary"><div class="plan-card-top"><span>MAIS ESCOLHIDO</span><strong>Premium</strong></div><div class="plan-card-price"><b>R$ 19,90</b><small>por mês ou R$ 149,90 por ano</small></div><ul><li>Questões e trilhas ilimitadas</li><li>Apostila por foto com mais usos</li><li>Resumo e mapa mental completos</li><li>Relatórios de desempenho</li><li>Avatar com mais personalizações</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="premium-monthly">Assinar mensal</button><button type="button" data-plan-checkout="premium-annual">Assinar anual</button></div></article>`,
+    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>ATÉ 4 PESSOAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>Até 4 perfis de estudante</li><li>Acompanhamento por aluno</li><li>Metas e relatórios separados</li><li>Avatares Premium para todos</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="family-monthly">Assinar mensal</button><button type="button" data-plan-checkout="family-annual">Assinar anual</button></div></article>`
   ].join('');
-  creditGrid.innerHTML = `<div class="credit-choice-list" role="radiogroup" aria-label="Quantidade de créditos"><button class="selected" type="button" role="radio" aria-checked="true" data-credit-amount="10" data-credit-price="R$ 9,90"><strong>10 créditos</strong><span>R$ 9,90</span></button><button type="button" role="radio" aria-checked="false" data-credit-amount="25" data-credit-price="R$ 19,90"><strong>25 créditos</strong><span>R$ 19,90</span><small>Mais escolhido</small></button><button type="button" role="radio" aria-checked="false" data-credit-amount="60" data-credit-price="R$ 39,90"><strong>60 créditos</strong><span>R$ 39,90</span></button></div><button id="buy-selected-credits" class="start-button" type="button">Comprar 10 créditos · R$ 9,90</button><small class="credit-purchase-note">Compra avulsa. Os créditos ficam disponíveis na sua conta.</small>`;
-  document.querySelectorAll('[data-plan-interest]').forEach((button) => {
-    const plan = monetizationPlans.find((item) => item.id === button.dataset.planInterest);
+  creditGrid.innerHTML = `<div class="credit-choice-list" role="radiogroup" aria-label="Quantidade de créditos"><button class="selected" type="button" role="radio" aria-checked="true" data-credit-amount="10" data-credit-price="R$ 9,90"><strong>10 créditos</strong><span>R$ 9,90</span></button><button type="button" role="radio" aria-checked="false" data-credit-amount="25" data-credit-price="R$ 19,90"><strong>25 créditos</strong><span>R$ 19,90</span><small>Mais escolhido</small></button><button type="button" role="radio" aria-checked="false" data-credit-amount="60" data-credit-price="R$ 39,90"><strong>60 créditos</strong><span>R$ 39,90</span></button></div><button id="buy-selected-credits" class="start-button" type="button">Comprar 10 créditos · R$ 9,90</button><small class="credit-purchase-note">Compra segura pela Hotmart. Depois do pagamento, os créditos serão liberados na sua conta.</small>`;
+  document.querySelectorAll('[data-plan-checkout]').forEach((button) => {
+    const plan = monetizationPlans.find((item) => item.id === button.dataset.planCheckout);
     if (!plan) return;
-    button.onclick = () => openSalesConversation(plan.label, plan.price);
+    button.onclick = () => openHotmartCheckout(plan, 'subscription');
   });
   document.querySelectorAll('[data-credit-amount]').forEach((button) => {
     button.onclick = () => {
@@ -1265,7 +1331,11 @@ function renderPlansScreen() {
       if (buyButton) buyButton.textContent = `Comprar ${button.dataset.creditAmount} créditos · ${button.dataset.creditPrice}`;
     };
   });
-  el('buy-selected-credits').onclick = () => { const selected = document.querySelector('[data-credit-amount].selected'); openSalesConversation(`${selected?.dataset.creditAmount || 10} créditos da apostila`, selected?.dataset.creditPrice || 'R$ 9,90'); };
+  el('buy-selected-credits').onclick = () => {
+    const selected = document.querySelector('[data-credit-amount].selected');
+    const offer = hotmartCreditOffers[selected?.dataset.creditAmount || 10];
+    openHotmartCheckout(offer, 'credits');
+  };
   document.querySelectorAll('[data-plans-tab]').forEach((button) => {
     button.onclick = () => {
       const tab = button.dataset.plansTab;
@@ -1290,6 +1360,8 @@ function renderProfileData() {
   el('profile-data-whatsapp').textContent = phone ? formattedWhatsapp(phone) : 'Não informado';
   el('profile-data-whatsapp-consent').textContent = phone ? (activeUserContact.whatsapp_opt_in ? 'Avisos importantes autorizados.' : 'Apenas suporte da conta; novidades não autorizadas.') : 'Adicione um número para suporte da conta.';
   el('profile-data-whatsapp-card').classList.toggle('missing', !phone);
+  if (el('profile-payment-plan')) el('profile-payment-plan').textContent = activePaymentEntitlements.planLabel || 'Plano grátis';
+  if (el('profile-payment-credits')) el('profile-payment-credits').textContent = `${activePaymentEntitlements.credits || 0} crédito${Number(activePaymentEntitlements.credits) === 1 ? '' : 's'} de apostila`;
   el('edit-profile-data').textContent = phone ? 'Editar dados' : 'Adicionar WhatsApp';
   el('profile-security-copy').textContent = activeUserIsAdmin ? `Altere aqui a senha protegida da conta ${activeAdminEmail()}.` : 'Você pode trocar sua senha sem sair do aplicativo.';
   el('profile-edit-name').value = learnerName();

@@ -6,6 +6,8 @@ const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'hotmart-payments-migration.sql'), 'utf8');
+const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'hotmart-webhook', 'index.ts'), 'utf8');
 
 [
   'data-side-nav="plans"',
@@ -21,8 +23,16 @@ const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 ].forEach((token) => assert.ok(html.includes(token), `elemento ausente: ${token}`));
 
 [
+  'id="profile-payment-plan"',
+  'id="profile-payment-credits"'
+].forEach((token) => assert.ok(html.includes(token), `resumo de pagamento ausente: ${token}`));
+
+[
   'const monetizationPlans =',
   'function openSalesConversation(',
+  'function openHotmartCheckout(',
+  'const hotmartCreditOffers =',
+  'async function fetchPaymentEntitlements(',
   'function renderPlansScreen()',
   'function openPlans()',
   "document.querySelectorAll('[data-credit-amount]')",
@@ -31,6 +41,33 @@ const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
   "else if (button.dataset.nav === 'plans') openPlans();",
   "else if (destination === 'plans') openPlans();"
 ].forEach((token) => assert.ok(app.includes(token), `lógica ausente: ${token}`));
+
+[
+  '30uc8atl',
+  'a0e3ryfd',
+  'vdqbfpv9',
+  '9i2k4f9f',
+  '1bpijdg2',
+  'm3fy8v03',
+  'ey24917x',
+  'data-plan-checkout="premium-monthly"',
+  'data-plan-checkout="family-annual"'
+].forEach((token) => assert.ok(app.includes(token), `checkout Hotmart ausente: ${token}`));
+
+[
+  'create table if not exists public.hotmart_webhook_events',
+  'create table if not exists public.user_subscriptions',
+  'create table if not exists public.user_credit_wallets',
+  'create or replace function public.apply_hotmart_purchase',
+  'grant execute on function public.apply_hotmart_purchase'
+].forEach((token) => assert.ok(migration.includes(token), `migração de pagamento ausente: ${token}`));
+
+[
+  "request.headers.get('X-HOTMART-HOTTOK')",
+  'apply_hotmart_purchase',
+  'subscriptionOffers',
+  'creditOffers'
+].forEach((token) => assert.ok(webhook.includes(token), `webhook Hotmart ausente: ${token}`));
 
 [
   '.plans-screen',
