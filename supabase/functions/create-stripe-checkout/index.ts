@@ -100,9 +100,16 @@ Deno.serve(async (request) => {
   if (!offer) return jsonResponse({ ok: false, error: 'INVALID_OFFER' }, { status: 400 });
 
   const stripe = new Stripe(stripeSecretKey);
-  const prices = await stripe.prices.list({ lookup_keys: [offer.lookupKey], active: true, limit: 1 });
-  const price = prices.data[0];
-  if (!price) return jsonResponse({ ok: false, error: 'PRICE_NOT_FOUND', lookupKey: offer.lookupKey }, { status: 404 });
+  let price: Stripe.Price | undefined;
+  try {
+    const prices = await stripe.prices.list({ lookup_keys: [offer.lookupKey], active: true, limit: 1 });
+    price = prices.data[0];
+  } catch (error) {
+    const stripeError = error as { code?: string; requestId?: string; type?: string };
+    console.error('Stripe price lookup failed', { code: stripeError.code, requestId: stripeError.requestId, type: stripeError.type });
+    return jsonResponse({ ok: false, error: 'STRIPE_UNAVAILABLE' }, { status: 502 });
+  }
+  if (!price) return jsonResponse({ ok: false, error: 'PAYMENT_CONFIGURATION_MISMATCH' }, { status: 503 });
 
   const origin = request.headers.get('Origin') || 'https://www.estudamais.net';
   const successUrl = safeReturnUrl(payload.successUrl, `${origin}/?checkout=success`);
@@ -117,19 +124,27 @@ Deno.serve(async (request) => {
     credit_amount: String(offer.creditAmount || 0),
   };
 
-  const session = await stripe.checkout.sessions.create({
-    mode: offer.mode,
-    customer_email: userData.user.email,
-    client_reference_id: userData.user.id,
-    line_items: [{ price: price.id, quantity: 1 }],
-    allow_promotion_codes: true,
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata,
-    ...(offer.mode === 'subscription'
-      ? { subscription_data: { metadata } }
-      : { customer_creation: 'always', payment_intent_data: { metadata } }),
-  });
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: offer.mode,
+      customer_email: userData.user.email,
+      client_reference_id: userData.user.id,
+      line_items: [{ price: price.id, quantity: 1 }],
+      allow_promotion_codes: true,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      integration_identifier: 'estuda_web_kjrwvhtn',
+      metadata,
+      ...(offer.mode === 'subscription'
+        ? { subscription_data: { metadata } }
+        : { customer_creation: 'always', payment_intent_data: { metadata } }),
+    });
+  } catch (error) {
+    const stripeError = error as { code?: string; requestId?: string; type?: string };
+    console.error('Stripe Checkout creation failed', { code: stripeError.code, requestId: stripeError.requestId, type: stripeError.type });
+    return jsonResponse({ ok: false, error: 'CHECKOUT_CREATION_FAILED' }, { status: 502 });
+  }
 
   return jsonResponse({ ok: true, url: session.url || '' });
 });

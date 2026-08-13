@@ -1272,9 +1272,33 @@ function openSalesConversation(topic = 'Planos Estuda+', price = '') {
   const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Gostaria de saber mais.`);
   window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
 }
+function showPlansPaymentNotice(message = '', type = '') {
+  const notice = el('plans-payment-notice');
+  if (!notice) return;
+  notice.textContent = message;
+  notice.hidden = !message;
+  notice.classList.toggle('error', type === 'error');
+  notice.classList.toggle('success', type === 'success');
+}
+async function readCheckoutError(error) {
+  try {
+    const response = error?.context;
+    if (response && typeof response.clone === 'function') return await response.clone().json();
+  } catch {
+    // A resposta pode não ter corpo JSON.
+  }
+  return { error: error?.message || 'CHECKOUT_FAILED' };
+}
+function friendlyCheckoutError(code = '') {
+  if (code === 'AUTH_REQUIRED') return 'Sua sessão expirou. Entre novamente para continuar com segurança.';
+  if (code === 'INVALID_OFFER') return 'Este plano não está disponível. Atualize a página e escolha novamente.';
+  if (code === 'PAYMENT_CONFIGURATION_MISMATCH' || code === 'PRICE_NOT_FOUND') return 'Os pagamentos estão em ativação na Stripe. Nenhum valor foi cobrado. Tente novamente após a liberação da conta.';
+  if (code === 'MISSING_SERVER_SECRETS') return 'A conexão segura com a Stripe ainda não foi concluída. Nenhum valor foi cobrado.';
+  return 'Não foi possível abrir o pagamento agora. Nenhum valor foi cobrado. Atualize a página e tente novamente.';
+}
 async function openStripeCheckout(offer, kind = 'checkout') {
   if (!offer?.id || !supabaseClient) {
-    openSalesConversation(offer?.label || 'Planos Estuda+', offer?.price || '');
+    showPlansPaymentNotice('O serviço de pagamento não carregou. Atualize a página e tente novamente. Nenhum valor foi cobrado.', 'error');
     return;
   }
   if (!activeSupabaseUser) {
@@ -1283,7 +1307,10 @@ async function openStripeCheckout(offer, kind = 'checkout') {
     showAuthNotice('Entre ou crie sua conta antes de assinar. Assim o plano fica salvo no seu perfil.');
     return;
   }
+  const checkoutButton = document.querySelector(`[data-plan-checkout="${offer.id}"]`) || (kind === 'credits' ? el('buy-selected-credits') : null);
   try {
+    showPlansPaymentNotice('Abrindo o ambiente seguro da Stripe…');
+    if (checkoutButton) { checkoutButton.disabled = true; checkoutButton.setAttribute('aria-busy', 'true'); }
     localStorage.setItem('estuda-mais-last-checkout', JSON.stringify({
       kind,
       label: offer.label,
@@ -1306,7 +1333,10 @@ async function openStripeCheckout(offer, kind = 'checkout') {
     window.location.href = data.url;
   } catch (error) {
     console.warn('Não foi possível abrir o checkout Stripe:', error);
-    openSalesConversation(offer.label, offer.price);
+    const details = await readCheckoutError(error);
+    showPlansPaymentNotice(friendlyCheckoutError(details?.error), 'error');
+  } finally {
+    if (checkoutButton) { checkoutButton.disabled = false; checkoutButton.removeAttribute('aria-busy'); }
   }
 }
 function openPlans() {

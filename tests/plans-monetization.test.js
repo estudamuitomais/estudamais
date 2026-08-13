@@ -21,6 +21,7 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   'data-plans-tab="commercial"',
   'id="plans-panel-commercial"',
   'id="plans-contact-button"',
+  'id="plans-payment-notice"',
   'id="profile-payment-plan"',
   'id="profile-payment-credits"'
 ].forEach((token) => assert.ok(html.includes(token), `elemento ausente: ${token}`));
@@ -33,6 +34,8 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   'function renderPlansScreen()',
   'function openPlans()',
   "supabaseClient.functions.invoke('create-stripe-checkout'",
+  'function friendlyCheckoutError(',
+  "showPlansPaymentNotice(friendlyCheckoutError(details?.error), 'error')",
   "document.querySelectorAll('[data-credit-amount]')",
   "document.querySelectorAll('[data-plans-tab]')",
   "if (id === 'plans-screen') return 'plans';",
@@ -63,6 +66,8 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   'stripe.checkout.sessions.create',
   'supabase.auth.getUser()',
   'lookup_keys: [offer.lookupKey]',
+  "error: 'PAYMENT_CONFIGURATION_MISMATCH'",
+  "integration_identifier: 'estuda_web_kjrwvhtn'",
   'mode: offer.mode',
   "request.method === 'OPTIONS'",
   "'Access-Control-Allow-Origin': '*'",
@@ -88,6 +93,7 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   '.plans-screen:not(.active)',
   '.plans-screen.active',
   '.plans-tabs',
+  '.plans-payment-notice',
   '.plans-tab-panel',
   '.plans-grid',
   '.plans-credit-purchase',
