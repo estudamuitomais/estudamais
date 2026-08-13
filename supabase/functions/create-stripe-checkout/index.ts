@@ -106,7 +106,9 @@ Deno.serve(async (request) => {
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata,
-    ...(offer.mode === 'subscription' ? { subscription_data: { metadata } } : { payment_intent_data: { metadata } }),
+    ...(offer.mode === 'subscription'
+      ? { subscription_data: { metadata } }
+      : { customer_creation: 'always', payment_intent_data: { metadata } }),
   });
 
   return Response.json({ ok: true, url: session.url });
