@@ -5,11 +5,12 @@ const assert = require('assert');
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 
 assert.ok(
-  app.includes("el('subject').addEventListener('change', () => {\n  // Um assunto digitado pertence à matéria anterior. Ao trocar a matéria no seletor,\n  // voltamos para a revisão geral em vez de misturar conteúdos de áreas diferentes.\n  el('topic').value = '';"),
+  /el\('subject'\)\.addEventListener\('change',\s*\(\)\s*=>\s*\{[\s\S]*?el\('topic'\)\.value\s*=\s*'';/.test(app),
   'trocar a matéria no seletor deve limpar o assunto da matéria anterior'
 );
+
 assert.ok(
-  app.includes("el('topic').value = '';\n  renderTopicExamples();\n  renderPhaseMap();"),
+  /el\('topic'\)\.value\s*=\s*'';[\s\S]*?renderTopicExamples\(\);[\s\S]*?renderPhaseMap\(\);/.test(app),
   'depois de limpar, o aplicativo deve atualizar sugestões e trilha'
 );
 

@@ -100,15 +100,15 @@ const weeklyThemes = [
 ];
 const salesContact = { whatsapp: '5548984536316', label: '(48) 98453-6316', email: 'contato@estudamais.net' };
 const monetizationPlans = [
-  { id: 'premium-monthly', label: 'Premium Mensal', price: 'R$ 19,90/mês', productId: '8296795', offerCode: '30uc8atl' },
-  { id: 'premium-annual', label: 'Premium Anual', price: 'R$ 149,90/ano', productId: '8296795', offerCode: 'a0e3ryfd' },
-  { id: 'family-monthly', label: 'Família Mensal', price: 'R$ 34,90/mês', productId: '8296795', offerCode: 'vdqbfpv9' },
-  { id: 'family-annual', label: 'Família Anual', price: 'R$ 299,90/ano', productId: '8296795', offerCode: '9i2k4f9f' }
+  { id: 'premium-monthly', label: 'Premium Mensal', price: 'R$ 19,90/mês', lookupKey: 'estuda_premium_monthly' },
+  { id: 'premium-annual', label: 'Premium Anual', price: 'R$ 149,90/ano', lookupKey: 'estuda_premium_annual' },
+  { id: 'family-monthly', label: 'Família Mensal', price: 'R$ 34,90/mês', lookupKey: 'estuda_family_monthly' },
+  { id: 'family-annual', label: 'Família Anual', price: 'R$ 299,90/ano', lookupKey: 'estuda_family_annual' }
 ];
-const hotmartCreditOffers = {
-  10: { label: '10 créditos', price: 'R$ 9,90', productId: '8296816', offerCode: '1bpijdg2' },
-  25: { label: '25 créditos', price: 'R$ 19,90', productId: '8296816', offerCode: 'm3fy8v03' },
-  60: { label: '60 créditos', price: 'R$ 39,90', productId: '8296816', offerCode: 'ey24917x' }
+const stripeCreditOffers = {
+  10: { id: 'credits-10', label: '10 créditos', price: 'R$ 9,90', lookupKey: 'estuda_credits_10', creditAmount: 10 },
+  25: { id: 'credits-25', label: '25 créditos', price: 'R$ 19,90', lookupKey: 'estuda_credits_25', creditAmount: 25 },
+  60: { id: 'credits-60', label: '60 créditos', price: 'R$ 39,90', lookupKey: 'estuda_credits_60', creditAmount: 60 }
 };
 const subjectIcons = { Matemática: '➗', Português: '📖', História: '🏛️', Geografia: '🌎', Biologia: '🧬', Física: '⚛️', Química: '🧪' };
 const phaseNames = ['Fundamentos', 'Aplicação', 'Raciocínio', 'Missão final'];
@@ -1272,14 +1272,15 @@ function openSalesConversation(topic = 'Planos Estuda+', price = '') {
   const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Gostaria de saber mais.`);
   window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
 }
-function hotmartCheckoutUrl(offer) {
-  if (!offer?.productId || !offer?.offerCode) return '';
-  return `https://pay.hotmart.com/${offer.productId}?off=${encodeURIComponent(offer.offerCode)}`;
-}
-function openHotmartCheckout(offer, kind = 'checkout') {
-  const url = hotmartCheckoutUrl(offer);
-  if (!url) {
+async function openStripeCheckout(offer, kind = 'checkout') {
+  if (!offer?.id || !supabaseClient) {
     openSalesConversation(offer?.label || 'Planos Estuda+', offer?.price || '');
+    return;
+  }
+  if (!activeSupabaseUser) {
+    setAuthMode('login');
+    show('auth-screen');
+    showAuthNotice('Entre ou crie sua conta antes de assinar. Assim o plano fica salvo no seu perfil.');
     return;
   }
   try {
@@ -1287,16 +1288,26 @@ function openHotmartCheckout(offer, kind = 'checkout') {
       kind,
       label: offer.label,
       price: offer.price,
-      productId: offer.productId,
-      offerCode: offer.offerCode,
+      lookupKey: offer.lookupKey,
+      offerId: offer.id,
       userId: activeSupabaseUser?.id || '',
       email: activeSupabaseUser?.email || '',
       createdAt: new Date().toISOString()
     }));
+    const { data, error } = await supabaseClient.functions.invoke('create-stripe-checkout', {
+      body: {
+        offerId: offer.id,
+        successUrl: `${window.location.origin}${window.location.pathname}?checkout=success`,
+        cancelUrl: `${window.location.origin}${window.location.pathname}?checkout=cancelled`
+      }
+    });
+    if (error) throw error;
+    if (!data?.url) throw new Error('CHECKOUT_URL_MISSING');
+    window.location.href = data.url;
   } catch (error) {
-    console.warn('Não foi possível registrar a tentativa de checkout:', error);
+    console.warn('Não foi possível abrir o checkout Stripe:', error);
+    openSalesConversation(offer.label, offer.price);
   }
-  window.open(url, '_blank', 'noopener');
 }
 function openPlans() {
   renderPlansScreen();
@@ -1318,11 +1329,11 @@ function renderPlansScreen() {
     `<article class="plan-card-item primary"><div class="plan-card-top"><span>MAIS ESCOLHIDO</span><strong>Premium</strong></div><div class="plan-card-price"><b>R$ 19,90</b><small>por mês ou R$ 149,90 por ano</small></div><ul><li>Questões e trilhas ilimitadas</li><li>Apostila por foto com mais usos</li><li>Resumo e mapa mental completos</li><li>Relatórios de desempenho</li><li>Avatar com mais personalizações</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="premium-monthly">Assinar mensal</button><button type="button" data-plan-checkout="premium-annual">Assinar anual</button></div></article>`,
     `<article class="plan-card-item highlight"><div class="plan-card-top"><span>ATÉ 4 PESSOAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>Até 4 perfis de estudante</li><li>Acompanhamento por aluno</li><li>Metas e relatórios separados</li><li>Avatares Premium para todos</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="family-monthly">Assinar mensal</button><button type="button" data-plan-checkout="family-annual">Assinar anual</button></div></article>`
   ].join('');
-  creditGrid.innerHTML = `<div class="credit-choice-list" role="radiogroup" aria-label="Quantidade de créditos"><button class="selected" type="button" role="radio" aria-checked="true" data-credit-amount="10" data-credit-price="R$ 9,90"><strong>10 créditos</strong><span>R$ 9,90</span></button><button type="button" role="radio" aria-checked="false" data-credit-amount="25" data-credit-price="R$ 19,90"><strong>25 créditos</strong><span>R$ 19,90</span><small>Mais escolhido</small></button><button type="button" role="radio" aria-checked="false" data-credit-amount="60" data-credit-price="R$ 39,90"><strong>60 créditos</strong><span>R$ 39,90</span></button></div><button id="buy-selected-credits" class="start-button" type="button">Comprar 10 créditos · R$ 9,90</button><small class="credit-purchase-note">Compra segura pela Hotmart. Depois do pagamento, os créditos serão liberados na sua conta.</small>`;
+  creditGrid.innerHTML = `<div class="credit-choice-list" role="radiogroup" aria-label="Quantidade de créditos"><button class="selected" type="button" role="radio" aria-checked="true" data-credit-amount="10" data-credit-price="R$ 9,90"><strong>10 créditos</strong><span>R$ 9,90</span></button><button type="button" role="radio" aria-checked="false" data-credit-amount="25" data-credit-price="R$ 19,90"><strong>25 créditos</strong><span>R$ 19,90</span><small>Mais escolhido</small></button><button type="button" role="radio" aria-checked="false" data-credit-amount="60" data-credit-price="R$ 39,90"><strong>60 créditos</strong><span>R$ 39,90</span></button></div><button id="buy-selected-credits" class="start-button" type="button">Comprar 10 créditos · R$ 9,90</button><small class="credit-purchase-note">Pagamento seguro pelo Stripe. Depois da confirmação, os créditos serão liberados na sua conta.</small>`;
   document.querySelectorAll('[data-plan-checkout]').forEach((button) => {
     const plan = monetizationPlans.find((item) => item.id === button.dataset.planCheckout);
     if (!plan) return;
-    button.onclick = () => openHotmartCheckout(plan, 'subscription');
+    button.onclick = () => openStripeCheckout(plan, 'subscription');
   });
   document.querySelectorAll('[data-credit-amount]').forEach((button) => {
     button.onclick = () => {
@@ -1333,8 +1344,8 @@ function renderPlansScreen() {
   });
   el('buy-selected-credits').onclick = () => {
     const selected = document.querySelector('[data-credit-amount].selected');
-    const offer = hotmartCreditOffers[selected?.dataset.creditAmount || 10];
-    openHotmartCheckout(offer, 'credits');
+    const offer = stripeCreditOffers[selected?.dataset.creditAmount || 10];
+    openStripeCheckout(offer, 'credits');
   };
   document.querySelectorAll('[data-plans-tab]').forEach((button) => {
     button.onclick = () => {

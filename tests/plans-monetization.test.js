@@ -6,8 +6,9 @@ const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-const migration = fs.readFileSync(path.join(root, 'hotmart-payments-migration.sql'), 'utf8');
-const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'hotmart-webhook', 'index.ts'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'stripe-payments-migration.sql'), 'utf8');
+const checkoutFunction = fs.readFileSync(path.join(root, 'supabase', 'functions', 'create-stripe-checkout', 'index.ts'), 'utf8');
+const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe-webhook', 'index.ts'), 'utf8');
 
 [
   'data-side-nav="plans"',
@@ -19,22 +20,19 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'hotmar
   'data-plans-tab="credits"',
   'data-plans-tab="commercial"',
   'id="plans-panel-commercial"',
-  'id="plans-contact-button"'
+  'id="plans-contact-button"',
+  'id="profile-payment-plan"',
+  'id="profile-payment-credits"'
 ].forEach((token) => assert.ok(html.includes(token), `elemento ausente: ${token}`));
 
 [
-  'id="profile-payment-plan"',
-  'id="profile-payment-credits"'
-].forEach((token) => assert.ok(html.includes(token), `resumo de pagamento ausente: ${token}`));
-
-[
   'const monetizationPlans =',
-  'function openSalesConversation(',
-  'function openHotmartCheckout(',
-  'const hotmartCreditOffers =',
+  'async function openStripeCheckout(',
+  'const stripeCreditOffers =',
   'async function fetchPaymentEntitlements(',
   'function renderPlansScreen()',
   'function openPlans()',
+  "supabaseClient.functions.invoke('create-stripe-checkout'",
   "document.querySelectorAll('[data-credit-amount]')",
   "document.querySelectorAll('[data-plans-tab]')",
   "if (id === 'plans-screen') return 'plans';",
@@ -43,31 +41,44 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'hotmar
 ].forEach((token) => assert.ok(app.includes(token), `lógica ausente: ${token}`));
 
 [
-  '30uc8atl',
-  'a0e3ryfd',
-  'vdqbfpv9',
-  '9i2k4f9f',
-  '1bpijdg2',
-  'm3fy8v03',
-  'ey24917x',
+  'estuda_premium_monthly',
+  'estuda_premium_annual',
+  'estuda_family_monthly',
+  'estuda_family_annual',
+  'estuda_credits_10',
+  'estuda_credits_25',
+  'estuda_credits_60',
   'data-plan-checkout="premium-monthly"',
-  'data-plan-checkout="family-annual"'
-].forEach((token) => assert.ok(app.includes(token), `checkout Hotmart ausente: ${token}`));
+  'data-plan-checkout="family-annual"',
+  'Pagamento seguro pelo Stripe'
+].forEach((token) => assert.ok(app.includes(token), `checkout Stripe ausente: ${token}`));
 
 [
-  'create table if not exists public.hotmart_webhook_events',
-  'create table if not exists public.user_subscriptions',
-  'create table if not exists public.user_credit_wallets',
-  'create or replace function public.apply_hotmart_purchase',
-  'grant execute on function public.apply_hotmart_purchase'
-].forEach((token) => assert.ok(migration.includes(token), `migração de pagamento ausente: ${token}`));
+  'create table if not exists public.stripe_webhook_events',
+  'create or replace function public.apply_stripe_purchase',
+  'grant execute on function public.apply_stripe_purchase'
+].forEach((token) => assert.ok(migration.includes(token), `migração Stripe ausente: ${token}`));
 
 [
-  "request.headers.get('X-HOTMART-HOTTOK')",
-  'apply_hotmart_purchase',
-  'subscriptionOffers',
-  'creditOffers'
-].forEach((token) => assert.ok(webhook.includes(token), `webhook Hotmart ausente: ${token}`));
+  'stripe.checkout.sessions.create',
+  'supabase.auth.getUser()',
+  'lookup_keys: [offer.lookupKey]',
+  'mode: offer.mode'
+].forEach((token) => assert.ok(checkoutFunction.includes(token), `checkout function ausente: ${token}`));
+
+[
+  "request.headers.get('Stripe-Signature')",
+  'constructEventAsync',
+  'apply_stripe_purchase',
+  'checkout.session.completed',
+  'customer.subscription.deleted'
+].forEach((token) => assert.ok(webhook.includes(token), `webhook Stripe ausente: ${token}`));
+
+[
+  'pay.hotmart.com',
+  'openHotmartCheckout',
+  'hotmartCreditOffers'
+].forEach((token) => assert.ok(!app.includes(token), `referência Hotmart não deve ficar no app: ${token}`));
 
 [
   '.plans-screen',
