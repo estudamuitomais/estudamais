@@ -10,6 +10,22 @@ type Offer = {
   creditAmount?: number;
 };
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+function jsonResponse(body: Record<string, unknown>, init: ResponseInit = {}) {
+  return Response.json(body, {
+    ...init,
+    headers: {
+      ...corsHeaders,
+      ...(init.headers || {}),
+    },
+  });
+}
+
 const offers: Record<string, Offer> = {
   'premium-monthly': { id: 'premium-monthly', lookupKey: 'estuda_premium_monthly', label: 'Premium Mensal', mode: 'subscription', planId: 'premium-monthly' },
   'premium-annual': { id: 'premium-annual', lookupKey: 'estuda_premium_annual', label: 'Premium Anual', mode: 'subscription', planId: 'premium-annual' },
@@ -53,15 +69,19 @@ function safeReturnUrl(value: unknown, fallback: string) {
 }
 
 Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   if (request.method !== 'POST') {
-    return Response.json({ ok: false, error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
+    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
   }
 
   const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || Deno.env.get('STRIPE_API_KEY') || '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const publishableKey = readSupabasePublishableKey();
   if (!stripeSecretKey || !supabaseUrl || !publishableKey) {
-    return Response.json({ ok: false, error: 'MISSING_SERVER_SECRETS' }, { status: 500 });
+    return jsonResponse({ ok: false, error: 'MISSING_SERVER_SECRETS' }, { status: 500 });
   }
 
   const authHeader = request.headers.get('Authorization') || '';
@@ -72,17 +92,17 @@ Deno.serve(async (request) => {
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user?.email) {
-    return Response.json({ ok: false, error: 'AUTH_REQUIRED' }, { status: 401 });
+    return jsonResponse({ ok: false, error: 'AUTH_REQUIRED' }, { status: 401 });
   }
 
   const payload = await request.json().catch(() => ({}));
   const offer = offers[String(payload.offerId || '')];
-  if (!offer) return Response.json({ ok: false, error: 'INVALID_OFFER' }, { status: 400 });
+  if (!offer) return jsonResponse({ ok: false, error: 'INVALID_OFFER' }, { status: 400 });
 
   const stripe = new Stripe(stripeSecretKey);
   const prices = await stripe.prices.list({ lookup_keys: [offer.lookupKey], active: true, limit: 1 });
   const price = prices.data[0];
-  if (!price) return Response.json({ ok: false, error: 'PRICE_NOT_FOUND', lookupKey: offer.lookupKey }, { status: 404 });
+  if (!price) return jsonResponse({ ok: false, error: 'PRICE_NOT_FOUND', lookupKey: offer.lookupKey }, { status: 404 });
 
   const origin = request.headers.get('Origin') || 'https://www.estudamais.net';
   const successUrl = safeReturnUrl(payload.successUrl, `${origin}/?checkout=success`);
@@ -111,5 +131,5 @@ Deno.serve(async (request) => {
       : { customer_creation: 'always', payment_intent_data: { metadata } }),
   });
 
-  return Response.json({ ok: true, url: session.url });
+  return jsonResponse({ ok: true, url: session.url || '' });
 });

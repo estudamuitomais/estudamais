@@ -63,7 +63,10 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   'stripe.checkout.sessions.create',
   'supabase.auth.getUser()',
   'lookup_keys: [offer.lookupKey]',
-  'mode: offer.mode'
+  'mode: offer.mode',
+  "request.method === 'OPTIONS'",
+  "'Access-Control-Allow-Origin': '*'",
+  "'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'"
 ].forEach((token) => assert.ok(checkoutFunction.includes(token), `checkout function ausente: ${token}`));
 
 [
