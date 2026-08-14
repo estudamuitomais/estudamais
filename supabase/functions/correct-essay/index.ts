@@ -76,8 +76,16 @@ Deno.serve(async (request) => {
   if (containsPersonalData(essay)) return json({ ok: false, error: 'PERSONAL_DATA_DETECTED' });
 
   const service = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-  const { data: wallet } = await service.from('user_credit_wallets').select('credits').eq('user_id', userData.user.id).maybeSingle();
-  if ((Number(wallet?.credits) || 0) < 5) return json({ ok: false, error: 'INSUFFICIENT_CREDITS' });
+  const [profileResult, grantResult, walletResult] = await Promise.all([
+    service.from('profiles').select('is_admin, account_status').eq('id', userData.user.id).maybeSingle(),
+    service.from('user_access_grants').select('access_level, essay_without_credits, expires_at').eq('user_id', userData.user.id).maybeSingle(),
+    service.from('user_credit_wallets').select('credits').eq('user_id', userData.user.id).maybeSingle()
+  ]);
+  if (profileResult.error || grantResult.error || walletResult.error) return json({ ok: false, error: 'ACCESS_CHECK_FAILED' }, 503);
+  const grantActive = Boolean(grantResult.data) && (!grantResult.data.expires_at || new Date(grantResult.data.expires_at).getTime() > Date.now());
+  const essayIncluded = Boolean(profileResult.data?.is_admin && profileResult.data?.account_status === 'active')
+    || Boolean(grantActive && (grantResult.data?.access_level === 'full' || grantResult.data?.essay_without_credits));
+  if (!essayIncluded && (Number(walletResult.data?.credits) || 0) < 5) return json({ ok: false, error: 'INSUFFICIENT_CREDITS' });
 
   const moderationResponse = await fetch('https://api.openai.com/v1/moderations', {
     method: 'POST', headers: { Authorization: `Bearer ${openAiKey}`, 'Content-Type': 'application/json' },
@@ -126,5 +134,12 @@ Deno.serve(async (request) => {
     return json({ ok: false, error: 'FINALIZATION_FAILED' }, 500);
   }
   if (!finalized?.ok) return json(finalized);
-  return json({ ok: true, correction, credits_remaining: finalized.credits_remaining, correction_id: finalized.id });
+  return json({
+    ok: true,
+    correction,
+    credits_remaining: finalized.credits_remaining,
+    credits_charged: Number(finalized.credits_charged) || 0,
+    access_included: Number(finalized.credits_charged) === 0,
+    correction_id: finalized.id
+  });
 });

@@ -424,11 +424,11 @@
           <header class="dashboard-header essay-header">
             <button id="close-essay" class="icon-button" type="button" aria-label="Voltar">←</button>
             <div><span class="eyebrow">OFICINA DE REDAÇÃO</span><h2>Escreva, revise e evolua</h2></div>
-            <div class="essay-credit-pill" aria-label="Saldo de créditos"><span>✦</span><strong id="essay-credit-balance">0</strong><small>créditos</small></div>
+            <div class="essay-credit-pill" aria-label="Acesso à correção"><span>✦</span><strong id="essay-credit-balance">0</strong><small id="essay-credit-label">créditos</small></div>
           </header>
           <section class="essay-intro-card">
             <div><span>AVALIAÇÃO PEDAGÓGICA</span><h3>Correção inspirada nas 5 competências do Enem</h3><p>Receba uma nota estimada, comentários claros e orientações práticas para melhorar sua próxima versão.</p></div>
-            <div class="essay-price-card"><strong>5 créditos</strong><small>por correção concluída</small></div>
+            <div class="essay-price-card"><strong id="essay-access-price">5 créditos</strong><small id="essay-access-price-note">por correção concluída</small></div>
           </section>
           <section class="essay-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Proteja seus dados</strong><p>Não escreva nome completo, telefone, endereço, escola ou outros dados pessoais. O texto integral é usado apenas durante a correção e não fica salvo no histórico.</p></div></section>
           <form id="essay-form" class="essay-form">
@@ -623,7 +623,28 @@
       </section>
     </div>
     <div id="admin-user-modal" class="modal-backdrop admin-user-backdrop" hidden>
-      <section class="modal-panel admin-user-panel" role="dialog" aria-modal="true" aria-labelledby="admin-user-name"><button id="close-admin-user" class="modal-close" type="button" aria-label="Fechar detalhes">×</button><span class="eyebrow">GERENCIAR USUÁRIO</span><h2 id="admin-user-name">Usuário</h2><p id="admin-user-summary"></p><div class="admin-user-actions"><button id="admin-toggle-user-status" type="button"></button><button id="admin-toggle-user-chat" type="button"></button></div><section class="admin-whatsapp-card"><div><span>WHATSAPP CADASTRADO</span><strong id="admin-user-whatsapp">Não informado</strong><small id="admin-user-whatsapp-consent">Sem autorização para receber novidades.</small></div><label>Mensagem<textarea id="admin-whatsapp-message" maxlength="700" placeholder="Escreva a atualização que deseja enviar."></textarea></label><button id="admin-open-whatsapp" type="button">Abrir conversa no WhatsApp <span>↗</span></button></section><label>Observação interna<textarea id="admin-user-note" maxlength="500" placeholder="Anotação visível somente para administradores."></textarea></label><button id="admin-save-user-note" class="start-button" type="button">Salvar observação <span>✓</span></button><small>O envio é confirmado pelo administrador no WhatsApp. Senhas e conversas privadas não ficam disponíveis nesta página.</small></section>
+      <section class="modal-panel admin-user-panel" role="dialog" aria-modal="true" aria-labelledby="admin-user-name">
+        <button id="close-admin-user" class="modal-close" type="button" aria-label="Fechar detalhes">×</button>
+        <span class="eyebrow">GERENCIAR USUÁRIO</span><h2 id="admin-user-name">Usuário</h2><p id="admin-user-summary"></p>
+        <div class="admin-user-actions"><button id="admin-toggle-user-status" type="button"></button><button id="admin-toggle-user-chat" type="button"></button></div>
+        <section class="admin-user-access-card" aria-labelledby="admin-user-access-title">
+          <header><div><span>ACESSO ESPECIAL</span><strong id="admin-user-access-title">Plano e permissões</strong></div><em id="admin-user-access-status">Padrão do plano</em></header>
+          <label>Nível de acesso
+            <select id="admin-user-access-level"><option value="standard">Padrão do plano</option><option value="partial">Acesso parcial</option><option value="full">Acesso total</option></select>
+          </label>
+          <div id="admin-user-partial-permissions" class="admin-user-partial-permissions" hidden>
+            <label><input id="admin-access-unlimited-quizzes" type="checkbox"> Questões e trilhas ilimitadas</label>
+            <label><input id="admin-access-premium-study" type="checkbox"> Modos Premium e Simulado</label>
+            <label><input id="admin-access-free-essay" type="checkbox"> Correções de redação sem créditos</label>
+          </div>
+          <label>Validade opcional <input id="admin-user-access-expiration" type="date"><small>Deixe em branco para não expirar.</small></label>
+          <label>Motivo ou observação <input id="admin-user-access-note" type="text" maxlength="300" placeholder="Ex.: cortesia por 30 dias"></label>
+          <button id="admin-save-user-access" class="start-button" type="button">Salvar acesso <span>✓</span></button>
+          <p id="admin-user-access-notice" role="status"></p>
+        </section>
+        <section class="admin-whatsapp-card"><div><span>WHATSAPP CADASTRADO</span><strong id="admin-user-whatsapp">Não informado</strong><small id="admin-user-whatsapp-consent">Sem autorização para receber novidades.</small></div><label>Mensagem<textarea id="admin-whatsapp-message" maxlength="700" placeholder="Escreva a atualização que deseja enviar."></textarea></label><button id="admin-open-whatsapp" type="button">Abrir conversa no WhatsApp <span>↗</span></button></section>
+        <label>Observação interna<textarea id="admin-user-note" maxlength="500" placeholder="Anotação visível somente para administradores."></textarea></label><button id="admin-save-user-note" class="start-button" type="button">Salvar observação <span>✓</span></button><small>O envio é confirmado pelo administrador no WhatsApp. Senhas e conversas privadas não ficam disponíveis nesta página.</small>
+      </section>
     </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
       <button type="button" data-nav="subjects"><span>⌂</span>Aprenda Jogando</button>

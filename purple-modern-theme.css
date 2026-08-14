@@ -1563,6 +1563,22 @@ body {
 .admin-user-panel textarea { min-height: 110px; padding: 11px; border: 2px solid #e0d7e8; border-radius: 12px; font: 700 12px Nunito, sans-serif; resize: vertical; }
 .admin-user-panel .start-button { width: 100%; margin-top: 12px; }
 .admin-user-panel > small { display: block; margin-top: 12px; color: #8b8092; font-size: 9px; line-height: 1.4; }
+.admin-user-panel { max-height: min(90dvh, 860px); overflow-y: auto; }
+.admin-user-access-card { display: grid; gap: 12px; margin: 15px 0; padding: 15px; border: 2px solid #ddd2ff; border-radius: 17px; background: linear-gradient(145deg, #fbfaff, #f4f0ff); }
+.admin-user-access-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; text-align: left; }
+.admin-user-access-card header span { display: block; color: #7c3aed; font-size: 8px; font-weight: 1000; letter-spacing: .9px; }
+.admin-user-access-card header strong { display: block; margin-top: 2px; color: #342344; font-size: 15px; }
+.admin-user-access-card header em { padding: 6px 9px; border-radius: 999px; background: #ede9fe; color: #6d28d9; font-size: 9px; font-style: normal; font-weight: 1000; text-align: center; }
+.admin-user-access-card select,
+.admin-user-access-card input[type="date"],
+.admin-user-access-card input[type="text"] { width: 100%; min-height: 42px; padding: 9px 11px; border: 2px solid #d9cfeb; border-radius: 11px; background: #fff; color: #3f3150; font: 800 12px Nunito, sans-serif; }
+.admin-user-access-card label > small { color: #8b8092; font-size: 9px; font-weight: 700; }
+.admin-user-partial-permissions { display: grid; gap: 7px; padding: 10px; border-radius: 12px; background: #fff; }
+.admin-user-partial-permissions label { display: flex; align-items: center; gap: 9px; min-height: 34px; font-size: 11px; }
+.admin-user-partial-permissions input { width: 18px; height: 18px; accent-color: #7c3aed; }
+.admin-user-access-card button:disabled { opacity: .55; cursor: not-allowed; }
+#admin-user-access-notice { min-height: 16px; margin: 0; color: #4d7c0f; font-size: 10px; font-weight: 900; text-align: center; }
+#admin-user-access-notice.error { color: #b42335; }
 
 @media (max-width: 900px) {
   .admin-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1579,6 +1595,8 @@ body {
   .admin-user-filters input,
   .admin-user-filters select { width: 100%; max-width: 100%; }
   .admin-user-panel { width: calc(100vw - 24px) !important; max-width: calc(100vw - 24px) !important; }
+  .admin-user-access-card header { align-items: stretch; flex-direction: column; }
+  .admin-user-access-card header em { align-self: flex-start; }
   .admin-header { grid-template-columns: 44px minmax(0, 1fr) !important; }
   .admin-header .tutorial-help-button { grid-column: 1 / -1; width: 100%; justify-content: center; }
   .admin-access-card { align-items: flex-start; flex-direction: column; }

@@ -13,7 +13,7 @@ function updateAdminNavigationVisibility() {
   if (sideAdminButton) sideAdminButton.hidden = !activeUserIsAdmin;
 }
 let activeUserContact = null;
-let activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0 };
+let activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, essayWithoutCredits: false, expiresAt: null };
 let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
@@ -45,7 +45,7 @@ const essayHub = window.EstudaEssay?.create({
   },
   onCreditsChanged: (credits) => {
     activePaymentEntitlements.credits = Math.max(0, Number(credits) || 0);
-    if (el('profile-payment-credits')) el('profile-payment-credits').textContent = `${activePaymentEntitlements.credits} crédito${activePaymentEntitlements.credits === 1 ? '' : 's'} disponíveis`;
+    if (el('profile-payment-credits')) el('profile-payment-credits').textContent = activePaymentEntitlements.essayWithoutCredits ? 'Correções de redação incluídas' : `${activePaymentEntitlements.credits} crédito${activePaymentEntitlements.credits === 1 ? '' : 's'} disponíveis`;
   }
 });
 
@@ -266,9 +266,28 @@ async function fetchUserContact(user) {
   return supabaseClient.from('user_contacts').select('whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at').eq('user_id', user.id).maybeSingle();
 }
 async function fetchPaymentEntitlements(user) {
-  const fallback = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0 };
+  const fallback = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, essayWithoutCredits: false, expiresAt: null };
   if (!user || !supabaseClient) return fallback;
   try {
+    const entitlementResult = await supabaseClient.rpc('get_my_access_entitlements');
+    if (!entitlementResult.error && entitlementResult.data) {
+      const access = entitlementResult.data;
+      return {
+        planId: access.plan_id || fallback.planId,
+        tier: access.tier || fallback.tier,
+        planLabel: access.plan_label || fallback.planLabel,
+        planStatus: access.plan_status || fallback.planStatus,
+        credits: Math.max(0, Number(access.credits) || 0),
+        dailyQuestionLimit: access.daily_question_limit == null ? null : Number(access.daily_question_limit),
+        questionsUsedToday: Math.max(0, Number(access.questions_used_today) || 0),
+        accessLevel: access.access_level || 'standard',
+        accessSource: access.access_source || 'free',
+        unlimitedQuizzes: Boolean(access.unlimited_quizzes),
+        premiumStudy: Boolean(access.premium_study),
+        essayWithoutCredits: Boolean(access.essay_without_credits),
+        expiresAt: access.expires_at || null
+      };
+    }
     const [subscriptionResult, walletResult] = await Promise.all([
       supabaseClient
         .from('user_subscriptions')
@@ -296,7 +315,9 @@ async function fetchPaymentEntitlements(user) {
       planStatus: active ? status : fallback.planStatus,
       credits: Math.max(0, Number(walletResult.data?.credits) || 0),
       dailyQuestionLimit: tier === 'free' ? 10 : null,
-      questionsUsedToday: 0
+      questionsUsedToday: 0,
+      accessLevel: 'standard', accessSource: active ? 'subscription' : 'free',
+      unlimitedQuizzes: tier !== 'free', premiumStudy: tier !== 'free', essayWithoutCredits: false, expiresAt: null
     };
   } catch (error) {
     console.warn('Não foi possível carregar plano e créditos:', error.message);
@@ -530,7 +551,7 @@ async function logoutUser() {
   activeUserIsAdmin = false;
   updateAdminNavigationVisibility();
   activeUserContact = null;
-  activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0 };
+  activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, essayWithoutCredits: false, expiresAt: null };
   globalLeaderboard = [];
   leaderboardBackendReady = true;
   leaderboardRequestInFlight = false;
@@ -1297,8 +1318,8 @@ function openSalesConversation(topic = 'Planos Estuda+', price = '') {
   const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Gostaria de saber mais.`);
   window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
 }
-function hasPremiumStudyAccess() { return activeUserIsAdmin || ['premium', 'family'].includes(activePaymentEntitlements.tier); }
-function planAccessLabel() { return activePaymentEntitlements.tier === 'family' ? 'Família' : activePaymentEntitlements.tier === 'premium' ? 'Premium' : 'Grátis'; }
+function hasPremiumStudyAccess() { return activeUserIsAdmin || activePaymentEntitlements.premiumStudy || ['premium', 'family'].includes(activePaymentEntitlements.tier); }
+function planAccessLabel() { return activeUserIsAdmin ? 'Administrador' : activePaymentEntitlements.accessLevel === 'full' ? 'Acesso total' : activePaymentEntitlements.accessLevel === 'partial' ? 'Acesso personalizado' : activePaymentEntitlements.tier === 'family' ? 'Família' : activePaymentEntitlements.tier === 'premium' ? 'Premium' : 'Grátis'; }
 function updatePlanAccessUI() {
   const premium = hasPremiumStudyAccess();
   document.body.dataset.planTier = activeUserIsAdmin ? 'admin' : activePaymentEntitlements.tier;
@@ -1316,7 +1337,6 @@ function showPlanUpgradeMessage(message = 'Este recurso está disponível nos pl
   if (notice) { notice.hidden = false; notice.className = 'plans-payment-notice'; notice.textContent = message; notice.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' }); }
 }
 async function consumeQuizAccess(questionCount = 10) {
-  if (activeUserIsAdmin) return { allowed: true, tier: 'admin', unlimited: true };
   if (!activeSupabaseUser || !supabaseClient) return { allowed: false, reason: 'auth_required' };
   const { data, error } = await supabaseClient.rpc('consume_quiz_access', { p_question_count: questionCount });
   if (error) throw error;
@@ -1324,6 +1344,7 @@ async function consumeQuizAccess(questionCount = 10) {
   activePaymentEntitlements.tier = result.tier || activePaymentEntitlements.tier;
   activePaymentEntitlements.questionsUsedToday = Number(result.used_today || 0);
   activePaymentEntitlements.dailyQuestionLimit = result.daily_limit == null ? null : Number(result.daily_limit);
+  activePaymentEntitlements.unlimitedQuizzes = Boolean(result.unlimited);
   updatePlanAccessUI();
   return result;
 }
@@ -1463,7 +1484,7 @@ function renderProfileData() {
   el('profile-data-whatsapp-consent').textContent = phone ? (activeUserContact.whatsapp_opt_in ? 'Avisos importantes autorizados.' : 'Apenas suporte da conta; novidades não autorizadas.') : 'Adicione um número para suporte da conta.';
   el('profile-data-whatsapp-card').classList.toggle('missing', !phone);
   if (el('profile-payment-plan')) el('profile-payment-plan').textContent = activePaymentEntitlements.planLabel || 'Plano grátis';
-  if (el('profile-payment-credits')) el('profile-payment-credits').textContent = `${activePaymentEntitlements.credits || 0} crédito${Number(activePaymentEntitlements.credits) === 1 ? '' : 's'} disponíveis`;
+  if (el('profile-payment-credits')) el('profile-payment-credits').textContent = activePaymentEntitlements.essayWithoutCredits ? 'Correções de redação incluídas' : `${activePaymentEntitlements.credits || 0} crédito${Number(activePaymentEntitlements.credits) === 1 ? '' : 's'} disponíveis`;
   el('edit-profile-data').textContent = phone ? 'Editar dados' : 'Adicionar WhatsApp';
   el('profile-security-copy').textContent = activeUserIsAdmin ? `Altere aqui a senha protegida da conta ${activeAdminEmail()}.` : 'Você pode trocar sua senha sem sair do aplicativo.';
   el('profile-edit-name').value = learnerName();
@@ -1737,7 +1758,7 @@ function openMaterialQuiz() { materialQuizSession = false; show('material-screen
 async function openEssay() {
   if (activeSupabaseUser) activePaymentEntitlements = await fetchPaymentEntitlements(activeSupabaseUser);
   show('essay-screen');
-  await essayHub?.open(activePaymentEntitlements.credits || 0);
+  await essayHub?.open(activePaymentEntitlements);
 }
 function startMaterialQuiz(payload) {
   const subject = payload?.subject || 'Minha apostila';
@@ -2100,7 +2121,7 @@ window.addEventListener('popstate', (event) => {
   if (destination === 'review-screen') renderReviewScreen();
   if (destination === 'friends-screen') friendsHub?.open();
   if (destination === 'plans-screen') renderPlansScreen();
-  if (destination === 'essay-screen') void essayHub?.open(activePaymentEntitlements.credits || 0);
+  if (destination === 'essay-screen') void essayHub?.open(activePaymentEntitlements);
   if (destination === 'admin-screen' && activeUserIsAdmin) adminPanel?.open();
   if (destination === 'setup-screen' || destination === 'subject-screen') renderPhaseMap();
   show(destination, { historyMode: 'none' });

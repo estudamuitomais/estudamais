@@ -19,6 +19,18 @@
     const supabase = options.supabase;
     let currentCorrection = null;
     let draftTimer = null;
+    let correctionIncluded = false;
+
+    function updateAccessDisplay(entitlements = {}) {
+      correctionIncluded = Boolean(entitlements?.essayWithoutCredits);
+      const credits = Math.max(0, Number(entitlements?.credits) || 0);
+      if (byId('essay-credit-balance')) byId('essay-credit-balance').textContent = correctionIncluded ? '✓' : String(credits);
+      if (byId('essay-credit-label')) byId('essay-credit-label').textContent = correctionIncluded ? 'incluído' : 'créditos';
+      if (byId('essay-access-price')) byId('essay-access-price').textContent = correctionIncluded ? 'Incluído' : '5 créditos';
+      if (byId('essay-access-price-note')) byId('essay-access-price-note').textContent = correctionIncluded ? 'sem consumir seu saldo' : 'por correção concluída';
+      const button = byId('submit-essay');
+      if (button && !button.disabled) button.innerHTML = correctionIncluded ? 'Corrigir com meu acesso <span>→</span>' : 'Corrigir por 5 créditos <span>→</span>';
+    }
 
     function setStatus(message = '', type = '') {
       const status = byId('essay-status');
@@ -140,16 +152,16 @@
         }
         renderCorrection(data.correction);
         localStorage.removeItem(DRAFT_KEY);
-        if (byId('essay-credit-balance')) byId('essay-credit-balance').textContent = String(data.credits_remaining ?? 0);
+        if (byId('essay-credit-balance') && !correctionIncluded) byId('essay-credit-balance').textContent = String(data.credits_remaining ?? 0);
         options.onCreditsChanged?.(Number(data.credits_remaining) || 0);
-        setStatus(`Correção concluída. Saldo atual: ${data.credits_remaining ?? 0} créditos.`, 'success');
+        setStatus(data.access_included ? 'Correção concluída sem usar créditos: este recurso está incluído no seu acesso.' : `Correção concluída. Saldo atual: ${data.credits_remaining ?? 0} créditos.`, 'success');
         await loadHistory();
       } catch (error) {
         console.error('Essay correction failed', error);
         setStatus('A correção está temporariamente indisponível. Seu rascunho continua salvo e nenhum crédito foi retirado.', 'error');
       } finally {
         button.disabled = false;
-        button.innerHTML = 'Corrigir por 5 créditos <span>→</span>';
+        button.innerHTML = correctionIncluded ? 'Corrigir com meu acesso <span>→</span>' : 'Corrigir por 5 créditos <span>→</span>';
       }
     }
 
@@ -161,8 +173,8 @@
     loadDraft();
 
     return {
-      async open(credits = 0) {
-        byId('essay-credit-balance').textContent = String(Math.max(0, Number(credits) || 0));
+      async open(entitlements = {}) {
+        updateAccessDisplay(typeof entitlements === 'number' ? { credits: entitlements } : entitlements);
         updateCounter();
         await loadHistory();
       },

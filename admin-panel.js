@@ -34,6 +34,9 @@
       if (/CANNOT_SUSPEND_SELF/i.test(raw)) return 'O administrador não pode suspender a própria conta.';
       if (/WHATSAPP_NOT_AUTHORIZED/i.test(raw)) return 'Este usuário não autorizou o recebimento de novidades pelo WhatsApp.';
       if (/INVALID_ANNOUNCEMENT/i.test(raw)) return 'Preencha o título e a mensagem do aviso.';
+      if (/ADMIN_ACCESS_IS_PERMANENT/i.test(raw)) return 'Administradores já possuem acesso total permanente.';
+      if (/SELECT_ONE_PERMISSION/i.test(raw)) return 'Marque pelo menos uma permissão para o acesso parcial.';
+      if (/INVALID_EXPIRATION/i.test(raw)) return 'Escolha uma data de validade futura.';
       if (/relation .* does not exist|column .* does not exist|schema cache/i.test(raw)) return 'A estrutura administrativa ainda precisa ser ativada no Supabase.';
       return 'Não foi possível concluir a ação. Tente novamente.';
     };
@@ -191,7 +194,68 @@
       byId('admin-open-whatsapp').disabled = !phone || !item.whatsapp_opt_in;
       byId('admin-user-modal').hidden = false;
       options.onModalChange?.();
-      setTimeout(() => byId('admin-user-note').focus(), 0);
+      void loadUserAccess();
+      setTimeout(() => byId('admin-user-access-level').focus(), 0);
+    }
+
+    function setAccessNotice(message = '', error = false) {
+      const target = byId('admin-user-access-notice'); if (!target) return;
+      target.textContent = message; target.classList.toggle('error', error);
+    }
+
+    function updatePartialAccessVisibility() {
+      const level = byId('admin-user-access-level').value;
+      byId('admin-user-partial-permissions').hidden = level !== 'partial';
+      const locked = Boolean(selectedUser?.is_admin);
+      ['admin-user-access-level', 'admin-access-unlimited-quizzes', 'admin-access-premium-study', 'admin-access-free-essay', 'admin-user-access-expiration', 'admin-user-access-note', 'admin-save-user-access'].forEach((id) => { if (byId(id)) byId(id).disabled = locked; });
+    }
+
+    function renderUserAccess(access = {}) {
+      const level = access.is_admin ? 'full' : (access.access_level || 'standard');
+      byId('admin-user-access-level').value = level;
+      byId('admin-access-unlimited-quizzes').checked = Boolean(access.unlimited_quizzes);
+      byId('admin-access-premium-study').checked = Boolean(access.premium_study);
+      byId('admin-access-free-essay').checked = Boolean(access.essay_without_credits);
+      byId('admin-user-access-expiration').value = access.expires_at ? String(access.expires_at).slice(0, 10) : '';
+      byId('admin-user-access-note').value = access.note || '';
+      const labels = { standard: 'Padrão do plano', partial: 'Acesso parcial', full: access.is_admin ? 'Administrador · total permanente' : 'Acesso total' };
+      byId('admin-user-access-status').textContent = access.expired ? 'Concessão expirada' : labels[level];
+      updatePartialAccessVisibility();
+      setAccessNotice(access.is_admin ? 'Esta conta administrativa já usa todos os recursos sem plano ou créditos.' : '');
+    }
+
+    async function loadUserAccess() {
+      if (!selectedUser) return;
+      setAccessNotice('Carregando permissões…');
+      const targetId = selectedUser.id;
+      const { data, error } = await supabase.rpc('admin_get_user_access', { p_target_user_id: targetId });
+      if (!selectedUser || selectedUser.id !== targetId) return;
+      if (error) { setAccessNotice(friendlyError(error), true); return; }
+      renderUserAccess(data || {});
+    }
+
+    async function saveUserAccess() {
+      if (!selectedUser || selectedUser.is_admin) return;
+      const level = byId('admin-user-access-level').value;
+      const expiration = byId('admin-user-access-expiration').value;
+      const button = byId('admin-save-user-access');
+      button.disabled = true; setAccessNotice('Salvando acesso…');
+      try {
+        const { data, error } = await supabase.rpc('admin_set_user_access', {
+          p_target_user_id: selectedUser.id,
+          p_access_level: level,
+          p_unlimited_quizzes: byId('admin-access-unlimited-quizzes').checked,
+          p_premium_study: byId('admin-access-premium-study').checked,
+          p_essay_without_credits: byId('admin-access-free-essay').checked,
+          p_expires_at: expiration ? new Date(`${expiration}T23:59:59`).toISOString() : null,
+          p_note: byId('admin-user-access-note').value.trim()
+        });
+        if (error) throw error;
+        renderUserAccess(data || {});
+        setAccessNotice(level === 'standard' ? 'Acesso especial removido. Agora vale o plano do usuário.' : 'Acesso atualizado com segurança.');
+        await loadAdminData();
+      } catch (error) { setAccessNotice(friendlyError(error), true); }
+      finally { button.disabled = false; }
     }
 
     function closeUser() {
@@ -306,7 +370,7 @@
       const list = byId('admin-audit-list'); if (!list) return;
       list.innerHTML = '';
       if (!auditRows.length) list.innerHTML = '<div class="admin-empty">Nenhuma ação administrativa registrada.</div>';
-      const labels = { user_status: 'Alterou status de conta', user_chat: 'Alterou permissão de chat', user_note: 'Atualizou observação', report_status: 'Atualizou denúncia', announcement_saved: 'Salvou aviso', announcement_deleted: 'Excluiu aviso', whatsapp_contact_opened: 'Abriu contato autorizado no WhatsApp' };
+      const labels = { user_status: 'Alterou status de conta', user_chat: 'Alterou permissão de chat', user_note: 'Atualizou observação', user_access: 'Alterou acesso especial', report_status: 'Atualizou denúncia', announcement_saved: 'Salvou aviso', announcement_deleted: 'Excluiu aviso', whatsapp_contact_opened: 'Abriu contato autorizado no WhatsApp' };
       auditRows.forEach((item) => { const row = document.createElement('article'); row.innerHTML = `<span>✓</span><div><strong>${safe(labels[item.action] || item.action)}</strong><small>${dateLabel(item.created_at)} · registro #${item.id}</small></div>`; list.append(row); });
     }
 
@@ -326,6 +390,8 @@
       byId('admin-toggle-user-status')?.addEventListener('click', () => updateUser('status', selectedUser?.account_status === 'suspended' ? 'active' : 'suspended'));
       byId('admin-toggle-user-chat')?.addEventListener('click', () => updateUser('chat', !selectedUser?.guardian_chat_enabled));
       byId('admin-save-user-note')?.addEventListener('click', () => updateUser('note', byId('admin-user-note').value.trim()));
+      byId('admin-user-access-level')?.addEventListener('change', updatePartialAccessVisibility);
+      byId('admin-save-user-access')?.addEventListener('click', saveUserAccess);
       byId('admin-open-whatsapp')?.addEventListener('click', openWhatsApp);
       byId('admin-announcement-form')?.addEventListener('submit', saveAnnouncement);
       byId('admin-cancel-announcement')?.addEventListener('click', clearAnnouncementForm);
