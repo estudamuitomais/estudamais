@@ -13,7 +13,7 @@ function updateAdminNavigationVisibility() {
   if (sideAdminButton) sideAdminButton.hidden = !activeUserIsAdmin;
 }
 let activeUserContact = null;
-let activePaymentEntitlements = { planLabel: 'Plano grátis', planStatus: 'free', credits: 0 };
+let activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0 };
 let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
@@ -27,7 +27,7 @@ let passwordRecoveryFlow = /(?:^|[?#&])type=recovery(?:&|$)/.test(`${window.loca
 const gradeContent = window.EstudaGradeContent;
 const questionEngine = window.EstudaQuestionExpansion;
 const avatarStudio = window.EstudaAvatarStudio;
-const APP_TUTORIAL_VERSION = 3;
+const APP_TUTORIAL_VERSION = 4;
 let level = 'Fundamental', schoolYear = '6EF', difficulty = 'Fácil', curriculum = 'BNCC', quizMode = 'Guiado', current = 0, currentPhase = 1, resultAction = 'home', hits = 0, score = 0, roundStreak = 0, questions = [];
 let avatarDraft = null, avatarCategory = 'skin', avatarStudioReturnFocus = null, avatarReactionTimer = null;
 let sideMascotReactionIndex = 0, sideMascotReactionTimer = null;
@@ -37,6 +37,17 @@ let quizAudioUnlocked = false;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const materialQuiz = window.EstudaMaterialQuiz?.create({ onStart: startMaterialQuiz });
+const essayHub = window.EstudaEssay?.create({
+  supabase: supabaseClient,
+  onBuyCredits: () => {
+    openPlans();
+    setTimeout(() => document.querySelector('[data-plans-tab="credits"]')?.click(), 0);
+  },
+  onCreditsChanged: (credits) => {
+    activePaymentEntitlements.credits = Math.max(0, Number(credits) || 0);
+    if (el('profile-payment-credits')) el('profile-payment-credits').textContent = `${activePaymentEntitlements.credits} crédito${activePaymentEntitlements.credits === 1 ? '' : 's'} disponíveis`;
+  }
+});
 
 const tutorialSteps = [
   { kicker: 'APRENDA JOGANDO', title: 'Escolha seu ano e uma matéria', description: 'Sua aventura começa com conteúdos adequados à etapa escolar.', kind: 'subjects', tips: ['Selecione o ano escolar na tela Aprenda Jogando.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar as escolhas antes de iniciar uma nova trilha.'] },
@@ -44,6 +55,7 @@ const tutorialSteps = [
   { kicker: 'TRILHA DA AVENTURA', title: 'Complete fases e abra caminhos', description: 'Cada etapa é uma missão curta, clara e com objetivo visível.', kind: 'path', tips: ['Cada fase reúne 10 questões variadas sobre o conteúdo escolhido.', 'Acerte pelo menos 7 de 10 questões para liberar a próxima fase.', 'As fases começam em preto e branco e ganham cor quando concluídas.'] },
   { kicker: 'APRENDA COM O ERRO', title: 'Entenda cada resposta', description: 'O resultado vem acompanhado de explicação para transformar tentativa em aprendizado.', kind: 'question', tips: ['Cada questão tem cinco alternativas e somente uma correta.', 'Use Passo a passo e Aprofundar depois de responder.', 'Salve ou marque questões para voltar ao conteúdo mais tarde.'] },
   { kicker: 'SUA APOSTILA', title: 'Transforme fotos em estudo', description: 'Use o próprio material escolar para criar uma revisão mais precisa.', kind: 'material', tips: ['Envie fotos nítidas e confira o texto reconhecido antes de gerar.', 'Crie um quiz de 10 questões baseado somente no material enviado.', 'Gere também um resumo completo e um mapa mental do conteúdo.'] },
+  { kicker: 'OFICINA DE REDAÇÃO', title: 'Escreva e receba uma devolutiva', description: 'Pratique textos completos e descubra como evoluir em cada competência.', kind: 'essay', tips: ['Informe o tema e escreva ou cole sua redação no editor.', 'Cada correção concluída usa 5 créditos; falhas não consomem saldo.', 'A nota é uma estimativa pedagógica e não substitui professor ou correção oficial.'] },
   { kicker: 'SEU COMPANHEIRO', title: 'Crie e evolua seu avatar', description: 'O avatar acompanha as conquistas e deixa a rotina mais pessoal.', kind: 'avatar', tips: ['Escolha estilo masculino ou feminino, nome, cabelo, olhos e expressão.', 'Roupas, acessórios, companheiros e cenários são liberados nas fases.', 'Toque no avatar para receber reações e incentivos.'] },
   { kicker: 'AMIGOS DE ESTUDO', title: 'Tire dúvidas com quem você conhece', description: 'Estudar junto pode deixar um conteúdo difícil mais leve.', kind: 'friends', tips: ['Adicione apenas pessoas conhecidas e aceite convites com cuidado.', 'A conversa flutuante avisa quando chega uma nova mensagem.', 'Compartilhe uma questão e conversem sobre o raciocínio, não só a resposta.'] },
   { kicker: 'CONTINUE CRESCENDO', title: 'Acompanhe, revise e conquiste', description: 'Seu progresso mostra o esforço de hoje e o melhor próximo passo.', kind: 'progress', tips: ['Complete missões curtas e acompanhe a evolução por matéria.', 'Revise o caderno de erros e conquiste medalhas por sequência.', 'No Perfil, adultos e professores podem identificar temas para revisão.'] }
@@ -254,13 +266,13 @@ async function fetchUserContact(user) {
   return supabaseClient.from('user_contacts').select('whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at').eq('user_id', user.id).maybeSingle();
 }
 async function fetchPaymentEntitlements(user) {
-  const fallback = { planLabel: 'Plano grátis', planStatus: 'free', credits: 0 };
+  const fallback = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0 };
   if (!user || !supabaseClient) return fallback;
   try {
     const [subscriptionResult, walletResult] = await Promise.all([
       supabaseClient
         .from('user_subscriptions')
-        .select('plan_label, status, updated_at')
+        .select('plan_id, plan_label, status, updated_at')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
         .limit(1)
@@ -273,10 +285,18 @@ async function fetchPaymentEntitlements(user) {
     ]);
     if (subscriptionResult.error && subscriptionResult.error.code !== 'PGRST116') throw subscriptionResult.error;
     if (walletResult.error && walletResult.error.code !== 'PGRST116') throw walletResult.error;
+    const status = String(subscriptionResult.data?.status || '').toLowerCase();
+    const active = ['active', 'paid', 'complete', 'trialing'].includes(status);
+    const planId = active ? String(subscriptionResult.data?.plan_id || 'free').toLowerCase() : 'free';
+    const tier = planId.startsWith('family') ? 'family' : planId.startsWith('premium') ? 'premium' : 'free';
     return {
-      planLabel: subscriptionResult.data?.plan_label || fallback.planLabel,
-      planStatus: subscriptionResult.data?.status || fallback.planStatus,
-      credits: Math.max(0, Number(walletResult.data?.credits) || 0)
+      planId,
+      tier,
+      planLabel: active ? (subscriptionResult.data?.plan_label || fallback.planLabel) : fallback.planLabel,
+      planStatus: active ? status : fallback.planStatus,
+      credits: Math.max(0, Number(walletResult.data?.credits) || 0),
+      dailyQuestionLimit: tier === 'free' ? 10 : null,
+      questionsUsedToday: 0
     };
   } catch (error) {
     console.warn('Não foi possível carregar plano e créditos:', error.message);
@@ -407,8 +427,7 @@ async function activateUser(user) {
   state.totalPoints = Math.max(state.totalPoints || 0, profile?.points || 0);
   activeUserIsAdmin = Boolean(profile?.is_admin);
   updateAdminNavigationVisibility();
-  if (el('admin-access-card')) el('admin-access-card').hidden = !activeUserIsAdmin;
-  if (el('admin-access-email')) el('admin-access-email').textContent = activeUserIsAdmin ? `ACESSO: ${activeAdminEmail().toUpperCase()}` : 'ACESSO ADMINISTRATIVO';
+  updatePlanAccessUI();
   const tutorialPendingVersion = Math.max(0, Number(user.user_metadata?.tutorial_pending_version) || 0);
   const shouldAutoOpenTutorial = tutorialPendingVersion > 0 && state.tutorialSeenVersion < APP_TUTORIAL_VERSION;
   setSchoolYear(state.schoolYear, false);
@@ -511,12 +530,12 @@ async function logoutUser() {
   activeUserIsAdmin = false;
   updateAdminNavigationVisibility();
   activeUserContact = null;
-  activePaymentEntitlements = { planLabel: 'Plano grátis', planStatus: 'free', credits: 0 };
+  activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0 };
   globalLeaderboard = [];
   leaderboardBackendReady = true;
   leaderboardRequestInFlight = false;
   renderLeaderboardHighlights();
-  if (el('admin-access-card')) el('admin-access-card').hidden = true;
+  updatePlanAccessUI();
   storageKey = 'estuda-mais-profile-v3-guest';
   state = blankState();
   ensureFeedbackPreferences(state);
@@ -834,6 +853,7 @@ function tutorialVisualMarkup(kind) {
   if (kind === 'path') return '<div class="tutorial-path-demo"><div class="tutorial-path-line"><i class="done">✓</i><span></span><i class="current">2</i><span></span><i>3</i></div><strong>Faça 7 de 10 para avançar</strong></div>';
   if (kind === 'question') return '<div class="tutorial-question-demo"><small>QUESTÃO 3 DE 10</small><strong>Qual alternativa resolve corretamente o desafio?</strong><span>A&nbsp;&nbsp; Primeira possibilidade</span><span class="correct">✓&nbsp;&nbsp; Resposta correta comentada</span></div>';
   if (kind === 'material') return '<div class="tutorial-material-demo"><div><span>▧</span><b>Foto da apostila</b><small>Texto conferido ✓</small></div><i>→</i><section><span>10</span><b>questões</b><small>Resumo + mapa mental</small></section></div>';
+  if (kind === 'essay') return '<div class="tutorial-essay-demo"><div><small>NOTA ESTIMADA</small><strong>840</strong><span>de 1000</span></div><section><b>C1</b><i><span style="width:80%"></span></i><b>C2</b><i><span style="width:90%"></span></i><small>Comentários + próximos passos</small></section></div>';
   if (kind === 'avatar') return `<div class="tutorial-avatar-demo">${avatarStudio.render(state.avatarDesign, { decorative: true })}<div class="tutorial-avatar-items"><span><b>☺</b> Masculino ou feminino</span><span><b>⭐</b> Amigos e cenários</span><span><b>👋</b> Reações ao toque</span></div></div>`;
   if (kind === 'friends') return '<div class="tutorial-friends-demo"><div><b>AM</b><i></i></div><section><span>Vamos resolver juntos?</span><span class="reply">Sim! Eu começo pelo enunciado.</span><small>● Helena está online</small></section></div>';
   return '<div class="tutorial-progress-demo"><article><span>🎯</span><div>Missão diária<i><b style="--demo-progress:80%"></b></i></div><b>4/5</b></article><article><span>↻</span><div>Revisões inteligentes<i><b style="--demo-progress:55%"></b></i></div><b>3</b></article><article><span>★</span><div>Evolução em Matemática<i><b style="--demo-progress:72%"></b></i></div><b>72%</b></article></div>';
@@ -918,7 +938,12 @@ function saveQuestionMark(question, mark) { const key = questionKey(question); l
 function isMarked(question, mark) { return !!state.savedQuestions.find((item) => item.key === questionKey(question))?.[mark]; }
 function scheduleReview(question) { const key = questionKey(question); const existing = state.notebook.find((entry) => entry.key === key); if (existing) { existing.nextReview = futureDate(1); existing.step = 0; return; } state.notebook.unshift({ key, subject: question.subject, topic: topicForEntry(question), schoolYear: question.schoolYear || schoolYear, question: question.q, note: question.note, nextReview: futureDate(1), step: 0 }); state.notebook = state.notebook.slice(0, 30); }
 function renderPhaseMap() { const route = currentRoute(); const progress = getPhaseProgress(route); const map = el('phase-map'); if (!map) return; map.innerHTML = '<div class="path-line"></div>'; const label = document.createElement('div'); label.className = 'phase-map-label'; label.textContent = `${route.subject} · ${route.yearLabel} · ${route.topic} · 4 fases · questões inéditas`; map.append(label); phaseNames.forEach((name, index) => { const number = index + 1; const complete = number <= progress.completed; const unlocked = number <= progress.completed + 1; const button = document.createElement('button'); button.type = 'button'; button.className = `lesson-node phase-node ${complete ? 'completed' : ''} ${unlocked ? 'unlocked' : 'locked-node'} ${number === progress.completed + 1 ? 'current' : ''}`; button.disabled = !unlocked; const icon = subjectIcons[route.subject] || subjectIcons.Matemática; button.innerHTML = `<span class="phase-illustration" aria-hidden="true">${icon}</span><span class="phase-number">${complete ? '★' : unlocked ? number : '🔒'}</span><small>Fase ${number}</small>`; button.title = `${name}: ${complete ? 'concluída' : unlocked ? 'disponível' : 'bloqueada'}`; button.addEventListener('click', () => { if (!unlocked) return; currentPhase = number; begin(number); }); map.append(button); }); }
-function renderTopicExamples() { const subject = el('subject').value; const box = el('topic-examples'); if (!box) return; box.innerHTML = ''; const label = document.createElement('span'); const profile = schoolYearProfile(); const preposition = profile.stage === 'Médio' ? 'na' : 'no'; label.textContent = subject ? `Sugestões opcionais para ${subject} ${preposition} ${profile.short}:` : 'Escolha uma matéria para ver sugestões opcionais.'; box.append(label); const suggestions = gradeContent.suggestions(subject, schoolYear, subjectExamples[subject]); suggestions.forEach((topic) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'topic-chip'; button.textContent = topic; button.addEventListener('click', () => { el('topic').value = topic; renderPhaseMap(); updateTopicHint(); }); box.append(button); }); updateTopicHint(); }
+function updateSelectedSubjectSummary() {
+  const subject = el('subject')?.value || '';
+  if (el('selected-subject-name')) el('selected-subject-name').textContent = subject || 'Escolha uma matéria';
+  if (el('selected-subject-icon')) el('selected-subject-icon').textContent = subjectIcons[subject] || '✦';
+}
+function renderTopicExamples() { const subject = el('subject').value; const box = el('topic-examples'); updateSelectedSubjectSummary(); if (!box) return; box.innerHTML = ''; const label = document.createElement('span'); const profile = schoolYearProfile(); const preposition = profile.stage === 'Médio' ? 'na' : 'no'; label.textContent = subject ? `Sugestões opcionais para ${subject} ${preposition} ${profile.short}:` : 'Escolha uma matéria em Aprenda Jogando para ver sugestões.'; box.append(label); const suggestions = gradeContent.suggestions(subject, schoolYear, subjectExamples[subject]); suggestions.forEach((topic) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'topic-chip'; button.textContent = topic; button.addEventListener('click', () => { el('topic').value = topic; renderPhaseMap(); updateTopicHint(); }); box.append(button); }); updateTopicHint(); }
 function updateTopicHint() {
   const hint = el('topic-auto-hint');
   if (!hint) return;
@@ -1272,6 +1297,36 @@ function openSalesConversation(topic = 'Planos Estuda+', price = '') {
   const message = encodeURIComponent(`Olá! Tenho interesse em ${topic}${price ? ` (${price})` : ''} no Estuda+. Gostaria de saber mais.`);
   window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
 }
+function hasPremiumStudyAccess() { return activeUserIsAdmin || ['premium', 'family'].includes(activePaymentEntitlements.tier); }
+function planAccessLabel() { return activePaymentEntitlements.tier === 'family' ? 'Família' : activePaymentEntitlements.tier === 'premium' ? 'Premium' : 'Grátis'; }
+function updatePlanAccessUI() {
+  const premium = hasPremiumStudyAccess();
+  document.body.dataset.planTier = activeUserIsAdmin ? 'admin' : activePaymentEntitlements.tier;
+  if (!premium && difficulty === 'Difícil') { difficulty = 'Fácil'; el('difficulty')?.querySelectorAll('.choice').forEach((item) => item.classList.toggle('selected', item.dataset.value === 'Fácil')); }
+  if (!premium && ['Prova', 'Misto'].includes(quizMode)) { quizMode = 'Guiado'; el('quiz-mode')?.querySelectorAll('.choice').forEach((item) => item.classList.toggle('selected', item.dataset.value === 'Guiado')); }
+  document.querySelectorAll('[data-requires-plan="premium"]').forEach((control) => {
+    control.classList.toggle('plan-locked', !premium);
+    control.setAttribute('aria-disabled', String(!premium));
+    if (!premium) control.title = 'Disponível nos planos Premium e Família'; else control.removeAttribute('title');
+  });
+}
+function showPlanUpgradeMessage(message = 'Este recurso está disponível nos planos Premium e Família.') {
+  openPlans();
+  const notice = el('plans-payment-notice');
+  if (notice) { notice.hidden = false; notice.className = 'plans-payment-notice'; notice.textContent = message; notice.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' }); }
+}
+async function consumeQuizAccess(questionCount = 10) {
+  if (activeUserIsAdmin) return { allowed: true, tier: 'admin', unlimited: true };
+  if (!activeSupabaseUser || !supabaseClient) return { allowed: false, reason: 'auth_required' };
+  const { data, error } = await supabaseClient.rpc('consume_quiz_access', { p_question_count: questionCount });
+  if (error) throw error;
+  const result = data || {};
+  activePaymentEntitlements.tier = result.tier || activePaymentEntitlements.tier;
+  activePaymentEntitlements.questionsUsedToday = Number(result.used_today || 0);
+  activePaymentEntitlements.dailyQuestionLimit = result.daily_limit == null ? null : Number(result.daily_limit);
+  updatePlanAccessUI();
+  return result;
+}
 function showPlansPaymentNotice(message = '', type = '') {
   const notice = el('plans-payment-notice');
   if (!notice) return;
@@ -1355,10 +1410,16 @@ function renderPlansScreen() {
   normalizePlansUi();
   if (!grid || !creditGrid) return;
   grid.innerHTML = [
-    `<article class="plan-card-item soft"><div class="plan-card-top"><span>PARA COMEÇAR</span><strong>Grátis</strong></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><ul><li>Questões diárias</li><li>Trilha, pontos e ranking</li><li>Avatar básico</li><li>Revisões essenciais</li></ul><button type="button" disabled aria-disabled="true">Plano atual</button></article>`,
+    `<article class="plan-card-item soft"><div class="plan-card-top"><span>PARA COMEÇAR</span><strong>Grátis</strong></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><ul><li>10 questões por dia</li><li>Quiz guiado em níveis essenciais</li><li>Trilha, pontos e ranking</li><li>Avatar básico e revisões</li></ul><button type="button" disabled aria-disabled="true">${activePaymentEntitlements.tier === 'free' ? 'Seu plano atual' : 'Plano gratuito'}</button></article>`,
     `<article class="plan-card-item primary"><div class="plan-card-top"><span>MAIS ESCOLHIDO</span><strong>Premium</strong></div><div class="plan-card-price"><b>R$ 19,90</b><small>por mês ou R$ 149,90 por ano</small></div><ul><li>Questões e trilhas ilimitadas</li><li>Apostila por foto com mais usos</li><li>Resumo e mapa mental completos</li><li>Relatórios de desempenho</li><li>Avatar com mais personalizações</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="premium-monthly">Assinar mensal</button><button type="button" data-plan-checkout="premium-annual">Assinar anual</button></div></article>`,
     `<article class="plan-card-item highlight"><div class="plan-card-top"><span>ATÉ 4 PESSOAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>Até 4 perfis de estudante</li><li>Acompanhamento por aluno</li><li>Metas e relatórios separados</li><li>Avatares Premium para todos</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="family-monthly">Assinar mensal</button><button type="button" data-plan-checkout="family-annual">Assinar anual</button></div></article>`
   ].join('');
+  const paidTier = activePaymentEntitlements.tier;
+  grid.querySelectorAll('[data-plan-checkout]').forEach((button) => {
+    const offerTier = button.dataset.planCheckout.startsWith('family') ? 'family' : 'premium';
+    const isCurrent = paidTier === offerTier && button.dataset.planCheckout === activePaymentEntitlements.planId;
+    if (isCurrent) { button.textContent = 'Seu plano atual'; button.disabled = true; button.setAttribute('aria-disabled', 'true'); }
+  });
   creditGrid.innerHTML = `<div class="credit-choice-list" role="radiogroup" aria-label="Quantidade de créditos"><button class="selected" type="button" role="radio" aria-checked="true" data-credit-amount="10" data-credit-price="R$ 9,90"><strong>10 créditos</strong><span>R$ 9,90</span></button><button type="button" role="radio" aria-checked="false" data-credit-amount="25" data-credit-price="R$ 19,90"><strong>25 créditos</strong><span>R$ 19,90</span><small>Mais escolhido</small></button><button type="button" role="radio" aria-checked="false" data-credit-amount="60" data-credit-price="R$ 39,90"><strong>60 créditos</strong><span>R$ 39,90</span></button></div><button id="buy-selected-credits" class="start-button" type="button">Comprar 10 créditos · R$ 9,90</button><small class="credit-purchase-note">Pagamento seguro pelo Stripe. Depois da confirmação, os créditos serão liberados na sua conta.</small>`;
   document.querySelectorAll('[data-plan-checkout]').forEach((button) => {
     const plan = monetizationPlans.find((item) => item.id === button.dataset.planCheckout);
@@ -1402,7 +1463,7 @@ function renderProfileData() {
   el('profile-data-whatsapp-consent').textContent = phone ? (activeUserContact.whatsapp_opt_in ? 'Avisos importantes autorizados.' : 'Apenas suporte da conta; novidades não autorizadas.') : 'Adicione um número para suporte da conta.';
   el('profile-data-whatsapp-card').classList.toggle('missing', !phone);
   if (el('profile-payment-plan')) el('profile-payment-plan').textContent = activePaymentEntitlements.planLabel || 'Plano grátis';
-  if (el('profile-payment-credits')) el('profile-payment-credits').textContent = `${activePaymentEntitlements.credits || 0} crédito${Number(activePaymentEntitlements.credits) === 1 ? '' : 's'} de apostila`;
+  if (el('profile-payment-credits')) el('profile-payment-credits').textContent = `${activePaymentEntitlements.credits || 0} crédito${Number(activePaymentEntitlements.credits) === 1 ? '' : 's'} disponíveis`;
   el('edit-profile-data').textContent = phone ? 'Editar dados' : 'Adicionar WhatsApp';
   el('profile-security-copy').textContent = activeUserIsAdmin ? `Altere aqui a senha protegida da conta ${activeAdminEmail()}.` : 'Você pode trocar sua senha sem sair do aplicativo.';
   el('profile-edit-name').value = learnerName();
@@ -1576,7 +1637,7 @@ function recordAnswer(question, right) {
   const earned = checkAchievements(); saveState(); updateMission(); updateHome(); return earned;
 }
 
-document.querySelectorAll('.choice-row').forEach((group) => group.addEventListener('click', (event) => { const button = event.target.closest('.choice'); if (!button) return; group.querySelectorAll('.choice').forEach((item) => item.classList.remove('selected')); button.classList.add('selected'); if (group.id === 'difficulty') difficulty = button.dataset.value; else quizMode = button.dataset.value; }));
+document.querySelectorAll('.choice-row').forEach((group) => group.addEventListener('click', (event) => { const button = event.target.closest('.choice'); if (!button) return; setChoice(group.id, button.dataset.value); }));
 el('curriculum').addEventListener('change', (event) => { curriculum = event.target.value; el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderPhaseMap(); });
 el('subject').addEventListener('change', () => {
   // Um assunto digitado pertence à matéria anterior. Ao trocar a matéria no seletor,
@@ -1588,12 +1649,13 @@ el('subject').addEventListener('change', () => {
 el('school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('subject-school-year').addEventListener('change', (event) => setSchoolYear(event.target.value));
 el('topic').addEventListener('input', () => { renderPhaseMap(); updateTopicHint(); });
-const appScreenIds = new Set(['auth-screen', 'subject-screen', 'material-screen', 'plans-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen', 'admin-screen']);
+const appScreenIds = new Set(['auth-screen', 'subject-screen', 'material-screen', 'essay-screen', 'plans-screen', 'setup-screen', 'quiz-screen', 'result-screen', 'dashboard-screen', 'review-screen', 'friends-screen', 'admin-screen']);
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('a11y-calm');
 function activeScreenId() { return document.querySelector('.screen.active')?.id || 'auth-screen'; }
 function screenNavigationKey(id) {
   if (id === 'subject-screen') return 'subjects';
   if (id === 'material-screen') return 'material';
+  if (id === 'essay-screen') return 'essay';
   if (id === 'plans-screen') return 'plans';
   if (id === 'setup-screen' || id === 'quiz-screen' || id === 'result-screen') return 'trail';
   if (id === 'review-screen') return 'review';
@@ -1632,6 +1694,7 @@ function resetViewport(id, focusHeading = true) {
   });
 }
 function show(id, options = {}) {
+  if (id === 'admin-screen' && !activeUserIsAdmin) id = 'dashboard-screen';
   if (!appScreenIds.has(id) || !el(id)) return;
   const previousId = activeScreenId();
   const historyMode = options.historyMode || (previousId === id ? 'replace' : 'push');
@@ -1644,7 +1707,7 @@ function show(id, options = {}) {
   const nav = el('app-nav');
   if (nav) {
     nav.hidden = ['auth-screen', 'quiz-screen'].includes(id);
-    const moreDestinations = new Set(['avatar', 'review', 'plans']);
+    const moreDestinations = new Set(['avatar', 'essay', 'review', 'plans']);
     nav.querySelectorAll('button').forEach((button) => {
       const active = button.dataset.nav === activeNavigation || (button.dataset.nav === 'more' && moreDestinations.has(activeNavigation));
       button.classList.toggle('active', active);
@@ -1671,6 +1734,11 @@ function navigateBack(fallback = 'setup-screen') {
 }
 function goToSubjects(options = {}) { syncAutomaticCurriculum(); el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
 function openMaterialQuiz() { materialQuizSession = false; show('material-screen'); }
+async function openEssay() {
+  if (activeSupabaseUser) activePaymentEntitlements = await fetchPaymentEntitlements(activeSupabaseUser);
+  show('essay-screen');
+  await essayHub?.open(activePaymentEntitlements.credits || 0);
+}
 function startMaterialQuiz(payload) {
   const subject = payload?.subject || 'Minha apostila';
   if (!Array.isArray(payload?.questions) || payload.questions.length !== 10) return;
@@ -1688,8 +1756,8 @@ async function openAdmin() {
   show('admin-screen');
   await adminPanel?.open();
 }
-function setChoice(groupId, value) { const group = el(groupId); if (!group) return; group.querySelectorAll('.choice').forEach((button) => button.classList.toggle('selected', button.dataset.value === value)); if (groupId === 'difficulty') difficulty = value; else quizMode = value; }
-function startEnemSimulation() { setSchoolYear('3EM'); el('subject').value = el('subject').value || 'Matemática'; el('topic').value = el('topic').value || 'proporcionalidade e porcentagem'; el('curriculum').value = 'Base Enem/Inep'; curriculum = 'Base Enem/Inep'; setChoice('difficulty', 'Médio'); setChoice('quiz-mode', 'Prova'); el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderTopicExamples(); openAdventure(); }
+function setChoice(groupId, value) { const group = el(groupId); if (!group) return false; const requested = [...group.querySelectorAll('.choice')].find((button) => button.dataset.value === value); if (requested?.dataset.requiresPlan === 'premium' && !hasPremiumStudyAccess()) { showPlanUpgradeMessage('Dificuldade avançada e modos especiais estão disponíveis nos planos Premium e Família.'); return false; } group.querySelectorAll('.choice').forEach((button) => button.classList.toggle('selected', button.dataset.value === value)); if (groupId === 'difficulty') difficulty = value; else quizMode = value; return true; }
+function startEnemSimulation() { if (!hasPremiumStudyAccess()) { showPlanUpgradeMessage('O Simulado Enem completo está disponível nos planos Premium e Família.'); return; } setSchoolYear('3EM'); el('subject').value = el('subject').value || 'Matemática'; el('topic').value = el('topic').value || 'proporcionalidade e porcentagem'; el('curriculum').value = 'Base Enem/Inep'; curriculum = 'Base Enem/Inep'; setChoice('difficulty', 'Médio'); setChoice('quiz-mode', 'Prova'); el('curriculum-hint').textContent = curriculumDescriptions[curriculum]; renderTopicExamples(); openAdventure(); }
 function setQuestionBankStatus(message = '', error = false) {
   const status = el('question-bank-status'); if (!status) return;
   status.classList.toggle('error', error);
@@ -1704,6 +1772,17 @@ async function begin(phaseOverride) {
   const progress = getPhaseProgress(route);
   currentPhase = phaseOverride || Math.min(progress.completed + 1, 4);
   current = 0; score = 0; hits = 0; roundStreak = 0;
+  try {
+    const access = await consumeQuizAccess(10);
+    if (!access.allowed) {
+      showPlanUpgradeMessage('Você concluiu as 10 questões gratuitas de hoje. Assine o Premium para continuar estudando sem limite.');
+      return;
+    }
+  } catch (error) {
+    console.error('Não foi possível validar o acesso ao quiz:', error);
+    setQuestionBankStatus('Não foi possível validar seu plano agora. Atualize a página e tente novamente.', true);
+    return;
+  }
   try { questions = await freshRoundFor(subject, schoolYear, route); }
   catch (error) {
     console.error('Não foi possível iniciar uma rodada inédita:', error);
@@ -1813,7 +1892,6 @@ el('profile-edit-whatsapp').addEventListener('blur', () => { const value = norma
 el('toggle-profile-password').addEventListener('click', () => toggleProfilePassword(el('profile-password-form').hidden));
 el('cancel-profile-password').addEventListener('click', () => toggleProfilePassword(false));
 el('profile-password-form').addEventListener('submit', updateProfilePassword);
-el('change-admin-password').addEventListener('click', () => { toggleProfileDataEditor(false); toggleProfilePassword(true); el('profile-security-block').scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' }); });
 el('save-plan').addEventListener('click', () => { state.plan.minutes = el('daily-minutes').value; saveState(); });
 el('practice-notebook').addEventListener('click', openReview);
 el('review-errors').addEventListener('click', openReview);
@@ -1823,8 +1901,8 @@ el('close-plans').addEventListener('click', () => navigateBack('subject-screen')
 el('close-admin').addEventListener('click', () => navigateBack('dashboard-screen'));
 el('open-material-quiz')?.addEventListener('click', openMaterialQuiz);
 el('close-material-quiz').addEventListener('click', () => navigateBack('subject-screen'));
+el('close-essay')?.addEventListener('click', () => navigateBack('subject-screen'));
 el('plans-contact-button')?.addEventListener('click', () => openSalesConversation('uma solução para escola ou professor'));
-el('open-admin-panel').addEventListener('click', openAdmin);
 el('open-review-from-dashboard').addEventListener('click', openReview);
 el('practice-due').addEventListener('click', () => { const entry = dueReviews()[0] || state.notebook[0] || state.savedQuestions[0]; if (entry) startReview(entry); });
 el('start-enem-sim').addEventListener('click', startEnemSimulation);
@@ -1961,6 +2039,7 @@ el('app-nav').querySelectorAll('button').forEach((button) => button.addEventList
   else if (button.dataset.nav === 'trail') { syncAutomaticCurriculum(); show('setup-screen'); }
   else if (button.dataset.nav === 'avatar') openAvatarStudio();
   else if (button.dataset.nav === 'material') openMaterialQuiz();
+  else if (button.dataset.nav === 'essay') openEssay();
   else if (button.dataset.nav === 'plans') openPlans();
   else if (button.dataset.nav === 'review') openReview();
   else if (button.dataset.nav === 'friends') openFriends();
@@ -1977,6 +2056,7 @@ document.querySelectorAll('[data-side-nav]').forEach((button) => button.addEvent
   else if (destination === 'trail') { syncAutomaticCurriculum(); show('setup-screen'); }
   else if (destination === 'avatar') openAvatarStudio();
   else if (destination === 'material') openMaterialQuiz();
+  else if (destination === 'essay') openEssay();
   else if (destination === 'plans') openPlans();
   else if (destination === 'review') openReview();
   else if (destination === 'friends') openFriends();
@@ -1996,6 +2076,7 @@ el('toggle-accessibility').addEventListener('click', () => { state.accessibility
 el('save-teacher-material').addEventListener('click', () => { const title = el('teacher-material-title').value.trim(), note = el('teacher-material-note').value.trim(); if (!title && !note) return; state.materials.unshift({ title: title || 'Orientação de estudo', note: note || 'Sem observações.' }); state.materials = state.materials.slice(0, 10); el('teacher-material-title').value = ''; el('teacher-material-note').value = ''; saveState(); renderTeacherMaterials(); });
 el('toggle-creator').addEventListener('click', () => { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; });
 document.querySelectorAll('.subject-card').forEach((card) => card.addEventListener('click', () => { const subject = card.dataset.subject; syncAutomaticCurriculum(); el('subject').value = subject; el('topic').value = ''; el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; renderTopicExamples(); renderPhaseMap(); show('setup-screen'); }));
+el('change-selected-subject')?.addEventListener('click', goToSubjects);
 el('back-to-subjects').addEventListener('click', goToSubjects);
 el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'replace' }));
 window.addEventListener('popstate', (event) => {
@@ -2019,6 +2100,7 @@ window.addEventListener('popstate', (event) => {
   if (destination === 'review-screen') renderReviewScreen();
   if (destination === 'friends-screen') friendsHub?.open();
   if (destination === 'plans-screen') renderPlansScreen();
+  if (destination === 'essay-screen') void essayHub?.open(activePaymentEntitlements.credits || 0);
   if (destination === 'admin-screen' && activeUserIsAdmin) adminPanel?.open();
   if (destination === 'setup-screen' || destination === 'subject-screen') renderPhaseMap();
   show(destination, { historyMode: 'none' });

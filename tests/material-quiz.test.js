@@ -47,7 +47,7 @@ assert.ok(app.includes('whatsapp_phone: whatsapp') && app.includes('startMateria
 assert.ok(admin.includes("from('user_contacts')") && admin.includes('admin_log_whatsapp_contact'), 'painel deve consultar contato privado e auditar abertura');
 assert.ok(migration.includes('enable row level security') && migration.includes('current_user_is_admin()'), 'contatos precisam de RLS e proteção administrativa');
 assert.ok(app.includes('const activeAdminEmail') && !app.includes('ADMIN_AUTH_EMAIL'), 'interface administrativa deve usar o e-mail autenticado, sem endereço fixo');
-assert.ok(html.includes('id="admin-access-email"') && html.includes('id="login-email" type="email"'), 'interface deve identificar dinamicamente a conta administrativa e validar e-mails');
+assert.ok(!html.includes('id="admin-access-email"') && html.includes('id="side-admin-button"') && html.includes('id="login-email" type="email"'), 'a administração deve ficar fora do perfil e o login deve validar e-mails');
 assert.ok(renatoAdminMigration.includes("lower(email) = 'renatodagamma@gmail.com'") && renatoAdminMigration.includes('set is_admin = true'), 'migração deve promover a nova conta administrativa solicitada');
 assert.ok(securityMigration.includes('create schema if not exists private') && securityMigration.includes('security invoker'), 'funções expostas devem delegar a implementações privadas');
 assert.ok(securityMigration.includes("revoke all on function public.rls_auto_enable()") && securityMigration.includes('drop function if exists public.handle_new_user()'), 'funções internas não podem ficar executáveis pela API');

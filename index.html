@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="duolingo-learn-layout.css" />
     <link rel="stylesheet" href="purple-modern-theme.css" />
     <link rel="stylesheet" href="clean-app-layout.css" />
+    <link rel="stylesheet" href="essay-correction.css" />
   </head>
   <body>
     <main class="app-shell">
@@ -23,6 +24,7 @@
           <button type="button" data-side-nav="trail"><span>★</span><b>Configure seu estudo</b></button>
           <button class="side-avatar-feature" type="button" data-side-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span><b>Meu avatar<small>PERSONALIZAR</small></b></button>
           <button class="side-material-feature" type="button" data-side-nav="material"><span>▣</span><b>Apostila<small>FOTO PARA QUIZ</small></b></button>
+          <button type="button" data-side-nav="essay"><span>✎</span><b>Redação<small>CORREÇÃO ENEM</small></b></button>
           <button type="button" data-side-nav="plans"><span>✦</span><b>Planos<small>ASSINAR</small></b></button>
           <button type="button" data-side-nav="review"><span>↻</span><b>Revisar</b></button>
           <button type="button" data-side-nav="friends"><span>♧</span><b>Amigos</b><i id="side-friends-badge" hidden>0</i></button>
@@ -159,8 +161,8 @@
           </section>
           <div id="lesson-creator">
           <section class="study-brief" aria-label="Seu plano de estudos">
-            <div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2 class="creator-title">Configure sua trilha</h2><p class="subtitle">Escolha os detalhes abaixo. O assunto é opcional: sem ele, faremos uma revisão geral da matéria.</p></div>
-            <button id="start-enem-sim" class="enem-shortcut" type="button"><span>⌁</span><b>Simulado Enem</b><small>10 questões · modo prova</small></button>
+            <div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2 class="creator-title">Configure sua trilha</h2><p class="subtitle">A matéria já foi escolhida em Aprenda Jogando. Agora ajuste o ano, o assunto opcional e o formato do desafio.</p></div>
+            <button id="start-enem-sim" class="enem-shortcut premium-control" type="button" data-requires-plan="premium"><span>⌁</span><b>Simulado Enem</b><small>Premium · 10 questões</small></button>
           </section>
           <section class="daily-mission" aria-label="Missão diária">
             <div class="mission-icon">🎯</div><div><strong>Missão de hoje</strong><span id="mission-copy">Responda 5 questões</span><div class="mini-progress"><i id="mission-progress"></i></div></div><b id="mission-count">0/5</b>
@@ -172,12 +174,14 @@
           <div class="quick-tools"><button id="review-errors" type="button">📘 Revisar caderno de erros</button><button id="toggle-accessibility" type="button">Aa Acessibilidade</button></div>
           <form id="quiz-form">
             <div class="form-grid">
-              <label>Matéria
-                <select id="subject" required>
+              <section class="selected-subject-summary" aria-labelledby="selected-subject-label">
+                <span id="selected-subject-icon" aria-hidden="true">➗</span>
+                <div><small id="selected-subject-label">MATÉRIA ESCOLHIDA</small><strong id="selected-subject-name">Matemática</strong><button id="change-selected-subject" type="button">Trocar em Aprenda Jogando</button></div>
+                <select id="subject" required hidden aria-hidden="true" tabindex="-1">
                   <option value="">Selecione uma matéria</option>
                   <option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option>
                 </select>
-              </label>
+              </section>
               <label>Ano escolar
                 <select id="school-year" required></select>
               </label>
@@ -200,15 +204,15 @@
               <div class="choice-row difficulty" id="difficulty">
                 <button type="button" class="choice selected" data-value="Fácil"><span class="dot green"></span> Fácil</button>
                 <button type="button" class="choice" data-value="Médio"><span class="dot yellow"></span> Médio</button>
-                <button type="button" class="choice" data-value="Difícil"><span class="dot red"></span> Difícil</button>
+                <button type="button" class="choice premium-control" data-value="Difícil" data-requires-plan="premium"><span class="dot red"></span> Difícil <small>Premium</small></button>
               </div>
             </fieldset>
             <fieldset>
               <legend>Formato do desafio</legend>
               <div class="choice-row" id="quiz-mode">
                 <button type="button" class="choice selected" data-value="Guiado">Quiz guiado</button>
-                <button type="button" class="choice" data-value="Prova">Modo prova</button>
-                <button type="button" class="choice" data-value="Misto">Desafio misto</button>
+                <button type="button" class="choice premium-control" data-value="Prova" data-requires-plan="premium">Modo prova <small>Premium</small></button>
+                <button type="button" class="choice premium-control" data-value="Misto" data-requires-plan="premium">Desafio misto <small>Premium</small></button>
               </div>
             </fieldset>
             <button class="start-button" type="submit">Ver minha trilha <span>→</span></button>
@@ -290,7 +294,6 @@
           <section class="profile-card">
             <div id="profile-avatar" class="profile-avatar"></div><div><strong id="profile-name">Explorador</strong><span id="profile-points">0 pontos acumulados</span></div><button id="logout-user" class="logout-button disconnect-button" type="button" aria-label="Desconectar do Estuda+"><span aria-hidden="true">↪</span> Desconectar</button>
           </section>
-          <section id="admin-access-card" class="admin-access-card" hidden><div><span id="admin-access-email">ACESSO ADMINISTRATIVO</span><strong>Administração do Estuda+</strong><p>Acompanhe usuários, avisos, desempenho e segurança. A senha não fica exposta no site.</p></div><div class="admin-access-actions"><button id="open-admin-panel" type="button">Abrir administração</button><button id="change-admin-password" type="button">Alterar senha</button></div></section>
           <h3>Dados do perfil</h3>
           <section class="profile-data-card" aria-labelledby="profile-data-title">
             <header><div class="profile-data-heading"><span aria-hidden="true">✓</span><div><small>CONTA E CONTATO</small><strong id="profile-data-title">Confira seus dados</strong><p>Mantenha essas informações atualizadas para recuperar o acesso e receber suporte.</p></div></div><button id="edit-profile-data" type="button">Editar dados</button></header>
@@ -417,6 +420,40 @@
           <section class="material-photo-tips"><strong>Para uma leitura mais exata</strong><ul><li>Use luz uniforme, sem reflexos ou sombras sobre as palavras.</li><li>Fotografe uma página por imagem, paralela à câmera e sem cortes.</li><li>Evite páginas curvadas; aproxime até as letras ficarem nítidas.</li><li>Compare a transcrição com a foto antes de confirmar.</li></ul></section>
         </div>
 
+        <div id="essay-screen" class="screen essay-screen">
+          <header class="dashboard-header essay-header">
+            <button id="close-essay" class="icon-button" type="button" aria-label="Voltar">←</button>
+            <div><span class="eyebrow">OFICINA DE REDAÇÃO</span><h2>Escreva, revise e evolua</h2></div>
+            <div class="essay-credit-pill" aria-label="Saldo de créditos"><span>✦</span><strong id="essay-credit-balance">0</strong><small>créditos</small></div>
+          </header>
+          <section class="essay-intro-card">
+            <div><span>AVALIAÇÃO PEDAGÓGICA</span><h3>Correção inspirada nas 5 competências do Enem</h3><p>Receba uma nota estimada, comentários claros e orientações práticas para melhorar sua próxima versão.</p></div>
+            <div class="essay-price-card"><strong>5 créditos</strong><small>por correção concluída</small></div>
+          </section>
+          <section class="essay-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Proteja seus dados</strong><p>Não escreva nome completo, telefone, endereço, escola ou outros dados pessoais. O texto integral é usado apenas durante a correção e não fica salvo no histórico.</p></div></section>
+          <form id="essay-form" class="essay-form">
+            <div class="essay-settings">
+              <label>Tipo de proposta<select id="essay-mode"><option value="enem">Modelo Enem</option><option value="free">Tema livre</option></select></label>
+              <label>Tema da redação<input id="essay-theme" maxlength="300" required placeholder="Ex.: Caminhos para combater a desinformação no Brasil"></label>
+            </div>
+            <label class="essay-editor-label" for="essay-text"><span>Sua redação</span><small id="essay-draft-status">Rascunho salvo somente neste aparelho</small></label>
+            <textarea id="essay-text" class="essay-editor" minlength="300" maxlength="12000" rows="18" required spellcheck="true" placeholder="Comece aqui. Organize introdução, desenvolvimento e conclusão..."></textarea>
+            <div class="essay-editor-footer"><span id="essay-word-count">0 palavras · 0 parágrafos</span><span>Mínimo: 300 caracteres</span></div>
+            <label class="essay-safety-confirm"><input id="essay-safety-confirm" type="checkbox" required><span><strong>Conferi o texto e removi dados pessoais</strong><small>Quando necessário, estou usando o recurso com acompanhamento de um responsável.</small></span></label>
+            <div id="essay-status" class="essay-status" role="status" aria-live="polite"></div>
+            <div class="essay-actions"><button id="clear-essay-draft" type="button">Limpar rascunho</button><button id="submit-essay" class="start-button" type="submit">Corrigir por 5 créditos <span>→</span></button></div>
+          </form>
+          <section id="essay-result" class="essay-result" hidden aria-live="polite">
+            <header><div><span>SUA DEVOLUTIVA</span><h3 id="essay-result-title">Avaliação concluída</h3><p id="essay-result-summary"></p></div><div class="essay-score"><strong id="essay-total-score">0</strong><small>de 1000</small></div></header>
+            <div id="essay-competencies" class="essay-competencies"></div>
+            <div class="essay-feedback-grid"><article><span>✓</span><div><strong>Pontos fortes</strong><ul id="essay-strengths"></ul></div></article><article><span>↑</span><div><strong>Próximos passos</strong><ul id="essay-improvements"></ul></div></article></div>
+            <section class="essay-detailed-feedback"><h4>Comentário completo</h4><p id="essay-detailed-comment"></p></section>
+            <section class="essay-rewrite"><h4>Exemplo de trecho aprimorado</h4><blockquote id="essay-rewritten-excerpt"></blockquote><small>Use como referência para reescrever com suas próprias palavras.</small></section>
+            <p class="essay-disclaimer">A nota é uma estimativa pedagógica gerada por IA. Ela não substitui a correção oficial do Enem nem a avaliação de um professor.</p>
+          </section>
+          <section class="essay-history-section"><header><div><span>SEU PROGRESSO</span><h3>Correções anteriores</h3></div><button id="refresh-essay-history" type="button">Atualizar</button></header><div id="essay-history" class="essay-history"><p class="essay-empty">Suas correções concluídas aparecerão aqui.</p></div></section>
+        </div>
+
         <div id="plans-screen" class="screen plans-screen">
           <header class="dashboard-header plans-header">
             <button id="close-plans" class="icon-button" aria-label="Voltar">←</button>
@@ -437,7 +474,7 @@
           </section>
 
           <section id="plans-panel-credits" class="plans-tab-panel" role="tabpanel" data-plans-panel="credits" hidden>
-            <div class="plans-intro"><span>APOSTILA POR FOTO</span><h3>Compre créditos extras</h3><p>Cada crédito permite uma nova leitura do seu material para criar quiz, resumo e mapa mental.</p></div>
+            <div class="plans-intro"><span>RECURSOS POR CRÉDITOS</span><h3>Compre créditos extras</h3><p>Use seus créditos na apostila por foto e na correção detalhada de redações.</p></div>
             <div id="credit-packs-grid" class="plans-credit-purchase"></div>
           </section>
 
@@ -542,7 +579,7 @@
       <section class="modal-panel tutorial-panel" role="dialog" aria-modal="true" aria-labelledby="tutorial-title" aria-describedby="tutorial-description">
         <button class="modal-close" type="button" data-close-app-tutorial aria-label="Pular e fechar o tutorial">×</button>
         <header class="tutorial-heading">
-          <div><span id="tutorial-step-kicker" class="eyebrow">BEM-VINDO</span><span id="tutorial-step-count" class="tutorial-step-count">PASSO 1 DE 8</span></div>
+          <div><span id="tutorial-step-kicker" class="eyebrow">BEM-VINDO</span><span id="tutorial-step-count" class="tutorial-step-count">PASSO 1 DE 9</span></div>
           <button id="tutorial-skip" class="tutorial-skip" type="button">Pular tutorial</button>
         </header>
         <div class="tutorial-main">
@@ -553,7 +590,7 @@
             <ul id="tutorial-tips"></ul>
           </div>
         </div>
-        <div id="tutorial-progress" class="tutorial-progress" role="progressbar" aria-label="Progresso do tutorial" aria-valuemin="1" aria-valuemax="8" aria-valuenow="1"><i></i></div>
+        <div id="tutorial-progress" class="tutorial-progress" role="progressbar" aria-label="Progresso do tutorial" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1"><i></i></div>
         <div id="tutorial-dots" class="tutorial-dots" aria-hidden="true"></div>
         <div class="modal-actions tutorial-actions">
           <button id="tutorial-prev" class="modal-secondary" type="button">← Voltar</button>
@@ -597,6 +634,7 @@
       <button id="mobile-more-toggle" type="button" data-nav="more" aria-expanded="false" aria-controls="mobile-more-menu"><span>•••</span>Mais</button>
       <div id="mobile-more-menu" class="mobile-more-menu" hidden>
         <button class="avatar-nav-button" type="button" data-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span><b>Meu avatar</b><small>Personalizar</small></button>
+        <button type="button" data-nav="essay"><span>✎</span><b>Redação</b><small>Correção modelo Enem</small></button>
         <button type="button" data-nav="review"><span>↻</span><b>Revisar</b><small id="mobile-more-review-copy">Caderno de erros</small><i id="nav-review-badge" hidden>0</i></button>
         <button type="button" data-nav="plans"><span>✦</span><b>Planos</b><small>Ver opções</small></button>
       </div>
@@ -609,6 +647,7 @@
     <script src="friends-chat.js"></script>
     <script src="admin-panel.js"></script>
     <script src="material-quiz.js"></script>
+    <script src="essay-correction.js"></script>
     <script src="app.js?v=20260813b"></script>
   </body>
 </html>

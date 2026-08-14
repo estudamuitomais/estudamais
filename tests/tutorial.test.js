@@ -7,9 +7,9 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'purple-modern-theme.css'), 'utf8');
 
-assert.ok(app.includes('const APP_TUTORIAL_VERSION = 3;'), 'a nova versão deve ser oferecida uma vez aos usuários');
+assert.ok(app.includes('const APP_TUTORIAL_VERSION = 4;'), 'a nova versão deve ser oferecida uma vez aos usuários');
 assert.ok(app.includes('tutorialPendingVersion > 0 && state.tutorialSeenVersion < APP_TUTORIAL_VERSION'), 'uma atualização do tutorial deve aparecer uma vez para contas que já receberam o guia');
-assert.ok(html.includes('PASSO 1 DE 8') && html.includes('aria-valuemax="8"'), 'o modal deve anunciar as oito etapas');
+assert.ok(html.includes('PASSO 1 DE 9') && html.includes('aria-valuemax="9"'), 'o modal deve anunciar as nove etapas');
 assert.ok(app.includes("progress.setAttribute('aria-valuemax', String(tutorialSteps.length))"), 'o limite acessível deve acompanhar a quantidade de etapas');
 
 [
@@ -18,6 +18,7 @@ assert.ok(app.includes("progress.setAttribute('aria-valuemax', String(tutorialSt
   "kind: 'path'",
   "kind: 'question'",
   "kind: 'material'",
+  "kind: 'essay'",
   "kind: 'avatar'",
   "kind: 'friends'",
   "kind: 'progress'"

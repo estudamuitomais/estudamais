@@ -12,6 +12,7 @@ const css = fs.readFileSync(path.join(root, 'clean-app-layout.css'), 'utf8');
   'id="mobile-more-toggle"',
   'id="mobile-more-menu"',
   'data-nav="avatar"',
+  'data-nav="essay"',
   'data-nav="review"',
   'data-nav="plans"'
 ].forEach((token) => assert.ok(html.includes(token), `estrutura ausente: ${token}`));
@@ -20,7 +21,7 @@ const css = fs.readFileSync(path.join(root, 'clean-app-layout.css'), 'utf8');
   'function closeMobileMoreMenu()',
   'function toggleMobileMoreMenu()',
   "button.dataset.nav === 'more'",
-  "const moreDestinations = new Set(['avatar', 'review', 'plans'])"
+  "const moreDestinations = new Set(['avatar', 'essay', 'review', 'plans'])"
 ].forEach((token) => assert.ok(app.includes(token), `comportamento ausente: ${token}`));
 
 [
