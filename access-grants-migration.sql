@@ -89,7 +89,8 @@ begin
     'access_source', v_source,
     'access_level', case when v_is_admin then 'full' when v_grant.user_id is not null then v_grant.access_level else 'standard' end,
     'plan_id', v_plan_id,
-    'plan_label', case when not v_is_admin and v_grant.access_level = 'full' then 'Acesso total liberado'
+    'plan_label', case when not v_is_admin and v_grant.access_level = 'partial' and v_grant.unlimited_quizzes and v_grant.premium_study and not v_grant.essay_without_credits then 'Premium liberado pelo administrador'
+                       when not v_is_admin and v_grant.access_level = 'full' then 'Acesso total liberado'
                        when not v_is_admin and v_grant.access_level = 'partial' then 'Acesso personalizado'
                        else v_plan_label end,
     'plan_status', v_plan_status,

@@ -27,8 +27,8 @@
       { id: 'night', name: 'Noturno', color: '#25243A', unlock: 0 },
       { id: 'honey', name: 'Mel', color: '#D18A2E', unlock: 0 },
       { id: 'copper', name: 'Cobre', color: '#A64B2A', unlock: 0 },
-      { id: 'berry', name: 'Ameixa', color: '#713A68', unlock: 0 },
-      { id: 'ocean', name: 'Azul criativo', color: '#3157A8', unlock: 0 }
+      { id: 'berry', name: 'Ameixa', color: '#713A68', unlock: 0, premium: true },
+      { id: 'ocean', name: 'Azul criativo', color: '#3157A8', unlock: 0, premium: true }
     ],
     eyes: [
       { id: 'espresso', name: 'Castanhos', color: '#4B2E25', unlock: 0 },
@@ -41,42 +41,42 @@
       { id: 'smile', name: 'Sorridente', icon: '😊', unlock: 0 },
       { id: 'focus', name: 'Concentrado', icon: '🧐', unlock: 0 },
       { id: 'curious', name: 'Curioso', icon: '🤔', unlock: 2 },
-      { id: 'excited', name: 'Superanimado', icon: '🤩', unlock: 4 },
-      { id: 'brave', name: 'Corajoso', icon: '😎', unlock: 6 }
+      { id: 'excited', name: 'Superanimado', icon: '🤩', unlock: 4, premium: true },
+      { id: 'brave', name: 'Corajoso', icon: '😎', unlock: 6, premium: true }
     ],
     outfit: [
       { id: 'tshirt', name: 'Camiseta Estuda+', icon: '👕', color: '#7C3AED', unlock: 0 },
       { id: 'hoodie', name: 'Moletom curioso', icon: '🧥', color: '#5B5BD6', unlock: 1 },
       { id: 'labcoat', name: 'Jaleco científico', icon: '🥼', color: '#F8FAFC', unlock: 2 },
       { id: 'sports', name: 'Uniforme campeão', icon: '🏅', color: '#16A36A', unlock: 3 },
-      { id: 'astronaut', name: 'Traje espacial', icon: '🚀', color: '#334155', unlock: 4 },
-      { id: 'artist', name: 'Avental de artista', icon: '🎨', color: '#EC4899', unlock: 5 },
-      { id: 'explorer', name: 'Colete explorador', icon: '🧭', color: '#C47A39', unlock: 6 },
-      { id: 'inventor', name: 'Jaqueta inventora', icon: '⚙', color: '#0F766E', unlock: 8 }
+      { id: 'astronaut', name: 'Traje espacial', icon: '🚀', color: '#334155', unlock: 4, premium: true },
+      { id: 'artist', name: 'Avental de artista', icon: '🎨', color: '#EC4899', unlock: 5, premium: true },
+      { id: 'explorer', name: 'Colete explorador', icon: '🧭', color: '#C47A39', unlock: 6, premium: true },
+      { id: 'inventor', name: 'Jaqueta inventora', icon: '⚙', color: '#0F766E', unlock: 8, premium: true }
     ],
     accessory: [
       { id: 'none', name: 'Sem acessório', icon: '✓', unlock: 0 },
       { id: 'glasses', name: 'Óculos de ideias', icon: '👓', unlock: 1 },
       { id: 'cap', name: 'Boné aventureiro', icon: '🧢', unlock: 2 },
       { id: 'headphones', name: 'Fone de foco', icon: '🎧', unlock: 3 },
-      { id: 'crown', name: 'Coroa do saber', icon: '👑', unlock: 4 },
-      { id: 'bandana', name: 'Faixa da coragem', icon: '🎗', unlock: 5 },
-      { id: 'medal', name: 'Medalha mestre', icon: '🏆', unlock: 6 },
-      { id: 'visor', name: 'Visor do futuro', icon: '🥽', unlock: 8 }
+      { id: 'crown', name: 'Coroa do saber', icon: '👑', unlock: 4, premium: true },
+      { id: 'bandana', name: 'Faixa da coragem', icon: '🎗', unlock: 5, premium: true },
+      { id: 'medal', name: 'Medalha mestre', icon: '🏆', unlock: 6, premium: true },
+      { id: 'visor', name: 'Visor do futuro', icon: '🥽', unlock: 8, premium: true }
     ],
     companion: [
       { id: 'none', name: 'Sem companheiro', icon: '✓', unlock: 0 },
       { id: 'star', name: 'Estrelinha', icon: '⭐', unlock: 1 },
       { id: 'owl', name: 'Coruja sábia', icon: '🦉', unlock: 3 },
-      { id: 'fox', name: 'Raposa curiosa', icon: '🦊', unlock: 5 },
-      { id: 'robot', name: 'Robô ajudante', icon: '🤖', unlock: 7 }
+      { id: 'fox', name: 'Raposa curiosa', icon: '🦊', unlock: 5, premium: true },
+      { id: 'robot', name: 'Robô ajudante', icon: '🤖', unlock: 7, premium: true }
     ],
     scene: [
       { id: 'studio', name: 'Ateliê violeta', icon: '✦', unlock: 0, color: '#F3EFFF' },
       { id: 'library', name: 'Biblioteca mágica', icon: '📚', unlock: 2, color: '#FFF4D6' },
       { id: 'forest', name: 'Floresta do saber', icon: '🌿', unlock: 4, color: '#E8F8EC' },
-      { id: 'space', name: 'Estação espacial', icon: '🪐', unlock: 6, color: '#E8ECFF' },
-      { id: 'lab', name: 'Laboratório neon', icon: '🧪', unlock: 8, color: '#E5FBF6' }
+      { id: 'space', name: 'Estação espacial', icon: '🪐', unlock: 6, color: '#E8ECFF', premium: true },
+      { id: 'lab', name: 'Laboratório neon', icon: '🧪', unlock: 8, color: '#E5FBF6', premium: true }
     ]
   };
 

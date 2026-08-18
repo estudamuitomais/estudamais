@@ -13,7 +13,7 @@ function updateAdminNavigationVisibility() {
   if (sideAdminButton) sideAdminButton.hidden = !activeUserIsAdmin;
 }
 let activeUserContact = null;
-let activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, essayWithoutCredits: false, expiresAt: null };
+let activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, materialMonthlyLimit: 1, materialUsedThisMonth: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, premiumAvatar: false, detailedReports: false, essayWithoutCredits: false, expiresAt: null };
 let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
@@ -36,7 +36,11 @@ let quizAudioContext = null;
 let quizAudioUnlocked = false;
 const friendsHub = window.EstudaFriends?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
 const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModalChange: () => updateModalBackgroundState() });
-const materialQuiz = window.EstudaMaterialQuiz?.create({ onStart: startMaterialQuiz });
+const materialQuiz = window.EstudaMaterialQuiz?.create({
+  onStart: startMaterialQuiz,
+  beforeCreate: consumeMaterialAccess,
+  onUpgrade: (message) => showPlanUpgradeMessage(message)
+});
 const essayHub = window.EstudaEssay?.create({
   supabase: supabaseClient,
   onBuyCredits: () => {
@@ -266,7 +270,7 @@ async function fetchUserContact(user) {
   return supabaseClient.from('user_contacts').select('whatsapp_phone, whatsapp_opt_in, whatsapp_consent_at').eq('user_id', user.id).maybeSingle();
 }
 async function fetchPaymentEntitlements(user) {
-  const fallback = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, essayWithoutCredits: false, expiresAt: null };
+  const fallback = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, materialMonthlyLimit: 1, materialUsedThisMonth: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, premiumAvatar: false, detailedReports: false, essayWithoutCredits: false, expiresAt: null };
   if (!user || !supabaseClient) return fallback;
   try {
     const entitlementResult = await supabaseClient.rpc('get_my_access_entitlements');
@@ -275,15 +279,19 @@ async function fetchPaymentEntitlements(user) {
       return {
         planId: access.plan_id || fallback.planId,
         tier: access.tier || fallback.tier,
-        planLabel: access.plan_label || fallback.planLabel,
+        planLabel: access.access_source === 'grant' && access.access_level === 'partial' && access.unlimited_quizzes && access.premium_study ? 'Premium liberado pelo administrador' : (access.plan_label || fallback.planLabel),
         planStatus: access.plan_status || fallback.planStatus,
         credits: Math.max(0, Number(access.credits) || 0),
         dailyQuestionLimit: access.daily_question_limit == null ? null : Number(access.daily_question_limit),
         questionsUsedToday: Math.max(0, Number(access.questions_used_today) || 0),
+        materialMonthlyLimit: access.material_monthly_limit == null ? null : Number(access.material_monthly_limit),
+        materialUsedThisMonth: Math.max(0, Number(access.material_used_this_month) || 0),
         accessLevel: access.access_level || 'standard',
         accessSource: access.access_source || 'free',
         unlimitedQuizzes: Boolean(access.unlimited_quizzes),
         premiumStudy: Boolean(access.premium_study),
+        premiumAvatar: Boolean(access.premium_avatar),
+        detailedReports: Boolean(access.detailed_reports),
         essayWithoutCredits: Boolean(access.essay_without_credits),
         expiresAt: access.expires_at || null
       };
@@ -316,8 +324,10 @@ async function fetchPaymentEntitlements(user) {
       credits: Math.max(0, Number(walletResult.data?.credits) || 0),
       dailyQuestionLimit: tier === 'free' ? 10 : null,
       questionsUsedToday: 0,
+      materialMonthlyLimit: tier === 'family' ? 30 : tier === 'premium' ? 10 : 1,
+      materialUsedThisMonth: 0,
       accessLevel: 'standard', accessSource: active ? 'subscription' : 'free',
-      unlimitedQuizzes: tier !== 'free', premiumStudy: tier !== 'free', essayWithoutCredits: false, expiresAt: null
+      unlimitedQuizzes: tier !== 'free', premiumStudy: tier !== 'free', premiumAvatar: tier !== 'free', detailedReports: tier !== 'free', essayWithoutCredits: false, expiresAt: null
     };
   } catch (error) {
     console.warn('Não foi possível carregar plano e créditos:', error.message);
@@ -551,7 +561,7 @@ async function logoutUser() {
   activeUserIsAdmin = false;
   updateAdminNavigationVisibility();
   activeUserContact = null;
-  activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, essayWithoutCredits: false, expiresAt: null };
+  activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, materialMonthlyLimit: 1, materialUsedThisMonth: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, premiumAvatar: false, detailedReports: false, essayWithoutCredits: false, expiresAt: null };
   globalLeaderboard = [];
   leaderboardBackendReady = true;
   leaderboardRequestInFlight = false;
@@ -836,12 +846,15 @@ function renderAvatarOptions(category = avatarCategory) {
   grid.setAttribute('aria-labelledby', `avatar-tab-${categoryInfo.id}`);
   grid.innerHTML = '';
   avatarStudio.catalog[categoryInfo.id].forEach((item) => {
-    const unlocked = (item.unlock || 0) <= count, selected = avatarDraft[categoryInfo.id] === item.id;
+    const phaseUnlocked = (item.unlock || 0) <= count;
+    const planUnlocked = !item.premium || hasPremiumAvatarAccess();
+    const unlocked = phaseUnlocked && planUnlocked, selected = avatarDraft[categoryInfo.id] === item.id;
     const button = document.createElement('button'); button.type = 'button'; button.className = 'avatar-part-option'; button.dataset.avatarOption = item.id; button.setAttribute('aria-pressed', String(selected)); button.setAttribute('aria-disabled', String(!unlocked));
-    const requirement = unlocked ? selected ? 'Selecionado' : 'Disponível' : `Libera após ${item.unlock} fase${item.unlock === 1 ? '' : 's'}`;
+    const requirement = !planUnlocked ? 'Premium' : unlocked ? selected ? 'Selecionado' : 'Disponível' : `Libera após ${item.unlock} fase${item.unlock === 1 ? '' : 's'}`;
     button.innerHTML = `${avatarOptionSample(categoryInfo.id, item)}<span><strong>${item.name}</strong><small>${requirement}</small></span><b aria-hidden="true">${unlocked ? selected ? '✓' : '' : '🔒'}</b>`;
     button.addEventListener('click', () => {
-      if (!unlocked) { const remaining = item.unlock - count; el('avatar-studio-status').textContent = `Continue a aventura: ${remaining === 1 ? 'falta 1 fase' : `faltam ${remaining} fases`} para liberar ${item.name}.`; return; }
+      if (!planUnlocked) { el('avatar-studio-status').textContent = `${item.name} faz parte da coleção Premium. Assine para usar este item após cumprir a fase indicada.`; return; }
+      if (!phaseUnlocked) { const remaining = item.unlock - count; el('avatar-studio-status').textContent = `Continue a aventura: ${remaining === 1 ? 'falta 1 fase' : `faltam ${remaining} fases`} para liberar ${item.name}.`; return; }
       avatarDraft[categoryInfo.id] = item.id;
       el('avatar-studio-status').textContent = categoryInfo.id === 'presentation' ? `Estilo ${item.name.toLowerCase()} escolhido. Cabelos, roupas e acessórios continuam livres.` : `${item.name} escolhido. Salve para usar este visual.`;
       renderAvatarStudioPreview(); renderAvatarOptions(categoryInfo.id); requestAnimationFrame(() => el('avatar-option-grid').querySelector(`[data-avatar-option="${item.id}"]`)?.focus());
@@ -1319,7 +1332,9 @@ function openSalesConversation(topic = 'Planos Estuda+', price = '') {
   window.open(`https://wa.me/${salesContact.whatsapp}?text=${message}`, '_blank', 'noopener');
 }
 function hasPremiumStudyAccess() { return activeUserIsAdmin || activePaymentEntitlements.premiumStudy || ['premium', 'family'].includes(activePaymentEntitlements.tier); }
-function planAccessLabel() { return activeUserIsAdmin ? 'Administrador' : activePaymentEntitlements.accessLevel === 'full' ? 'Acesso total' : activePaymentEntitlements.accessLevel === 'partial' ? 'Acesso personalizado' : activePaymentEntitlements.tier === 'family' ? 'Família' : activePaymentEntitlements.tier === 'premium' ? 'Premium' : 'Grátis'; }
+function hasPremiumAvatarAccess() { return activeUserIsAdmin || activePaymentEntitlements.premiumAvatar || hasPremiumStudyAccess(); }
+function hasDetailedReportsAccess() { return activeUserIsAdmin || activePaymentEntitlements.detailedReports || hasPremiumStudyAccess(); }
+function planAccessLabel() { return activeUserIsAdmin ? 'Administrador' : activePaymentEntitlements.accessLevel === 'full' ? 'Acesso total' : activePaymentEntitlements.accessSource === 'grant' && activePaymentEntitlements.unlimitedQuizzes && activePaymentEntitlements.premiumStudy ? 'Premium liberado' : activePaymentEntitlements.accessLevel === 'partial' ? 'Acesso personalizado' : activePaymentEntitlements.tier === 'family' ? 'Família' : activePaymentEntitlements.tier === 'premium' ? 'Premium' : 'Grátis'; }
 function updatePlanAccessUI() {
   const premium = hasPremiumStudyAccess();
   document.body.dataset.planTier = activeUserIsAdmin ? 'admin' : activePaymentEntitlements.tier;
@@ -1330,15 +1345,22 @@ function updatePlanAccessUI() {
     control.setAttribute('aria-disabled', String(!premium));
     if (!premium) control.title = 'Disponível nos planos Premium e Família'; else control.removeAttribute('title');
   });
+  document.querySelectorAll('[data-premium-report]').forEach((section) => { section.hidden = !hasDetailedReportsAccess(); });
+  if (el('premium-report-upgrade')) el('premium-report-upgrade').hidden = hasDetailedReportsAccess();
 }
 function showPlanUpgradeMessage(message = 'Este recurso está disponível nos planos Premium e Família.') {
   openPlans();
   const notice = el('plans-payment-notice');
   if (notice) { notice.hidden = false; notice.className = 'plans-payment-notice'; notice.textContent = message; notice.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' }); }
 }
-async function consumeQuizAccess(questionCount = 10) {
+async function consumeQuizAccess(questionCount = 10, options = {}) {
   if (!activeSupabaseUser || !supabaseClient) return { allowed: false, reason: 'auth_required' };
-  const { data, error } = await supabaseClient.rpc('consume_quiz_access', { p_question_count: questionCount });
+  const { data, error } = await supabaseClient.rpc('consume_quiz_access', {
+    p_question_count: questionCount,
+    p_difficulty: options.difficulty || difficulty,
+    p_quiz_mode: options.quizMode || quizMode,
+    p_quiz_kind: options.quizKind || 'curriculum'
+  });
   if (error) throw error;
   const result = data || {};
   activePaymentEntitlements.tier = result.tier || activePaymentEntitlements.tier;
@@ -1346,6 +1368,15 @@ async function consumeQuizAccess(questionCount = 10) {
   activePaymentEntitlements.dailyQuestionLimit = result.daily_limit == null ? null : Number(result.daily_limit);
   activePaymentEntitlements.unlimitedQuizzes = Boolean(result.unlimited);
   updatePlanAccessUI();
+  return result;
+}
+async function consumeMaterialAccess() {
+  if (!activeSupabaseUser || !supabaseClient) return { allowed: false, reason: 'auth_required' };
+  const { data, error } = await supabaseClient.rpc('consume_material_access', { p_units: 1 });
+  if (error) throw error;
+  const result = data || {};
+  activePaymentEntitlements.materialMonthlyLimit = result.monthly_limit == null ? null : Number(result.monthly_limit);
+  activePaymentEntitlements.materialUsedThisMonth = Math.max(0, Number(result.used_this_month) || 0);
   return result;
 }
 function showPlansPaymentNotice(message = '', type = '') {
@@ -1431,9 +1462,9 @@ function renderPlansScreen() {
   normalizePlansUi();
   if (!grid || !creditGrid) return;
   grid.innerHTML = [
-    `<article class="plan-card-item soft"><div class="plan-card-top"><span>PARA COMEÇAR</span><strong>Grátis</strong></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><ul><li>10 questões por dia</li><li>Quiz guiado em níveis essenciais</li><li>Trilha, pontos e ranking</li><li>Avatar básico e revisões</li></ul><button type="button" disabled aria-disabled="true">${activePaymentEntitlements.tier === 'free' ? 'Seu plano atual' : 'Plano gratuito'}</button></article>`,
-    `<article class="plan-card-item primary"><div class="plan-card-top"><span>MAIS ESCOLHIDO</span><strong>Premium</strong></div><div class="plan-card-price"><b>R$ 19,90</b><small>por mês ou R$ 149,90 por ano</small></div><ul><li>Questões e trilhas ilimitadas</li><li>Apostila por foto com mais usos</li><li>Resumo e mapa mental completos</li><li>Relatórios de desempenho</li><li>Avatar com mais personalizações</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="premium-monthly">Assinar mensal</button><button type="button" data-plan-checkout="premium-annual">Assinar anual</button></div></article>`,
-    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>ATÉ 4 PESSOAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>Até 4 perfis de estudante</li><li>Acompanhamento por aluno</li><li>Metas e relatórios separados</li><li>Avatares Premium para todos</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="family-monthly">Assinar mensal</button><button type="button" data-plan-checkout="family-annual">Assinar anual</button></div></article>`
+    `<article class="plan-card-item soft"><div class="plan-card-top"><span>PARA COMEÇAR</span><strong>Grátis</strong></div><div class="plan-card-price"><b>R$ 0</b><small>sem mensalidade</small></div><ul><li>10 questões de trilha por dia</li><li>1 estudo de apostila por mês</li><li>Quiz guiado nos níveis Fácil e Médio</li><li>Trilha, pontos, ranking e avatar básico</li></ul><button type="button" disabled aria-disabled="true">${activePaymentEntitlements.tier === 'free' ? 'Seu plano atual' : 'Plano gratuito'}</button></article>`,
+    `<article class="plan-card-item primary"><div class="plan-card-top"><span>MAIS ESCOLHIDO</span><strong>Premium</strong></div><div class="plan-card-price"><b>R$ 19,90</b><small>por mês ou R$ 149,90 por ano</small></div><ul><li>Questões e trilhas ilimitadas</li><li>10 estudos de apostila por mês</li><li>Difícil, Prova, Misto e Simulado Enem</li><li>Relatórios detalhados de desempenho</li><li>Itens avançados para o avatar</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="premium-monthly">Assinar mensal</button><button type="button" data-plan-checkout="premium-annual">Assinar anual</button></div></article>`,
+    `<article class="plan-card-item highlight"><div class="plan-card-top"><span>MAIS APOSTILAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>30 estudos de apostila por mês</li><li>Trilhas e simulados ilimitados</li><li>Relatórios detalhados</li><li>Itens avançados para o avatar</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="family-monthly">Assinar mensal</button><button type="button" data-plan-checkout="family-annual">Assinar anual</button></div></article>`
   ].join('');
   const paidTier = activePaymentEntitlements.tier;
   grid.querySelectorAll('[data-plan-checkout]').forEach((button) => {
@@ -1577,6 +1608,7 @@ async function updateProfilePassword(event) {
   } finally { setAuthBusy('profile-password-form', false); }
 }
 function renderDashboard() {
+  updatePlanAccessUI();
   el('avatar-name').textContent = learnerName(); el('profile-name').textContent = learnerName(); el('profile-points').textContent = `${state.totalPoints} pontos acumulados`; renderAvatarSurfaces(); renderProfileData(); renderFeedbackPreferenceControls();
   const totals = Object.values(state.subjectStats).reduce((sum, stats) => ({ correct: sum.correct + stats.correct, total: sum.total + stats.total }), { correct: 0, total: 0 }); const accuracy = totals.total ? `${Math.round((totals.correct / totals.total) * 100)}%` : '—'; el('accuracy-stat').textContent = accuracy; el('due-review-stat').textContent = dueReviews().length; el('weekly-stat').textContent = state.weekly?.answered || 0; el('focus-goal-copy').textContent = `Meta atual: ${state.weekly?.goal || 50} questões nesta semana. Você já concluiu ${state.weekly?.answered || 0}.`;
   const rewards = el('rewards-list'); rewards.innerHTML = '';
@@ -1584,9 +1616,9 @@ function renderDashboard() {
   const avatarRewards = avatarStudio.unlockableCategories.flatMap((category) => avatarStudio.catalog[category].filter((item) => item.unlock > 0).map((item) => ({
     icon: item.icon || '✦',
     title: item.name,
-    description: `Complete ${item.unlock} fase${item.unlock === 1 ? '' : 's'} para liberar`,
-    unlocked: item.unlock <= completedPhases,
-    value: item.unlock <= completedPhases ? 'Liberado' : `${item.unlock} fases`
+    description: item.premium ? `Item Premium · complete ${item.unlock} fase${item.unlock === 1 ? '' : 's'} para liberar` : `Complete ${item.unlock} fase${item.unlock === 1 ? '' : 's'} para liberar`,
+    unlocked: item.unlock <= completedPhases && (!item.premium || hasPremiumAvatarAccess()),
+    value: item.premium && !hasPremiumAvatarAccess() ? 'Premium' : item.unlock <= completedPhases ? 'Liberado' : `${item.unlock} fases`
   })));
   [...medals.map((medal) => ({ icon: medal.icon, title: medal.title, description: medal.description, unlocked: state.medals.includes(medal.id), value: 'Medalha' })), ...avatarRewards].forEach((reward) => { const row = document.createElement('div'); row.className = `reward ${reward.unlocked ? '' : 'locked'}`; row.innerHTML = `<div class="reward-icon">${reward.icon}</div><div><strong>${reward.title}</strong><span>${reward.description}</span></div><b>${reward.value}</b>`; rewards.append(row); });
   const progress = el('subject-progress'); progress.innerHTML = ''; const subjects = Object.entries(state.subjectStats);
@@ -1754,7 +1786,14 @@ function navigateBack(fallback = 'setup-screen') {
   else show(fallback, { historyMode: 'reset' });
 }
 function goToSubjects(options = {}) { syncAutomaticCurriculum(); el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; show('subject-screen', options); }
-function openMaterialQuiz() { materialQuizSession = false; show('material-screen'); }
+async function openMaterialQuiz() {
+  materialQuizSession = false;
+  if (activeSupabaseUser) activePaymentEntitlements = await fetchPaymentEntitlements(activeSupabaseUser);
+  const limit = activePaymentEntitlements.materialMonthlyLimit;
+  const used = activePaymentEntitlements.materialUsedThisMonth || 0;
+  if (el('material-plan-usage')) el('material-plan-usage').textContent = limit == null ? 'Seu acesso inclui estudos de apostila ilimitados.' : `${planAccessLabel()}: ${used} de ${limit} estudo${limit === 1 ? '' : 's'} de apostila usado${used === 1 ? '' : 's'} neste mês.`;
+  show('material-screen');
+}
 async function openEssay() {
   if (activeSupabaseUser) activePaymentEntitlements = await fetchPaymentEntitlements(activeSupabaseUser);
   show('essay-screen');
@@ -1794,9 +1833,9 @@ async function begin(phaseOverride) {
   currentPhase = phaseOverride || Math.min(progress.completed + 1, 4);
   current = 0; score = 0; hits = 0; roundStreak = 0;
   try {
-    const access = await consumeQuizAccess(10);
+    const access = await consumeQuizAccess(10, { difficulty, quizMode, quizKind: curriculum === 'Base Enem/Inep' && quizMode === 'Prova' ? 'enem' : 'curriculum' });
     if (!access.allowed) {
-      showPlanUpgradeMessage('Você concluiu as 10 questões gratuitas de hoje. Assine o Premium para continuar estudando sem limite.');
+      showPlanUpgradeMessage(access.reason === 'premium_required' ? 'Este nível ou modo de estudo exige Premium ou Família.' : 'Você concluiu as 10 questões gratuitas de hoje. Assine o Premium para continuar estudando sem limite.');
       return;
     }
   } catch (error) {
@@ -1962,6 +2001,7 @@ function openAvatarStudio(options = {}) {
   const modal = el('avatar-studio-modal');
   avatarStudioReturnFocus = document.activeElement;
   avatarDraft = avatarStudio.fitToUnlocks(state.avatarDesign, completedAvatarPhases());
+  if (!hasPremiumAvatarAccess()) avatarStudio.categories.forEach(({ id }) => { if (avatarStudio.itemFor(id, avatarDraft[id])?.premium) avatarDraft[id] = avatarStudio.defaults[id]; });
   avatarCategory = 'skin';
   if (el('avatar-nickname')) el('avatar-nickname').value = state.avatarNickname || '';
   el('avatar-studio-status').textContent = state.avatarCreated ? 'Seu visual atual está pronto para receber novas ideias.' : 'Escolha cada parte e salve seu primeiro avatar.';

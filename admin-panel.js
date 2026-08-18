@@ -211,14 +211,15 @@
     }
 
     function renderUserAccess(access = {}) {
-      const level = access.is_admin ? 'full' : (access.access_level || 'standard');
+      const isPremiumGrant = access.access_level === 'partial' && access.unlimited_quizzes && access.premium_study && !access.essay_without_credits;
+      const level = access.is_admin ? 'full' : isPremiumGrant ? 'premium' : (access.access_level || 'standard');
       byId('admin-user-access-level').value = level;
       byId('admin-access-unlimited-quizzes').checked = Boolean(access.unlimited_quizzes);
       byId('admin-access-premium-study').checked = Boolean(access.premium_study);
       byId('admin-access-free-essay').checked = Boolean(access.essay_without_credits);
       byId('admin-user-access-expiration').value = access.expires_at ? String(access.expires_at).slice(0, 10) : '';
       byId('admin-user-access-note').value = access.note || '';
-      const labels = { standard: 'Padrão do plano', partial: 'Acesso parcial', full: access.is_admin ? 'Administrador · total permanente' : 'Acesso total' };
+      const labels = { standard: 'Padrão do plano', premium: 'Premium liberado', partial: 'Permissões personalizadas', full: access.is_admin ? 'Administrador · total permanente' : 'Acesso total' };
       byId('admin-user-access-status').textContent = access.expired ? 'Concessão expirada' : labels[level];
       updatePartialAccessVisibility();
       setAccessNotice(access.is_admin ? 'Esta conta administrativa já usa todos os recursos sem plano ou créditos.' : '');
@@ -237,22 +238,24 @@
     async function saveUserAccess() {
       if (!selectedUser || selectedUser.is_admin) return;
       const level = byId('admin-user-access-level').value;
+      const premiumGrant = level === 'premium';
+      const rpcLevel = premiumGrant ? 'partial' : level;
       const expiration = byId('admin-user-access-expiration').value;
       const button = byId('admin-save-user-access');
       button.disabled = true; setAccessNotice('Salvando acesso…');
       try {
         const { data, error } = await supabase.rpc('admin_set_user_access', {
           p_target_user_id: selectedUser.id,
-          p_access_level: level,
-          p_unlimited_quizzes: byId('admin-access-unlimited-quizzes').checked,
-          p_premium_study: byId('admin-access-premium-study').checked,
-          p_essay_without_credits: byId('admin-access-free-essay').checked,
+          p_access_level: rpcLevel,
+          p_unlimited_quizzes: premiumGrant || byId('admin-access-unlimited-quizzes').checked,
+          p_premium_study: premiumGrant || byId('admin-access-premium-study').checked,
+          p_essay_without_credits: premiumGrant ? false : byId('admin-access-free-essay').checked,
           p_expires_at: expiration ? new Date(`${expiration}T23:59:59`).toISOString() : null,
           p_note: byId('admin-user-access-note').value.trim()
         });
         if (error) throw error;
         renderUserAccess(data || {});
-        setAccessNotice(level === 'standard' ? 'Acesso especial removido. Agora vale o plano do usuário.' : 'Acesso atualizado com segurança.');
+        setAccessNotice(level === 'standard' ? 'Acesso especial removido. Agora vale o plano do usuário.' : premiumGrant ? 'Plano Premium liberado para este usuário.' : 'Acesso atualizado com segurança.');
         await loadAdminData();
       } catch (error) { setAccessNotice(friendlyError(error), true); }
       finally { button.disabled = false; }

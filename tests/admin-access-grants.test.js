@@ -10,8 +10,10 @@ const essay = fs.readFileSync(path.join(root, 'supabase/functions/correct-essay/
 const migration = fs.readFileSync(path.join(root, 'access-grants-migration.sql'), 'utf8');
 
 assert.ok(html.includes('id="admin-user-access-level"') && html.includes('id="admin-save-user-access"'), 'o painel deve permitir configurar o acesso individual');
+assert.ok(html.includes('value="premium">Premium liberado pelo administrador'), 'o administrador deve ter uma opção direta para liberar o Premium');
 assert.ok(html.includes('Questões e trilhas ilimitadas') && html.includes('Correções de redação sem créditos'), 'o acesso parcial deve listar permissões claras');
 assert.ok(admin.includes(".rpc('admin_get_user_access'") && admin.includes(".rpc('admin_set_user_access'"), 'a administração deve ler e salvar concessões pelo servidor');
+assert.ok(admin.includes("const premiumGrant = level === 'premium'") && admin.includes('p_unlimited_quizzes: premiumGrant ||') && admin.includes('p_premium_study: premiumGrant ||'), 'a opção Premium deve ativar todas as permissões correspondentes');
 assert.ok(app.includes(".rpc('get_my_access_entitlements'") && app.includes('essayWithoutCredits'), 'o aplicativo deve consumir a permissão autoritativa');
 assert.ok(migration.includes('create table if not exists public.user_access_grants') && migration.includes('enable row level security'), 'as concessões devem ter tabela protegida por RLS');
 assert.ok(migration.includes("v_is_admin then v_source := 'admin'") && migration.includes("v_charge := 0"), 'administradores devem ter acesso total e redação sem crédito');

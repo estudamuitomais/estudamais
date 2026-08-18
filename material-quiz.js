@@ -238,6 +238,7 @@
     let reading = false;
     let summary = null;
     let confirmedSnapshot = '';
+    let accessGrantedForSnapshot = '';
     const status = (message = '', error = false) => { const node = byId('material-status'); node.textContent = message; node.classList.toggle('error', error); };
     const setCreationEnabled = () => {
       const text = normalize(byId('material-extracted-text')?.value || '');
@@ -275,7 +276,7 @@
       if (nextFiles.some((file) => !/^image\/(jpeg|png|webp)$/i.test(file.type))) throw new Error('Use imagens JPG, PNG ou WebP.');
     }
     function clearGeneratedMaterial() {
-      summary = null; confirmedSnapshot = '';
+      summary = null; confirmedSnapshot = ''; accessGrantedForSnapshot = '';
       byId('material-extracted-text').value = '';
       byId('material-text-confirmed').checked = false;
       byId('material-text-label').hidden = true;
@@ -338,19 +339,35 @@
       } catch (error) { status(error.message || 'Não foi possível ler as fotos.', true); }
       finally { await worker?.terminate?.(); reading = false; byId('read-material-images').disabled = false; setCreationEnabled(); syncCaptureControls(); }
     }
-    function submit(event) {
+    async function ensureCreationAccess(text) {
+      if (accessGrantedForSnapshot === text) return true;
+      if (typeof options.beforeCreate !== 'function') return true;
+      const access = await options.beforeCreate();
+      if (!access?.allowed) {
+        const message = access?.reason === 'monthly_limit'
+          ? `Você já usou ${access.used_this_month || access.monthly_limit} de ${access.monthly_limit} estudo${Number(access.monthly_limit) === 1 ? '' : 's'} de apostila deste mês. Escolha um plano para continuar.`
+          : 'Não foi possível confirmar o acesso ao modo Apostila.';
+        options.onUpgrade?.(message);
+        throw new Error(message);
+      }
+      accessGrantedForSnapshot = text;
+      return true;
+    }
+    async function submit(event) {
       event.preventDefault();
       try {
         const subject = byId('material-subject').value; const text = normalize(byId('material-extracted-text').value);
         if (text.length < 250) throw new Error('Revise o texto e mantenha pelo menos 250 caracteres de conteúdo.');
         if (!byId('material-text-confirmed').checked || text !== confirmedSnapshot) throw new Error('Confirme que você revisou o texto reconhecido antes de criar o quiz.');
+        await ensureCreationAccess(text);
         const questions = buildQuestions(text, subject); status('Quiz criado com dez questões baseadas somente no texto conferido.'); options.onStart?.({ questions, subject });
       } catch (error) { status(error.message, true); }
     }
-    function renderSummary() {
+    async function renderSummary() {
       try {
         const subject = byId('material-subject').value; const text = normalize(byId('material-extracted-text').value);
         if (!byId('material-text-confirmed').checked || text !== confirmedSnapshot) throw new Error('Confirme que você revisou o texto antes de criar o resumo.');
+        await ensureCreationAccess(text);
         summary = buildSummary(text, subject);
         summary.mindMap = buildMindMap(text, subject, summary);
         const content = byId('material-summary-content'); content.innerHTML = '';
@@ -405,14 +422,14 @@
     byId('choose-material-images')?.addEventListener('click', () => byId('material-images')?.click());
     byId('material-images')?.addEventListener('change', (event) => { receiveMaterialFiles([...event.target.files]); event.target.value = ''; });
     byId('material-camera')?.addEventListener('change', (event) => { receiveMaterialFiles([...event.target.files], { append: true, scanned: true }); event.target.value = ''; });
-    byId('material-extracted-text')?.addEventListener('input', () => { if (byId('material-text-confirmed').checked) byId('material-text-confirmed').checked = false; confirmedSnapshot = ''; byId('material-summary-panel').hidden = true; setCreationEnabled(); status('Texto alterado. Confira novamente e marque a confirmação para continuar.'); });
+    byId('material-extracted-text')?.addEventListener('input', () => { if (byId('material-text-confirmed').checked) byId('material-text-confirmed').checked = false; confirmedSnapshot = ''; accessGrantedForSnapshot = ''; byId('material-summary-panel').hidden = true; setCreationEnabled(); status('Texto alterado. Confira novamente e marque a confirmação para continuar.'); });
     byId('material-text-confirmed')?.addEventListener('change', (event) => { confirmedSnapshot = event.target.checked ? normalize(byId('material-extracted-text').value) : ''; setCreationEnabled(); if (event.target.checked) status('Texto confirmado. Agora você pode criar o resumo completo ou o quiz.'); });
     byId('read-material-images')?.addEventListener('click', readImages);
     byId('generate-material-summary')?.addEventListener('click', renderSummary);
     byId('copy-material-summary')?.addEventListener('click', copySummary);
     byId('copy-material-mind-map')?.addEventListener('click', copyMindMap);
     byId('material-quiz-form')?.addEventListener('submit', submit);
-    return { reset() { files = []; summary = null; confirmedSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; updatePreview(); status(''); }, buildQuestions, buildSummary, buildMindMap };
+    return { reset() { files = []; summary = null; confirmedSnapshot = ''; accessGrantedForSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; updatePreview(); status(''); }, buildQuestions, buildSummary, buildMindMap };
   }
 
   window.EstudaMaterialQuiz = { create, buildQuestions, buildSummary, buildMindMap, scoreOcrResult };

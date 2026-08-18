@@ -336,10 +336,11 @@
           </section>
           <h3>Conquistas e itens desbloqueáveis</h3>
           <div id="rewards-list" class="rewards-list"></div>
-          <h3>Meu progresso</h3>
-          <section id="subject-progress" class="subject-progress"></section>
-          <h3>Para adultos e professores</h3>
-          <section class="review-card"><p>Assuntos com mais erros nesta conta:</p><div id="review-list"></div><small>Os dados são privados e acompanham o estudante quando ele entra na conta.</small></section>
+          <section id="premium-report-upgrade" class="premium-report-upgrade"><span>✦</span><div><strong>Relatórios detalhados no Premium</strong><p>Veja evolução por matéria e os assuntos que mais precisam de revisão.</p></div><button type="button" data-side-nav="plans">Conhecer planos</button></section>
+          <h3 data-premium-report>Meu progresso detalhado</h3>
+          <section id="subject-progress" class="subject-progress" data-premium-report></section>
+          <h3 data-premium-report>Para adultos e professores</h3>
+          <section class="review-card" data-premium-report><p>Assuntos com mais erros nesta conta:</p><div id="review-list"></div><small>Os dados são privados e acompanham o estudante quando ele entra na conta.</small></section>
           <h3>Plano da semana</h3>
           <section class="plan-card"><div id="week-picker" class="week-picker"></div><label>Meta por dia <select id="daily-minutes"><option value="10">10 minutos</option><option value="20">20 minutos</option><option value="30">30 minutos</option></select></label><button id="save-plan" class="small-action" type="button">Salvar plano</button></section>
           <section class="ranking-card"><strong>Meu recorde</strong><span id="personal-ranking">Complete sua primeira rodada para criar seu recorde.</span></section>
@@ -349,8 +350,8 @@
           <section id="saved-questions" class="saved-questions"></section>
           <h3>Acessibilidade</h3>
           <section class="accessibility-card"><button class="access-control" data-access="font">A+ Texto maior</button><button class="access-control" data-access="contrast">◐ Alto contraste</button><button class="access-control" data-access="calm">☁ Menos estímulos</button></section>
-          <h3>Área do professor</h3>
-          <section class="teacher-card"><p>Adicione um tema ou orientação da turma para acompanhar nesta conta.</p><input id="teacher-material-title" placeholder="Tema ou lista (ex.: Frações - unidade 2)" /><textarea id="teacher-material-note" placeholder="Orientação de estudo ou habilidade a revisar"></textarea><button id="save-teacher-material" class="small-action" type="button">Salvar orientação</button><div id="teacher-material-list"></div></section>
+          <h3 data-premium-report>Área do professor</h3>
+          <section class="teacher-card" data-premium-report><p>Adicione um tema ou orientação da turma para acompanhar nesta conta.</p><input id="teacher-material-title" placeholder="Tema ou lista (ex.: Frações - unidade 2)" /><textarea id="teacher-material-note" placeholder="Orientação de estudo ou habilidade a revisar"></textarea><button id="save-teacher-material" class="small-action" type="button">Salvar orientação</button><div id="teacher-material-list"></div></section>
         </div>
 
         <div id="review-screen" class="screen review-screen">
@@ -396,7 +397,7 @@
           <section class="material-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Processamento privado no seu aparelho</strong><p>As imagens não são salvas no Estuda+. Evite fotografar nomes, rostos, escola ou outros dados pessoais.</p></div></section>
           <form id="material-quiz-form" class="material-quiz-form">
             <input id="material-subject" type="hidden" value="Minha apostila" />
-            <section class="material-upload-callout"><span aria-hidden="true">▣</span><div><strong>Transforme sua apostila em estudo ativo</strong><p>Envie as páginas e o app preparará questões, resumo e mapa mental sobre o conteúdo encontrado.</p></div></section>
+            <section class="material-upload-callout"><span aria-hidden="true">▣</span><div><strong>Transforme sua apostila em estudo ativo</strong><p>Envie as páginas e o app preparará questões, resumo e mapa mental sobre o conteúdo encontrado.</p><small id="material-plan-usage">Conferindo a cota do seu plano…</small></div></section>
             <div class="material-form-grid">
               <section class="material-capture-panel" aria-labelledby="material-capture-title">
                 <header><div><span>ADICIONE AS PÁGINAS</span><strong id="material-capture-title">Como você quer enviar sua apostila?</strong></div><b id="material-photo-counter">0 de 5 páginas</b></header>
@@ -474,7 +475,7 @@
           </section>
 
           <section id="plans-panel-credits" class="plans-tab-panel" role="tabpanel" data-plans-panel="credits" hidden>
-            <div class="plans-intro"><span>RECURSOS POR CRÉDITOS</span><h3>Compre créditos extras</h3><p>Use seus créditos na apostila por foto e na correção detalhada de redações.</p></div>
+            <div class="plans-intro"><span>CORREÇÃO DE REDAÇÃO</span><h3>Compre créditos quando precisar</h3><p>Cada correção detalhada usa 5 créditos. O uso da apostila já é controlado pela cota mensal do seu plano.</p></div>
             <div id="credit-packs-grid" class="plans-credit-purchase"></div>
           </section>
 
@@ -630,7 +631,7 @@
         <section class="admin-user-access-card" aria-labelledby="admin-user-access-title">
           <header><div><span>ACESSO ESPECIAL</span><strong id="admin-user-access-title">Plano e permissões</strong></div><em id="admin-user-access-status">Padrão do plano</em></header>
           <label>Nível de acesso
-            <select id="admin-user-access-level"><option value="standard">Padrão do plano</option><option value="partial">Acesso parcial</option><option value="full">Acesso total</option></select>
+            <select id="admin-user-access-level"><option value="standard">Padrão do plano</option><option value="premium">Premium liberado pelo administrador</option><option value="partial">Permissões personalizadas</option><option value="full">Acesso total</option></select>
           </label>
           <div id="admin-user-partial-permissions" class="admin-user-partial-permissions" hidden>
             <label><input id="admin-access-unlimited-quizzes" type="checkbox"> Questões e trilhas ilimitadas</label>

@@ -328,6 +328,12 @@ legend { margin-bottom: 10px; }
 .credit-choice-list small { color: var(--primary-dark); font-size: 10px; font-weight: 900; }
 .plans-credit-purchase > .start-button { width: 100%; min-height: 50px; }
 .credit-purchase-note { color: var(--muted); text-align: center; line-height: 1.4; }
+.premium-report-upgrade { display: flex; align-items: center; gap: 14px; margin: 22px 0; padding: 18px; border: 1px solid #d9cef8; border-radius: 18px; background: linear-gradient(135deg, #f8f5ff, #fff); }
+.premium-report-upgrade > span { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 14px; background: #ede7ff; color: var(--primary); font-size: 22px; }
+.premium-report-upgrade > div { flex: 1; min-width: 0; }
+.premium-report-upgrade strong, .premium-report-upgrade p { display: block; margin: 0; }
+.premium-report-upgrade p { margin-top: 3px; color: var(--muted); line-height: 1.4; }
+.premium-report-upgrade button { min-height: 42px; padding: 0 15px; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font-weight: 900; }
 .plans-commercial-card { display: grid; justify-items: center; gap: 12px; width: min(100%, 720px); margin: 12px auto 0; padding: clamp(24px, 5vw, 42px); border: 1px solid var(--line); border-radius: 22px; background: linear-gradient(145deg, #fff 0%, #f5efff 100%); text-align: center; }
 .plans-commercial-card .start-button { width: min(100%, 330px); margin-top: 6px; }
 body[data-screen="plans-screen"] .hero-footer,
@@ -414,6 +420,8 @@ body.a11y-calm *, body.a11y-calm *::before, body.a11y-calm *::after { animation:
   .plans-credit-purchase { padding: 16px; }
   .credit-choice-list { grid-template-columns: 1fr; }
   .credit-choice-list button { min-height: 68px; }
+  .premium-report-upgrade { align-items: flex-start; flex-wrap: wrap; }
+  .premium-report-upgrade button { width: 100%; }
   .plan-card-actions { grid-template-columns: 1fr; }
   .result-stats { grid-template-columns: 1fr 1fr; }
   .modal-backdrop { place-items: end center; padding: 0; }
