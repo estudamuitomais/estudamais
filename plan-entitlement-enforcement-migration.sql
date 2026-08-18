@@ -231,11 +231,14 @@ as $$ select private.consume_material_access(p_units); $$;
 revoke all on function public.consume_quiz_access(integer, text, text, text) from public, anon;
 grant execute on function public.consume_quiz_access(integer, text, text, text) to authenticated;
 revoke all on function private.consume_quiz_access(integer, text, text, text) from public, anon, authenticated;
-grant execute on function private.consume_quiz_access(integer, text, text, text) to service_role;
+-- A funcao publica e SECURITY INVOKER; o papel autenticado precisa executar
+-- esta implementacao privada, que valida auth.uid() antes de qualquer uso.
+grant execute on function private.consume_quiz_access(integer, text, text, text) to authenticated, service_role;
 
 revoke all on function public.consume_material_access(integer) from public, anon;
 grant execute on function public.consume_material_access(integer) to authenticated;
 revoke all on function private.consume_material_access(integer) from public, anon, authenticated;
-grant execute on function private.consume_material_access(integer) to service_role;
+-- Mesma delegacao segura usada pelo RPC publico acima.
+grant execute on function private.consume_material_access(integer) to authenticated, service_role;
 
 notify pgrst, 'reload schema';

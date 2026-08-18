@@ -14,6 +14,7 @@ assert.ok(migration.includes('user_feature_monthly_usage') && migration.includes
 assert.ok(migration.includes("'premium_required'") && migration.includes('p_difficulty text') && migration.includes('p_quiz_mode text'), 'modos avançados devem ser validados no servidor');
 assert.ok(migration.includes('revoke insert, update, delete on public.user_feature_monthly_usage from authenticated'), 'o usuário não pode alterar a própria cota');
 assert.ok(migration.includes('public.consume_material_access') && migration.includes('auth.uid()'), 'o consumo de apostila deve exigir identidade autenticada');
+assert.ok(migration.includes('grant execute on function private.consume_quiz_access(integer, text, text, text) to authenticated, service_role') && migration.includes('grant execute on function private.consume_material_access(integer) to authenticated, service_role'), 'os RPCs SECURITY INVOKER devem conseguir delegar para as implementacoes privadas autenticadas');
 assert.ok(app.includes("p_difficulty: options.difficulty") && app.includes("p_quiz_mode: options.quizMode") && app.includes(".rpc('consume_material_access'"), 'o aplicativo deve enviar as regras ao servidor');
 assert.ok(material.includes('async function ensureCreationAccess') && material.includes('await ensureCreationAccess(text)'), 'resumo e quiz da apostila devem consumir uma única cota da sessão');
 assert.ok(avatar.includes("premium: true") && app.includes('hasPremiumAvatarAccess'), 'itens avançados do avatar devem respeitar o plano');
