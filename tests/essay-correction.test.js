@@ -10,6 +10,7 @@ const functionSource = fs.readFileSync(path.join(root, 'supabase/functions/corre
 const migration = fs.readFileSync(path.join(root, 'essay-corrections-migration.sql'), 'utf8');
 
 assert.ok(html.includes('id="essay-screen"') && html.includes('data-side-nav="essay"') && html.includes('data-nav="essay"'), 'a oficina deve estar acessível no computador e no celular');
+assert.ok(html.includes('essay-correction.js?v=20260820a'), 'a oficina deve invalidar o cache quando a correção for atualizada');
 assert.ok(html.includes('inspirada nas 5 competências do Enem') && html.includes('Corrigir por 5 créditos'), 'a interface deve explicar o modelo e o custo');
 assert.ok(html.includes('não fica salvo no histórico') && html.includes('id="essay-safety-confirm"'), 'a proteção de dados deve estar visível antes do envio');
 assert.ok(app.includes("if (id === 'essay-screen') return 'essay'") && app.includes('async function openEssay()'), 'a tela deve participar da navegação segura do app');
