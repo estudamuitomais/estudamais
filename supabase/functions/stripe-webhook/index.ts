@@ -1,4 +1,4 @@
-import Stripe from 'npm:stripe@^22';
+import Stripe from 'npm:stripe@22.5.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
@@ -48,8 +48,9 @@ Deno.serve(async (request) => {
   let event: Stripe.Event;
   try {
     event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret, undefined, cryptoProvider);
-  } catch (error) {
-    return new Response(`Webhook signature verification failed: ${error.message}`, { status: 400 });
+  } catch {
+    console.warn('Stripe webhook signature rejected');
+    return Response.json({ ok: false, error: 'INVALID_SIGNATURE' }, { status: 400 });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -65,6 +66,7 @@ Deno.serve(async (request) => {
     planId?: string;
     planLabel?: string;
     creditAmount?: number;
+    userId?: string;
   }) {
     const { data, error } = await supabase.rpc('apply_stripe_purchase', {
       p_event_id: event.id,
@@ -78,25 +80,36 @@ Deno.serve(async (request) => {
       p_plan_label: params.planLabel || '',
       p_credit_amount: params.creditAmount || 0,
       p_payload: event as unknown as Record<string, unknown>,
+      p_user_id: params.userId || null,
     });
     if (error) throw error;
     return data;
   }
 
   try {
-    if (event.type === 'checkout.session.completed') {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded' || event.type === 'checkout.session.async_payment_failed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = metadataFrom(session);
       const mode = session.mode;
+      let subscriptionStatus = '';
+      if (mode === 'subscription' && session.subscription) {
+        const subscription = await stripe.subscriptions.retrieve(textFrom(session.subscription));
+        subscriptionStatus = subscription.status;
+      }
       await applyPurchase({
         buyerEmail: textFrom(session.customer_details?.email, session.customer_email, metadata.email),
         customerId: textFrom(session.customer),
         subscriptionId: textFrom(session.subscription),
         checkoutSessionId: session.id,
-        status: mode === 'payment' ? textFrom(session.payment_status, session.status) : 'active',
+        status: event.type === 'checkout.session.async_payment_failed'
+          ? 'failed'
+          : mode === 'payment'
+            ? textFrom(session.payment_status, session.status)
+            : textFrom(subscriptionStatus, session.status),
         planId: textFrom(metadata.plan_id),
         planLabel: textFrom(metadata.plan_label),
         creditAmount: Number(metadata.credit_amount || 0),
+        userId: textFrom(metadata.user_id, session.client_reference_id),
       });
     } else if (event.type === 'invoice.paid') {
       const invoice = event.data.object as Stripe.Invoice;
@@ -112,6 +125,7 @@ Deno.serve(async (request) => {
           planId: textFrom(metadata.plan_id),
           planLabel: textFrom(metadata.plan_label),
           creditAmount: 0,
+          userId: textFrom(metadata.user_id),
         });
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
@@ -125,11 +139,13 @@ Deno.serve(async (request) => {
         planId: textFrom(metadata.plan_id),
         planLabel: textFrom(metadata.plan_label),
         creditAmount: 0,
+        userId: textFrom(metadata.user_id),
       });
     }
   } catch (error) {
-    console.error('Erro ao aplicar evento Stripe', error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    const failure = error as { code?: string };
+    console.error('Erro ao aplicar evento Stripe', { code: failure.code, eventId: event.id, eventType: event.type });
+    return Response.json({ ok: false, error: 'WEBHOOK_PROCESSING_FAILED' }, { status: 500 });
   }
 
   return Response.json({ ok: true, received: true });

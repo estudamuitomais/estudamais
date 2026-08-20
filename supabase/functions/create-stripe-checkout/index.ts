@@ -1,4 +1,4 @@
-import Stripe from 'npm:stripe@^22';
+import Stripe from 'npm:stripe@22.5.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 type Offer = {
@@ -10,17 +10,29 @@ type Offer = {
   creditAmount?: number;
 };
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const allowedOrigins = new Set([
+  'https://estudamais.net',
+  'https://www.estudamais.net',
+  'https://app-estudo-one.vercel.app',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+]);
 
-function jsonResponse(body: Record<string, unknown>, init: ResponseInit = {}) {
+function corsHeadersFor(request: Request) {
+  const origin = request.headers.get('Origin') || '';
+  return {
+    'Access-Control-Allow-Origin': allowedOrigins.has(origin) ? origin : 'https://www.estudamais.net',
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
+
+function jsonResponse(request: Request, body: Record<string, unknown>, init: ResponseInit = {}) {
   return Response.json(body, {
     ...init,
     headers: {
-      ...corsHeaders,
+      ...corsHeadersFor(request),
       ...(init.headers || {}),
     },
   });
@@ -70,18 +82,18 @@ function safeReturnUrl(value: unknown, fallback: string) {
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeadersFor(request) });
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
+    return jsonResponse(request, { ok: false, error: 'METHOD_NOT_ALLOWED' }, { status: 405 });
   }
 
   const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || Deno.env.get('STRIPE_API_KEY') || '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const publishableKey = readSupabasePublishableKey();
   if (!stripeSecretKey || !supabaseUrl || !publishableKey) {
-    return jsonResponse({ ok: false, error: 'MISSING_SERVER_SECRETS' }, { status: 500 });
+    return jsonResponse(request, { ok: false, error: 'MISSING_SERVER_SECRETS' }, { status: 500 });
   }
 
   const authHeader = request.headers.get('Authorization') || '';
@@ -92,12 +104,40 @@ Deno.serve(async (request) => {
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user?.email) {
-    return jsonResponse({ ok: false, error: 'AUTH_REQUIRED' }, { status: 401 });
+    return jsonResponse(request, { ok: false, error: 'AUTH_REQUIRED' }, { status: 401 });
   }
 
   const payload = await request.json().catch(() => ({}));
   const offer = offers[String(payload.offerId || '')];
-  if (!offer) return jsonResponse({ ok: false, error: 'INVALID_OFFER' }, { status: 400 });
+  if (!offer) return jsonResponse(request, { ok: false, error: 'INVALID_OFFER' }, { status: 400 });
+
+  if (offer.mode === 'subscription') {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_admin, account_status')
+      .eq('id', userData.user.id)
+      .maybeSingle();
+    if (profileError) {
+      console.error('Profile lookup failed', { code: profileError.code });
+      return jsonResponse(request, { ok: false, error: 'SUBSCRIPTION_CHECK_FAILED' }, { status: 503 });
+    }
+    if (profile?.is_admin && profile.account_status === 'active') {
+      return jsonResponse(request, { ok: false, error: 'ADMIN_ACCESS_INCLUDED' }, { status: 409 });
+    }
+    const { data: activeSubscription, error: subscriptionError } = await supabase
+      .from('user_subscriptions')
+      .select('status')
+      .eq('user_id', userData.user.id)
+      .in('status', ['active', 'paid', 'complete', 'trialing'])
+      .maybeSingle();
+    if (subscriptionError) {
+      console.error('Subscription lookup failed', { code: subscriptionError.code });
+      return jsonResponse(request, { ok: false, error: 'SUBSCRIPTION_CHECK_FAILED' }, { status: 503 });
+    }
+    if (activeSubscription) {
+      return jsonResponse(request, { ok: false, error: 'ACTIVE_SUBSCRIPTION_EXISTS' }, { status: 409 });
+    }
+  }
 
   const stripe = new Stripe(stripeSecretKey);
   let price: Stripe.Price | undefined;
@@ -107,9 +147,9 @@ Deno.serve(async (request) => {
   } catch (error) {
     const stripeError = error as { code?: string; requestId?: string; type?: string };
     console.error('Stripe price lookup failed', { code: stripeError.code, requestId: stripeError.requestId, type: stripeError.type });
-    return jsonResponse({ ok: false, error: 'STRIPE_UNAVAILABLE' }, { status: 502 });
+    return jsonResponse(request, { ok: false, error: 'STRIPE_UNAVAILABLE' }, { status: 502 });
   }
-  if (!price) return jsonResponse({ ok: false, error: 'PAYMENT_CONFIGURATION_MISMATCH' }, { status: 503 });
+  if (!price) return jsonResponse(request, { ok: false, error: 'PAYMENT_CONFIGURATION_MISMATCH' }, { status: 503 });
 
   const origin = request.headers.get('Origin') || 'https://www.estudamais.net';
   const successUrl = safeReturnUrl(payload.successUrl, `${origin}/?checkout=success`);
@@ -143,8 +183,8 @@ Deno.serve(async (request) => {
   } catch (error) {
     const stripeError = error as { code?: string; requestId?: string; type?: string };
     console.error('Stripe Checkout creation failed', { code: stripeError.code, requestId: stripeError.requestId, type: stripeError.type });
-    return jsonResponse({ ok: false, error: 'CHECKOUT_CREATION_FAILED' }, { status: 502 });
+    return jsonResponse(request, { ok: false, error: 'CHECKOUT_CREATION_FAILED' }, { status: 502 });
   }
 
-  return jsonResponse({ ok: true, url: session.url || '' });
+  return jsonResponse(request, { ok: true, url: session.url || '' });
 });

@@ -43,7 +43,8 @@ create or replace function public.apply_stripe_purchase(
   p_plan_id text,
   p_plan_label text,
   p_credit_amount integer,
-  p_payload jsonb
+  p_payload jsonb,
+  p_user_id uuid
 )
 returns jsonb
 language plpgsql
@@ -76,12 +77,16 @@ begin
     return jsonb_build_object('ok', true, 'duplicate', true, 'event_id', v_event_id);
   end if;
 
-  select id
-    into v_user_id
-    from auth.users
-   where lower(email) = lower(coalesce(p_buyer_email, ''))
-   order by created_at desc
-   limit 1;
+  if p_user_id is not null and exists (select 1 from auth.users where id = p_user_id) then
+    v_user_id := p_user_id;
+  else
+    select id
+      into v_user_id
+      from auth.users
+     where lower(email) = lower(coalesce(p_buyer_email, ''))
+     order by created_at desc
+     limit 1;
+  end if;
 
   if v_user_id is null then
     update public.stripe_webhook_events
@@ -144,7 +149,7 @@ begin
 end;
 $$;
 
-revoke all on function public.apply_stripe_purchase(text, text, text, text, text, text, text, text, text, integer, jsonb) from public, anon, authenticated;
-grant execute on function public.apply_stripe_purchase(text, text, text, text, text, text, text, text, text, integer, jsonb) to service_role;
+revoke all on function public.apply_stripe_purchase(text, text, text, text, text, text, text, text, text, integer, jsonb, uuid) from public, anon, authenticated;
+grant execute on function public.apply_stripe_purchase(text, text, text, text, text, text, text, text, text, integer, jsonb, uuid) to service_role;
 
 revoke all on public.stripe_webhook_events from anon;

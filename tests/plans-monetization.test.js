@@ -9,6 +9,9 @@ const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'stripe-payments-migration.sql'), 'utf8');
 const checkoutFunction = fs.readFileSync(path.join(root, 'supabase', 'functions', 'create-stripe-checkout', 'index.ts'), 'utf8');
 const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe-webhook', 'index.ts'), 'utf8');
+const portalFunction = fs.readFileSync(path.join(root, 'supabase', 'functions', 'create-stripe-portal', 'index.ts'), 'utf8');
+const launchMigration = fs.readFileSync(path.join(root, 'launch-readiness-migration.sql'), 'utf8');
+const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 
 [
   'data-side-nav="plans"',
@@ -34,6 +37,8 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   'function renderPlansScreen()',
   'function openPlans()',
   "supabaseClient.functions.invoke('create-stripe-checkout'",
+  "supabaseClient.functions.invoke('create-stripe-portal'",
+  'async function openStripePortal()',
   'function friendlyCheckoutError(',
   "showPlansPaymentNotice(friendlyCheckoutError(details?.error), 'error')",
   "document.querySelectorAll('[data-credit-amount]')",
@@ -70,7 +75,8 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   "integration_identifier: 'estuda_web_kjrwvhtn'",
   'mode: offer.mode',
   "request.method === 'OPTIONS'",
-  "'Access-Control-Allow-Origin': '*'",
+  "allowedOrigins.has(origin)",
+  "error: 'ACTIVE_SUBSCRIPTION_EXISTS'",
   "'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'"
 ].forEach((token) => assert.ok(checkoutFunction.includes(token), `checkout function ausente: ${token}`));
 
@@ -81,6 +87,19 @@ const webhook = fs.readFileSync(path.join(root, 'supabase', 'functions', 'stripe
   'checkout.session.completed',
   'customer.subscription.deleted'
 ].forEach((token) => assert.ok(webhook.includes(token), `webhook Stripe ausente: ${token}`));
+
+[
+  'stripe.billingPortal.sessions.create',
+  'supabase.auth.getUser()',
+  "error: 'NO_STRIPE_SUBSCRIPTION'",
+  "npm:stripe@22.5.0"
+].forEach((token) => assert.ok(portalFunction.includes(token), `portal Stripe ausente: ${token}`));
+
+assert.ok(html.includes('@supabase/supabase-js@2.112.3'), 'Supabase JS deve usar versão fixa');
+assert.ok(!app.includes("email: activeSupabaseUser?.email"), 'checkout local não deve salvar e-mail');
+assert.ok(migration.includes('p_user_id uuid'), 'webhook deve vincular a compra ao usuário autenticado');
+assert.ok(launchMigration.includes('stripe_webhook_events_target_user_id_idx'), 'migração de lançamento deve indexar relacionamentos críticos');
+assert.ok(vercelConfig.headers.some((rule) => rule.headers.some((header) => header.key === 'X-Content-Type-Options')), 'publicação deve incluir cabeçalhos de segurança');
 
 [
   'pay.hotmart.com',

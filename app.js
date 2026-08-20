@@ -1399,6 +1399,9 @@ async function readCheckoutError(error) {
 function friendlyCheckoutError(code = '') {
   if (code === 'AUTH_REQUIRED') return 'Sua sessão expirou. Entre novamente para continuar com segurança.';
   if (code === 'INVALID_OFFER') return 'Este plano não está disponível. Atualize a página e escolha novamente.';
+  if (code === 'ACTIVE_SUBSCRIPTION_EXISTS') return 'Você já possui uma assinatura ativa. Use o botão Gerenciar assinatura para alterar ou cancelar seu plano.';
+  if (code === 'ADMIN_ACCESS_INCLUDED') return 'O perfil administrador já possui acesso completo e não precisa comprar um plano.';
+  if (code === 'SUBSCRIPTION_CHECK_FAILED') return 'Não foi possível confirmar sua assinatura agora. Nenhum valor foi cobrado. Tente novamente em instantes.';
   if (code === 'PAYMENT_CONFIGURATION_MISMATCH' || code === 'PRICE_NOT_FOUND') return 'Os pagamentos estão em ativação na Stripe. Nenhum valor foi cobrado. Tente novamente após a liberação da conta.';
   if (code === 'MISSING_SERVER_SECRETS') return 'A conexão segura com a Stripe ainda não foi concluída. Nenhum valor foi cobrado.';
   return 'Não foi possível abrir o pagamento agora. Nenhum valor foi cobrado. Atualize a página e tente novamente.';
@@ -1424,8 +1427,6 @@ async function openStripeCheckout(offer, kind = 'checkout') {
       price: offer.price,
       lookupKey: offer.lookupKey,
       offerId: offer.id,
-      userId: activeSupabaseUser?.id || '',
-      email: activeSupabaseUser?.email || '',
       createdAt: new Date().toISOString()
     }));
     const { data, error } = await supabaseClient.functions.invoke('create-stripe-checkout', {
@@ -1444,6 +1445,28 @@ async function openStripeCheckout(offer, kind = 'checkout') {
     showPlansPaymentNotice(friendlyCheckoutError(details?.error), 'error');
   } finally {
     if (checkoutButton) { checkoutButton.disabled = false; checkoutButton.removeAttribute('aria-busy'); }
+  }
+}
+async function openStripePortal() {
+  if (!activeSupabaseUser || !supabaseClient) {
+    showPlansPaymentNotice('Entre novamente para gerenciar sua assinatura.', 'error');
+    return;
+  }
+  try {
+    showPlansPaymentNotice('Abrindo o gerenciamento seguro da sua assinatura…');
+    const { data, error } = await supabaseClient.functions.invoke('create-stripe-portal', {
+      body: { returnUrl: `${window.location.origin}${window.location.pathname}?billing=return` }
+    });
+    if (error) throw error;
+    if (!data?.url) throw new Error('PORTAL_URL_MISSING');
+    window.location.href = data.url;
+  } catch (error) {
+    console.warn('Não foi possível abrir o portal Stripe:', error);
+    const details = await readCheckoutError(error);
+    const message = details?.error === 'NO_STRIPE_SUBSCRIPTION'
+      ? 'Este acesso não possui uma assinatura Stripe para gerenciar.'
+      : 'Não foi possível abrir o gerenciamento agora. Tente novamente em instantes.';
+    showPlansPaymentNotice(message, 'error');
   }
 }
 function openPlans() {
@@ -1467,16 +1490,25 @@ function renderPlansScreen() {
     `<article class="plan-card-item highlight"><div class="plan-card-top"><span>MAIS APOSTILAS</span><strong>Família</strong></div><div class="plan-card-price"><b>R$ 34,90</b><small>por mês ou R$ 299,90 por ano</small></div><ul><li>Todos os recursos Premium</li><li>30 estudos de apostila por mês</li><li>Trilhas e simulados ilimitados</li><li>Relatórios detalhados</li><li>Itens avançados para o avatar</li></ul><div class="plan-card-actions"><button type="button" data-plan-checkout="family-monthly">Assinar mensal</button><button type="button" data-plan-checkout="family-annual">Assinar anual</button></div></article>`
   ].join('');
   const paidTier = activePaymentEntitlements.tier;
-  grid.querySelectorAll('[data-plan-checkout]').forEach((button) => {
-    const offerTier = button.dataset.planCheckout.startsWith('family') ? 'family' : 'premium';
-    const isCurrent = paidTier === offerTier && button.dataset.planCheckout === activePaymentEntitlements.planId;
-    if (isCurrent) { button.textContent = 'Seu plano atual'; button.disabled = true; button.setAttribute('aria-disabled', 'true'); }
-  });
+  const hasStripeSubscription = activePaymentEntitlements.accessSource === 'subscription' && ['premium', 'family'].includes(paidTier);
+  const hasAdminAccess = paidTier === 'admin' || activePaymentEntitlements.accessSource === 'admin';
   creditGrid.innerHTML = `<div class="credit-choice-list" role="radiogroup" aria-label="Quantidade de créditos"><button class="selected" type="button" role="radio" aria-checked="true" data-credit-amount="10" data-credit-price="R$ 9,90"><strong>10 créditos</strong><span>R$ 9,90</span></button><button type="button" role="radio" aria-checked="false" data-credit-amount="25" data-credit-price="R$ 19,90"><strong>25 créditos</strong><span>R$ 19,90</span><small>Mais escolhido</small></button><button type="button" role="radio" aria-checked="false" data-credit-amount="60" data-credit-price="R$ 39,90"><strong>60 créditos</strong><span>R$ 39,90</span></button></div><button id="buy-selected-credits" class="start-button" type="button">Comprar 10 créditos · R$ 9,90</button><small class="credit-purchase-note">Pagamento seguro pelo Stripe. Depois da confirmação, os créditos serão liberados na sua conta.</small>`;
   document.querySelectorAll('[data-plan-checkout]').forEach((button) => {
     const plan = monetizationPlans.find((item) => item.id === button.dataset.planCheckout);
     if (!plan) return;
-    button.onclick = () => openStripeCheckout(plan, 'subscription');
+    if (hasAdminAccess) {
+      button.textContent = 'Incluído no acesso admin';
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+    } else if (hasStripeSubscription) {
+      const isCurrent = button.dataset.planCheckout === activePaymentEntitlements.planId;
+      button.textContent = isCurrent ? 'Gerenciar assinatura' : 'Assinatura ativa';
+      button.disabled = !isCurrent;
+      button.setAttribute('aria-disabled', String(!isCurrent));
+      button.onclick = isCurrent ? openStripePortal : null;
+    } else {
+      button.onclick = () => openStripeCheckout(plan, 'subscription');
+    }
   });
   document.querySelectorAll('[data-credit-amount]').forEach((button) => {
     button.onclick = () => {
