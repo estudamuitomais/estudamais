@@ -1,34 +1,4 @@
--- Correção de redações por créditos, sem armazenar o texto integral do estudante.
-
-create table if not exists public.essay_corrections (
-  id uuid primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  submission_hash text not null,
-  mode text not null check (mode in ('enem', 'free')),
-  theme text not null check (char_length(theme) between 3 and 300),
-  essay_excerpt text not null default '',
-  word_count integer not null check (word_count >= 0),
-  total_score integer not null check (total_score between 0 and 1000),
-  correction jsonb not null,
-  credits_spent integer not null default 5 check (credits_spent in (0, 5)),
-  created_at timestamptz not null default now()
-);
-
-create index if not exists essay_corrections_user_created_idx
-  on public.essay_corrections (user_id, created_at desc);
-create unique index if not exists essay_corrections_user_submission_idx
-  on public.essay_corrections (user_id, submission_hash);
-
-alter table public.essay_corrections enable row level security;
-
-drop policy if exists "Usuario le proprias correcoes" on public.essay_corrections;
-create policy "Usuario le proprias correcoes"
-on public.essay_corrections for select to authenticated
-using ((select auth.uid()) = user_id);
-
-revoke all on public.essay_corrections from anon;
-revoke insert, update, delete on public.essay_corrections from authenticated;
-grant select on public.essay_corrections to authenticated;
+-- Corrige a finalização de redações para acessos incluídos e créditos pagos.
 
 create or replace function public.finalize_essay_correction(
   p_id uuid,
@@ -65,7 +35,13 @@ begin
 
   if found then
     select credits into v_credits from public.user_credit_wallets where user_id = p_user_id;
-    return jsonb_build_object('ok', true, 'id', v_existing.id, 'credits_remaining', coalesce(v_credits, 0), 'credits_charged', 0, 'access_included', v_existing.credits_spent = 0, 'duplicate', true);
+    return jsonb_build_object(
+      'ok', true, 'id', v_existing.id,
+      'credits_remaining', coalesce(v_credits, 0),
+      'credits_charged', 0,
+      'access_included', v_existing.credits_spent = 0,
+      'duplicate', true
+    );
   end if;
 
   select coalesce(p.is_admin, false) into v_is_admin
@@ -81,7 +57,7 @@ begin
     v_charge := 0;
   end if;
 
-  select credits into v_credits
+  select coalesce(credits, 0) into v_credits
   from public.user_credit_wallets
   where user_id = p_user_id
   for update;
@@ -110,7 +86,13 @@ begin
     values (p_user_id, -v_charge, 'Correção de redação', 'essay_correction', null);
   end if;
 
-  return jsonb_build_object('ok', true, 'id', p_id, 'credits_remaining', coalesce(v_credits, 0) - v_charge, 'credits_charged', v_charge, 'access_included', v_charge = 0, 'duplicate', false);
+  return jsonb_build_object(
+    'ok', true, 'id', p_id,
+    'credits_remaining', coalesce(v_credits, 0) - v_charge,
+    'credits_charged', v_charge,
+    'access_included', v_charge = 0,
+    'duplicate', false
+  );
 end;
 $$;
 

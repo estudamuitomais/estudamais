@@ -15,6 +15,33 @@
   const escapeHTML = (value) => String(value || '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
   const safeList = (value) => Array.isArray(value) ? value.map(cleanText).filter(Boolean).slice(0, 5) : [];
 
+  async function readFunctionFailure(error, data) {
+    if (data?.error) return data;
+    const response = error?.context;
+    if (response && typeof response.clone === 'function') {
+      try { return await response.clone().json(); } catch { /* resposta sem JSON */ }
+    }
+    return { error: 'CORRECTION_UNAVAILABLE' };
+  }
+
+  function friendlyError(code) {
+    const messages = {
+      AUTH_REQUIRED: 'Sua sessão expirou. Entre novamente para corrigir a redação.',
+      INVALID_ESSAY: 'Informe um tema e escreva pelo menos 300 caracteres antes de enviar.',
+      PERSONAL_DATA_DETECTED: 'Remova telefone, e-mail ou CPF do texto e envie novamente.',
+      UNSAFE_CONTENT: 'Não foi possível avaliar esse conteúdo. Peça orientação a um adulto responsável ou professor.',
+      AI_NOT_CONFIGURED: 'O serviço de correção precisa de um ajuste técnico. Nenhum crédito foi retirado.',
+      AI_BILLING_REQUIRED: 'O serviço de correção está temporariamente sem saldo. Nenhum crédito foi retirado.',
+      AI_RATE_LIMITED: 'Há muitas correções agora. Aguarde um minuto e tente novamente; nenhum crédito foi retirado.',
+      AI_INVALID_REQUEST: 'A correção não conseguiu processar este envio. Revise o tema e tente novamente; nenhum crédito foi retirado.',
+      INVALID_AI_RESULT: 'A análise veio incompleta. Tente novamente; nenhum crédito foi retirado.',
+      FINALIZATION_FAILED: 'A análise terminou, mas não foi possível salvá-la. Nenhum crédito foi retirado.',
+      ACCESS_CHECK_FAILED: 'Não foi possível conferir seu acesso agora. Tente novamente em instantes.',
+      SERVER_CONFIGURATION_ERROR: 'O serviço de correção precisa de um ajuste técnico. Nenhum crédito foi retirado.'
+    };
+    return messages[code] || 'A correção está temporariamente indisponível. Seu rascunho continua salvo e nenhum crédito foi retirado.';
+  }
+
   function create(options = {}) {
     const supabase = options.supabase;
     let currentCorrection = null;
@@ -130,6 +157,7 @@
       event.preventDefault();
       const theme = cleanText(byId('essay-theme').value);
       const essay = cleanText(byId('essay-text').value);
+      if (theme.length < 3) { setStatus('Informe o tema da redação para a avaliação considerar a proposta correta.', 'error'); byId('essay-theme').focus(); return; }
       if (essay.length < 300) { setStatus('Escreva pelo menos 300 caracteres para receber uma avaliação útil.', 'error'); byId('essay-text').focus(); return; }
       if (!byId('essay-safety-confirm').checked) { setStatus('Confirme que removeu dados pessoais antes de enviar.', 'error'); return; }
       if (!supabase) { setStatus('O serviço de correção não carregou. Atualize a página e tente novamente.', 'error'); return; }
@@ -138,16 +166,15 @@
       button.innerHTML = 'Analisando sua redação… <span>⏳</span>';
       setStatus('Avaliando argumentos, coesão, linguagem e proposta de intervenção. Nenhum crédito será retirado se a correção falhar.', 'loading');
       try {
-        const { data, error } = await supabase.functions.invoke('correct-essay', { body: { mode: byId('essay-mode').value, theme, essay } });
-        if (error) throw error;
+        const result = await supabase.functions.invoke('correct-essay', { body: { mode: byId('essay-mode').value, theme, essay } });
+        const data = result.error ? await readFunctionFailure(result.error, result.data) : result.data;
         if (!data?.ok) {
           if (data?.error === 'INSUFFICIENT_CREDITS') {
             setStatus('Você precisa de 5 créditos para corrigir esta redação.', 'error');
             options.onBuyCredits?.();
             return;
           }
-          const friendly = data?.error === 'PERSONAL_DATA_DETECTED' ? 'Remova os dados pessoais indicados e envie novamente.' : data?.error === 'UNSAFE_CONTENT' ? 'Não foi possível avaliar esse conteúdo. Peça ajuda a um adulto responsável ou professor.' : 'Não foi possível concluir a correção. Nenhum crédito foi retirado.';
-          setStatus(friendly, 'error');
+          setStatus(friendlyError(data?.error), 'error');
           return;
         }
         renderCorrection(data.correction);
@@ -158,7 +185,7 @@
         await loadHistory();
       } catch (error) {
         console.error('Essay correction failed', error);
-        setStatus('A correção está temporariamente indisponível. Seu rascunho continua salvo e nenhum crédito foi retirado.', 'error');
+        setStatus(friendlyError('CORRECTION_UNAVAILABLE'), 'error');
       } finally {
         button.disabled = false;
         button.innerHTML = correctionIncluded ? 'Corrigir com meu acesso <span>→</span>' : 'Corrigir por 5 créditos <span>→</span>';
