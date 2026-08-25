@@ -75,7 +75,7 @@
       const lengthPenalty = sentence.length > 360 ? 1.5 : 0;
       return { sentence, index, score: termScore + definitionBonus + evidenceBonus - lengthPenalty, words };
     });
-    const target = Math.min(18, Math.max(5, Math.ceil(sentences.length * .55)));
+    const target = Math.min(24, Math.max(6, Math.ceil(sentences.length * .62)));
     const selected = [];
     ranked.sort((a, b) => b.score - a.score || a.index - b.index).forEach((candidate) => {
       if (selected.length >= target) return;
@@ -88,25 +88,38 @@
     ranked.forEach((candidate) => {
       if (selected.length < target && !selected.includes(candidate)) selected.push(candidate);
     });
-    const points = selected.sort((a, b) => a.index - b.index).map((item) => item.sentence);
-    const numericalFacts = points.filter((sentence) => /\d|%|[=+×÷]/.test(sentence));
-    const keywords = termsFrom(normalizedText).filter((term) => !/^\d/.test(term)).slice(0, 14);
-    const overviewCount = Math.min(3, Math.max(1, Math.ceil(points.length * .22)));
-    const overview = points.slice(0, overviewCount);
-    const keyPoints = points.slice(overviewCount);
+    const chosen = selected.sort((a, b) => a.index - b.index);
+    const overviewCount = Math.min(4, Math.max(1, Math.min(chosen.length - 1, Math.ceil(chosen.length * .2))));
+    const overviewEntries = [...chosen].sort((a, b) => b.score - a.score || a.index - b.index).slice(0, overviewCount).sort((a, b) => a.index - b.index);
+    const overview = overviewEntries.map((item) => item.sentence);
+    const chosenSentences = chosen.map((item) => item.sentence);
+    const remaining = chosen.filter((item) => !overviewEntries.includes(item)).map((item) => item.sentence);
+    const definitions = chosenSentences.filter((sentence) => /\b(é|são|significa|consiste|define-se|refere-se|chama-se|pode ser definido)\b/i.test(sentence)).slice(0, 7);
+    const relations = chosenSentences.filter((sentence) => /\b(porque|por isso|portanto|assim|logo|entretanto|porém|enquanto|quando|durante|antes|depois|resulta|provoca|permite|depende|consequentemente)\b/i.test(sentence)).slice(0, 7);
+    const numericalFacts = chosenSentences.filter((sentence) => /\d|%|[=+×÷]/.test(sentence)).slice(0, 8);
+    let keyPoints = remaining.filter((sentence) => !definitions.includes(sentence) && !relations.includes(sentence) && !numericalFacts.includes(sentence));
+    if (!keyPoints.length) keyPoints = remaining.slice(0, Math.max(1, Math.min(6, remaining.length)));
+    const keywords = termsFrom(normalizedText).filter((term) => !/^\d/.test(term)).slice(0, 18);
+    const studyQuestions = keywords.slice(0, 6).map((term) => `Como você explicaria “${term}” com suas próprias palavras?`);
+    const readingTimeMinutes = Math.max(1, Math.ceil(normalizedText.split(/\s+/).length / 180));
     const lines = [
       `RESUMO COMPLETO — ${subject}`,
       '',
-      'VISÃO GERAL',
+      `LEITURA ESTIMADA: ${readingTimeMinutes} min`,
+      '',
+      'EM POUCAS PALAVRAS',
       ...overview.map((sentence) => `• ${sentence}`),
       '',
-      'PONTOS PRINCIPAIS',
+      'IDEIAS ESSENCIAIS',
       ...keyPoints.map((sentence) => `• ${sentence}`)
     ];
+    if (definitions.length) lines.push('', 'CONCEITOS EXPLICADOS', ...definitions.map((sentence) => `• ${sentence}`));
+    if (relations.length) lines.push('', 'RELAÇÕES, CAUSAS E PROCESSOS', ...relations.map((sentence) => `• ${sentence}`));
     if (numericalFacts.length) lines.push('', 'DATAS, NÚMEROS E FÓRMULAS', ...numericalFacts.map((sentence) => `• ${sentence}`));
     if (keywords.length) lines.push('', 'TERMOS IMPORTANTES', keywords.join(' • '));
-    lines.push('', `Síntese extrativa: ${points.length} de ${sentences.length} frases selecionadas do texto conferido.`);
-    return { subject, overview, keyPoints, numericalFacts, keywords, sourceSentenceCount: sentences.length, selectedSentenceCount: points.length, plainText: lines.join('\n') };
+    if (studyQuestions.length) lines.push('', 'CONFIRA SE VOCÊ ENTENDEU', ...studyQuestions.map((question) => `□ ${question}`));
+    lines.push('', `Síntese extrativa: ${chosen.length} de ${sentences.length} frases essenciais selecionadas do texto conferido.`);
+    return { subject, overview, keyPoints, definitions, relations, numericalFacts, keywords, studyQuestions, readingTimeMinutes, sourceSentenceCount: sentences.length, selectedSentenceCount: chosen.length, plainText: lines.join('\n') };
   }
 
   function buildMindMap(text, subject = 'Conteúdo da apostila', preparedSummary = null) {
@@ -239,6 +252,8 @@
     let summary = null;
     let confirmedSnapshot = '';
     let accessGrantedForSnapshot = '';
+    const pageLimit = () => Math.max(5, Math.min(15, Number(options.getPageLimit?.()) || 5));
+    const planLabel = () => String(options.getPlanLabel?.() || (pageLimit() > 5 ? 'Premium' : 'Grátis'));
     const status = (message = '', error = false) => { const node = byId('material-status'); node.textContent = message; node.classList.toggle('error', error); };
     const setCreationEnabled = () => {
       const text = normalize(byId('material-extracted-text')?.value || '');
@@ -264,14 +279,20 @@
       syncCaptureControls();
     }
     function syncCaptureControls() {
-      if (byId('material-photo-counter')) byId('material-photo-counter').textContent = `${files.length} de 5 página${files.length === 1 ? '' : 's'}`;
-      if (byId('scan-material-page')) byId('scan-material-page').disabled = reading || files.length >= 5;
+      const limit = pageLimit();
+      if (byId('material-photo-counter')) byId('material-photo-counter').textContent = `${files.length} de ${limit} página${files.length === 1 ? '' : 's'}`;
+      if (byId('material-plan-badge')) byId('material-plan-badge').textContent = `${planLabel()} · ${limit} páginas`;
+      if (byId('material-capture-hint')) byId('material-capture-hint').textContent = limit > 5
+        ? `Seu plano permite analisar até ${limit} páginas por vez. Fotografe uma página nítida por imagem.`
+        : 'O plano Grátis permite até 5 páginas por análise. Premium e Família liberam até 15 páginas.';
+      if (byId('scan-material-page')) byId('scan-material-page').disabled = reading || files.length >= limit;
       if (byId('choose-material-images')) byId('choose-material-images').disabled = reading;
       document.querySelectorAll('.material-remove-photo').forEach((button) => { button.disabled = reading; });
     }
     function validateFiles(nextFiles) {
+      const limit = pageLimit();
       if (!nextFiles.length) throw new Error('Escolha pelo menos uma foto da apostila.');
-      if (nextFiles.length > 5) throw new Error('Escolha no máximo cinco fotos por quiz.');
+      if (nextFiles.length > limit) throw new Error(limit > 5 ? `Seu plano permite até ${limit} páginas por análise.` : 'O plano Grátis permite até 5 páginas por análise. Assine o Premium para enviar até 15.');
       if (nextFiles.some((file) => file.size > 8 * 1024 * 1024)) throw new Error('Cada imagem pode ter no máximo 8 MB.');
       if (nextFiles.some((file) => !/^image\/(jpeg|png|webp)$/i.test(file.type))) throw new Error('Use imagens JPG, PNG ou WebP.');
     }
@@ -293,7 +314,8 @@
         files = candidateFiles;
         clearGeneratedMaterial();
         updatePreview();
-        status(scanned ? `Página escaneada e adicionada. Você já tem ${files.length} de 5 páginas e pode fotografar outra.` : `${files.length} foto(s) selecionada(s). Agora toque em “Ler com precisão”.`);
+        const limit = pageLimit();
+        status(scanned ? `Página escaneada. Você adicionou ${files.length} de ${limit}. ${files.length < limit ? 'Pode fotografar a próxima.' : 'Limite desta análise atingido.'}` : `${files.length} foto(s) selecionada(s). Agora toque em “Analisar páginas”.`);
       } catch (error) { status(error.message, true); }
     }
     async function readImages() {
@@ -378,10 +400,13 @@
           values.forEach((value) => { const item = document.createElement('li'); item.textContent = value; list.append(item); });
           section.append(heading, list); content.append(section);
         };
-        appendSection('Visão geral', summary.overview);
-        appendSection('Pontos principais', summary.keyPoints);
+        appendSection('Em poucas palavras', summary.overview, 'material-summary-overview');
+        appendSection('Ideias essenciais', summary.keyPoints);
+        appendSection('Conceitos explicados', summary.definitions, 'material-summary-definitions');
+        appendSection('Relações, causas e processos', summary.relations, 'material-summary-relations');
         appendSection('Datas, números e fórmulas', summary.numericalFacts, 'material-summary-numbers');
         appendSection('Termos importantes', summary.keywords, 'material-summary-keywords');
+        appendSection('Confira se você entendeu', summary.studyQuestions, 'material-summary-checklist');
         const map = byId('material-mind-map-content'); map.innerHTML = '';
         const center = document.createElement('div'); center.className = 'material-mind-map-center';
         const centerKicker = document.createElement('span'); centerKicker.textContent = 'TEMA CENTRAL';
@@ -403,8 +428,8 @@
           branches.append(article);
         });
         map.append(center, branches);
-        byId('material-summary-meta').textContent = `${summary.selectedSentenceCount} de ${summary.sourceSentenceCount} frases essenciais, preservadas do texto conferido.`;
-        byId('material-summary-panel').hidden = false; status('Resumo e mapa mental criados somente com informações presentes no texto revisado.');
+        byId('material-summary-meta').textContent = `${summary.selectedSentenceCount} ideias essenciais · leitura de ${summary.readingTimeMinutes} min · ${summary.keywords.length} termos-chave`;
+        byId('material-summary-panel').hidden = false; status('Revisão inteligente pronta: ideias centrais, conceitos, relações e perguntas de checagem organizados.');
         byId('material-summary-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) { status(error.message, true); }
     }
@@ -418,7 +443,7 @@
       try { await navigator.clipboard.writeText(summary.mindMap.plainText); byId('copy-material-mind-map').textContent = 'Mapa copiado ✓'; setTimeout(() => { byId('copy-material-mind-map').textContent = 'Copiar mapa'; }, 1800); }
       catch { status('Não foi possível copiar o mapa automaticamente.', true); }
     }
-    byId('scan-material-page')?.addEventListener('click', () => { if (files.length >= 5) { status('Você já adicionou o limite de cinco páginas. Remova uma foto para escanear outra.', true); return; } byId('material-camera')?.click(); });
+    byId('scan-material-page')?.addEventListener('click', () => { const limit = pageLimit(); if (files.length >= limit) { const message = limit > 5 ? `Você já adicionou o limite de ${limit} páginas.` : 'Você atingiu as 5 páginas do plano Grátis. Premium libera até 15 páginas por análise.'; status(message, true); if (limit === 5) options.onUpgrade?.(message); return; } byId('material-camera')?.click(); });
     byId('choose-material-images')?.addEventListener('click', () => byId('material-images')?.click());
     byId('material-images')?.addEventListener('change', (event) => { receiveMaterialFiles([...event.target.files]); event.target.value = ''; });
     byId('material-camera')?.addEventListener('change', (event) => { receiveMaterialFiles([...event.target.files], { append: true, scanned: true }); event.target.value = ''; });
@@ -429,7 +454,8 @@
     byId('copy-material-summary')?.addEventListener('click', copySummary);
     byId('copy-material-mind-map')?.addEventListener('click', copyMindMap);
     byId('material-quiz-form')?.addEventListener('submit', submit);
-    return { reset() { files = []; summary = null; confirmedSnapshot = ''; accessGrantedForSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; updatePreview(); status(''); }, buildQuestions, buildSummary, buildMindMap };
+    updatePreview();
+    return { reset() { files = []; summary = null; confirmedSnapshot = ''; accessGrantedForSnapshot = ''; byId('material-quiz-form')?.reset(); byId('material-text-label').hidden = true; byId('material-confirm-wrap').hidden = true; byId('material-summary-panel').hidden = true; byId('material-reading-progress').hidden = true; byId('generate-material-quiz').disabled = true; byId('generate-material-summary').disabled = true; updatePreview(); status(''); }, syncPlan: syncCaptureControls, buildQuestions, buildSummary, buildMindMap };
   }
 
   window.EstudaMaterialQuiz = { create, buildQuestions, buildSummary, buildMindMap, scoreOcrResult };
