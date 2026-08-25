@@ -11,6 +11,7 @@ assert.ok(html.includes('<b>Aprenda Jogando</b>'), 'o inicio lateral deve se cha
 assert.ok(html.includes('<b>Configure seu estudo</b>'), 'a configuracao de estudo deve ter um nome claro');
 assert.ok(html.includes('data-side-nav="avatar"') && html.includes('data-nav="avatar"'), 'o avatar deve estar disponivel nas navegacoes desktop e movel');
 assert.ok(html.includes('id="side-admin-button"') && html.includes('data-side-nav="admin" hidden'), 'a lateral deve reservar uma aba administrativa oculta ate a conta ser reconhecida como admin');
+assert.ok(html.includes('id="mobile-admin-button"') && html.includes('data-nav="admin" hidden'), 'o menu Mais deve oferecer administração no celular somente para administradores');
 assert.ok(!html.includes('class="avatar-home-card"'), 'o cartao grande do avatar deve sair da tela inicial');
 
 assert.ok(!html.includes('<label>Sistema de ensino'), 'o usuario nao deve escolher manualmente um sistema de ensino');
@@ -22,6 +23,7 @@ assert.ok(html.includes('Escolha o g') && html.includes('data-avatar-presentatio
 assert.ok(app.includes("category.id !== 'presentation'") && app.includes('renderAvatarGenderChoice()'), 'o genero dedicado deve substituir a antiga aba escondida de estilo');
 assert.ok(app.includes("destination === 'avatar'") && app.includes("button.dataset.nav === 'avatar'"), 'os novos atalhos devem abrir o estudio');
 assert.ok(app.includes('function updateAdminNavigationVisibility()') && app.includes("destination === 'admin'") && app.includes("if (id === 'admin-screen') return 'admin';"), 'a navegacao deve exibir e destacar a aba administrativa quando o usuario for admin');
+assert.ok(app.includes("button.dataset.nav === 'admin'") && app.includes("'plans', 'admin'"), 'a navegação móvel deve abrir e destacar a administração');
 assert.ok(css.includes('.avatar-gender-card') && css.includes('.side-avatar-feature') && css.includes('.side-admin-feature'), 'as novas opcoes devem possuir apresentacao visual propria');
 assert.ok(css.includes('repeat(7, minmax(0, 1fr))'), 'a navegacao movel deve comportar os sete destinos');
 

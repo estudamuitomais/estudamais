@@ -67,6 +67,9 @@ function readSupabaseSecretKey() {
 
 function readOutputText(payload: any) {
   if (typeof payload?.output_text === 'string') return payload.output_text;
+  for (const step of payload?.steps || []) {
+    for (const content of step?.content || []) if (typeof content?.text === 'string') return content.text;
+  }
   for (const output of payload?.output || []) {
     for (const content of output?.content || []) if (typeof content?.text === 'string') return content.text;
   }
@@ -90,15 +93,16 @@ function validCorrection(value: any) {
   return true;
 }
 
-function openAiErrorCode(status: number, type = '', code = '') {
-  if (code === 'insufficient_quota' || type === 'insufficient_quota') return 'AI_BILLING_REQUIRED';
+function aiErrorCode(status: number, providerStatus = '', message = '') {
+  if (providerStatus === 'RESOURCE_EXHAUSTED' && /billing|payment|quota.*paid/i.test(message)) return 'AI_BILLING_REQUIRED';
   if (status === 429) return 'AI_RATE_LIMITED';
+  if (status === 404) return 'AI_UNAVAILABLE';
   if (status === 401 || status === 403) return 'AI_NOT_CONFIGURED';
   if (status >= 500) return 'AI_UNAVAILABLE';
   return 'AI_INVALID_REQUEST';
 }
 
-function openAiHttpStatus(code: string) {
+function aiHttpStatus(code: string) {
   if (code === 'AI_RATE_LIMITED') return 429;
   if (code === 'AI_BILLING_REQUIRED') return 402;
   if (code === 'AI_NOT_CONFIGURED') return 503;
@@ -119,9 +123,9 @@ Deno.serve(async (request) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const anonKey = readSupabasePublishableKey();
   const serviceKey = readSupabaseSecretKey();
-  const openAiKey = Deno.env.get('OPENAI_API_KEY') || '';
+  const geminiKey = Deno.env.get('GEMINI_API_KEY') || '';
   if (!supabaseUrl || !anonKey || !serviceKey) return json(request, { ok: false, error: 'SERVER_CONFIGURATION_ERROR' }, 500);
-  if (!openAiKey) return json(request, { ok: false, error: 'AI_NOT_CONFIGURED' }, 503);
+  if (!geminiKey) return json(request, { ok: false, error: 'AI_NOT_CONFIGURED' }, 503);
 
   const authHeader = request.headers.get('Authorization') || '';
   const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
@@ -147,61 +151,44 @@ Deno.serve(async (request) => {
     || Boolean(grantActive && (grantResult.data?.access_level === 'full' || grantResult.data?.essay_without_credits));
   if (!essayIncluded && (Number(walletResult.data?.credits) || 0) < 5) return json(request, { ok: false, error: 'INSUFFICIENT_CREDITS' }, 402);
 
-  const moderationResponse = await fetch('https://api.openai.com/v1/moderations', {
-    method: 'POST', headers: { Authorization: `Bearer ${openAiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'omni-moderation-latest', input: essay })
-  });
-  if (!moderationResponse.ok) {
-    const moderationError = await moderationResponse.json().catch(() => ({}));
-    const detail = moderationError?.error || {};
-    console.error('OpenAI moderation failed', { status: moderationResponse.status, type: detail.type, code: detail.code });
-    if (moderationResponse.status !== 429) {
-      const errorCode = openAiErrorCode(moderationResponse.status, detail.type, detail.code);
-      return json(request, { ok: false, error: errorCode }, openAiHttpStatus(errorCode));
-    }
-  } else {
-    const moderation = await moderationResponse.json();
-    if (moderation?.results?.[0]?.flagged) return json(request, { ok: false, error: 'UNSAFE_CONTENT' }, 400);
-  }
-
   const instructions = `Você é um corretor pedagógico brasileiro, acolhedor e rigoroso. Avalie uma redação de estudante segundo as cinco competências do Enem, com pontuações apenas em 0, 40, 80, 120, 160 ou 200. Considere o tema e o tipo de proposta. Dê orientações específicas, adequadas à idade e centradas no texto, sem humilhar, diagnosticar ou pedir dados pessoais. Na competência 5, avalie proposta de intervenção com respeito aos direitos humanos; em tema livre, adapte a análise e explique a adaptação. Não diga que a nota é oficial. O trecho aprimorado deve preservar a ideia do estudante, ser curto e servir apenas como exemplo de reescrita. Se o texto contiver conteúdo perigoso, sexual envolvendo menores, incentivo à autolesão ou instruções de violência, não reproduza detalhes: responda de forma protetiva e oriente o estudante a procurar um adulto responsável.`;
-  const primaryModel = Deno.env.get('OPENAI_ESSAY_MODEL') || 'gpt-5-mini';
-  const fallbackModel = Deno.env.get('OPENAI_ESSAY_FALLBACK_MODEL') || 'gpt-4.1-mini';
+  const primaryModel = Deno.env.get('GEMINI_ESSAY_MODEL') || 'gemini-3.5-flash';
+  const fallbackModel = Deno.env.get('GEMINI_ESSAY_FALLBACK_MODEL') || 'gemini-3.1-flash-lite';
   const buildAiRequest = (model: string) => ({
     method: 'POST',
-    headers: { Authorization: `Bearer ${openAiKey}`, 'Content-Type': 'application/json' },
+    headers: { 'x-goog-api-key': geminiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model,
       store: false,
-      max_output_tokens: 2500,
-      instructions,
+      system_instruction: instructions,
       input: `TIPO: ${mode === 'enem' ? 'Modelo Enem' : 'Tema livre'}\nTEMA: ${theme}\n\nREDAÇÃO:\n${essay}`,
-      text: { format: { type: 'json_schema', name: 'essay_correction', strict: true, schema: correctionSchema } }
+      generation_config: { max_output_tokens: 2500, temperature: 0.25, thinking_level: 'low' },
+      response_format: { type: 'text', mime_type: 'application/json', schema: correctionSchema }
     })
   });
   let aiRequest = buildAiRequest(primaryModel);
-  let aiResponse = await fetch('https://api.openai.com/v1/responses', aiRequest);
+  let aiResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', aiRequest);
   if (aiResponse.status === 429) {
-    const firstError = await aiResponse.clone().json().catch(() => ({}));
-    const detail = firstError?.error || {};
-    const quotaExhausted = detail.code === 'insufficient_quota' || detail.type === 'insufficient_quota';
-    if (!quotaExhausted) {
-      const retryAfter = Math.max(2, Math.min(12, Number(aiResponse.headers.get('retry-after')) || 4));
-      await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
-      aiRequest = buildAiRequest(fallbackModel);
-      aiResponse = await fetch('https://api.openai.com/v1/responses', aiRequest);
-    }
+    const retryAfter = Math.max(2, Math.min(12, Number(aiResponse.headers.get('retry-after')) || 4));
+    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    aiRequest = buildAiRequest(fallbackModel);
+    aiResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', aiRequest);
   }
   if (!aiResponse.ok) {
     const aiError = await aiResponse.json().catch(() => ({}));
     const detail = aiError?.error || {};
-    console.error('OpenAI correction failed', { status: aiResponse.status, type: detail.type, code: detail.code, param: detail.param });
-    const errorCode = openAiErrorCode(aiResponse.status, detail.type, detail.code);
-    return json(request, { ok: false, error: errorCode }, openAiHttpStatus(errorCode));
+    console.error('Gemini correction failed', { status: aiResponse.status, providerStatus: detail.status, code: detail.code });
+    const errorCode = aiErrorCode(aiResponse.status, String(detail.status || ''), String(detail.message || ''));
+    return json(request, { ok: false, error: errorCode }, aiHttpStatus(errorCode));
   }
 
   let correction: any;
-  try { correction = JSON.parse(readOutputText(await aiResponse.json())); }
+  try {
+    const aiPayload = await aiResponse.json();
+    const blocked = aiPayload?.prompt_feedback?.block_reason || aiPayload?.promptFeedback?.blockReason;
+    if (blocked) return json(request, { ok: false, error: 'UNSAFE_CONTENT' }, 400);
+    correction = JSON.parse(readOutputText(aiPayload));
+  }
   catch { return json(request, { ok: false, error: 'INVALID_AI_RESULT' }, 502); }
   if (!validCorrection(correction)) return json(request, { ok: false, error: 'INVALID_AI_RESULT' }, 502);
   const totalScore = correction.competencies.reduce((sum: number, item: any) => sum + (SCORE_VALUES.includes(Number(item.score)) ? Number(item.score) : 0), 0);

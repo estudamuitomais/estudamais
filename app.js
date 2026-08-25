@@ -10,7 +10,9 @@ let activeUserIsAdmin = false;
 const activeAdminEmail = () => String(activeSupabaseUser?.email || '').trim().toLowerCase() || 'conta administrativa';
 function updateAdminNavigationVisibility() {
   const sideAdminButton = el('side-admin-button');
+  const mobileAdminButton = el('mobile-admin-button');
   if (sideAdminButton) sideAdminButton.hidden = !activeUserIsAdmin;
+  if (mobileAdminButton) mobileAdminButton.hidden = !activeUserIsAdmin;
 }
 let activeUserContact = null;
 let activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, materialMonthlyLimit: 1, materialUsedThisMonth: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, premiumAvatar: false, detailedReports: false, essayWithoutCredits: false, expiresAt: null };
@@ -18,6 +20,7 @@ let materialQuizSession = false;
 let remoteSaveTimer = null;
 let weeklyGoalReturnFocus = null;
 let globalLeaderboard = [];
+let leaderboardParticipantCount = 0;
 let leaderboardRefreshTimer = null;
 let leaderboardRequestInFlight = false;
 let leaderboardBackendReady = true;
@@ -39,6 +42,8 @@ const adminPanel = window.EstudaAdmin?.create({ supabase: supabaseClient, onModa
 const materialQuiz = window.EstudaMaterialQuiz?.create({
   onStart: startMaterialQuiz,
   beforeCreate: consumeMaterialAccess,
+  getPageLimit: () => hasPremiumStudyAccess() ? 15 : 5,
+  getPlanLabel: () => planAccessLabel(),
   onUpgrade: (message) => showPlanUpgradeMessage(message)
 });
 const essayHub = window.EstudaEssay?.create({
@@ -54,7 +59,7 @@ const essayHub = window.EstudaEssay?.create({
 });
 
 const tutorialSteps = [
-  { kicker: 'APRENDA JOGANDO', title: 'Escolha seu ano e uma matéria', description: 'Sua aventura começa com conteúdos adequados à etapa escolar.', kind: 'subjects', tips: ['Selecione o ano escolar na tela Aprenda Jogando.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar as escolhas antes de iniciar uma nova trilha.'] },
+  { kicker: 'APRENDA JOGANDO', title: 'Escolha uma matéria', description: 'Sua aventura usa automaticamente o ano escolar salvo no Perfil.', kind: 'subjects', tips: ['Confira seu ano escolar em Perfil quando precisar alterá-lo.', 'Toque no cartão da matéria que deseja estudar.', 'Você poderá trocar a matéria antes de iniciar uma nova trilha.'] },
   { kicker: 'CONFIGURE SEU ESTUDO', title: 'Monte um desafio do seu jeito', description: 'Ajuste a rodada sem precisar conhecer termos complicados.', kind: 'config', tips: ['O assunto é opcional: deixe em branco para uma revisão geral.', 'Escolha a dificuldade e entre os modos Guiado ou Simulado.', 'A referência BNCC ou Inep/Enem é definida automaticamente pelo ano.'] },
   { kicker: 'TRILHA DA AVENTURA', title: 'Complete fases e abra caminhos', description: 'Cada etapa é uma missão curta, clara e com objetivo visível.', kind: 'path', tips: ['Cada fase reúne 10 questões variadas sobre o conteúdo escolhido.', 'Acerte pelo menos 7 de 10 questões para liberar a próxima fase.', 'As fases começam em preto e branco e ganham cor quando concluídas.'] },
   { kicker: 'APRENDA COM O ERRO', title: 'Entenda cada resposta', description: 'O resultado vem acompanhado de explicação para transformar tentativa em aprendizado.', kind: 'question', tips: ['Cada questão tem cinco alternativas e somente uma correta.', 'Use Passo a passo e Aprofundar depois de responder.', 'Salve ou marque questões para voltar ao conteúdo mais tarde.'] },
@@ -234,7 +239,7 @@ function populateSchoolYearControls() {
 }
 function updateSchoolYearHint() {
   const profile = schoolYearProfile();
-  if (el('school-year-hint')) el('school-year-hint').textContent = profile.stage === 'Médio' ? `${profile.label}: questões de Ensino Médio organizadas em progressão e práticas do Enem.` : `${profile.label}: questões curriculares adequadas à faixa e alinhadas à progressão da BNCC.`;
+  if (el('school-year-hint')) el('school-year-hint').textContent = `${profile.label}: definido no Perfil e aplicado automaticamente a todas as atividades.`;
   syncAutomaticCurriculum(profile.code);
 }
 function setSchoolYear(code, persist = true) {
@@ -563,6 +568,7 @@ async function logoutUser() {
   activeUserContact = null;
   activePaymentEntitlements = { planId: 'free', tier: 'free', planLabel: 'Plano grátis', planStatus: 'free', credits: 0, dailyQuestionLimit: 10, questionsUsedToday: 0, materialMonthlyLimit: 1, materialUsedThisMonth: 0, accessLevel: 'standard', accessSource: 'free', unlimitedQuizzes: false, premiumStudy: false, premiumAvatar: false, detailedReports: false, essayWithoutCredits: false, expiresAt: null };
   globalLeaderboard = [];
+  leaderboardParticipantCount = 0;
   leaderboardBackendReady = true;
   leaderboardRequestInFlight = false;
   renderLeaderboardHighlights();
@@ -1236,9 +1242,14 @@ function renderLeaderboardCollection(listId, rows, emptyMessage) {
   rows.forEach((row) => {
     const item = document.createElement('li');
     const year = leaderboardYearLabel(row.schoolYear);
-    const badge = row.isCurrentUser ? 'Você' : year || 'Estudante';
+    const identity = row.isCurrentUser ? 'Você' : year || 'Estudante';
+    const answered = Math.max(0, Number(row.answeredTotal) || 0);
+    const correct = Math.max(0, Number(row.correctTotal) || 0);
+    const accuracy = answered ? Math.round((correct / answered) * 100) : 0;
+    const streak = Math.max(0, Number(row.streakDays) || 0);
+    const badge = `${identity} · ${answered} questões · ${answered ? `${accuracy}%` : 'sem respostas'} · ${streak} dia${streak === 1 ? '' : 's'}`;
     item.className = `leaderboard-row${row.position === 1 ? ' leader' : ''}${row.isCurrentUser ? ' current-user' : ''}`;
-    item.innerHTML = `<span class="leaderboard-position">#${row.position}</span><div class="leaderboard-person"><strong>${escapeHTML(row.displayName)}</strong><small>${escapeHTML(badge)}</small></div><div class="leaderboard-score"><span class="leaderboard-avatar" aria-hidden="true">${escapeHTML(row.avatar || '🧑‍🚀')}</span><b>${Number(row.points) || 0}</b></div>`;
+    item.innerHTML = `<span class="leaderboard-position">#${row.position}</span><div class="leaderboard-person"><strong>${escapeHTML(row.displayName)}</strong><small>${escapeHTML(badge)}</small></div><div class="leaderboard-score"><span class="leaderboard-avatar" aria-hidden="true">${escapeHTML(row.avatar || '🧑‍🚀')}</span><b>${Number(row.points) || 0}<small> XP</small></b></div>`;
     list.append(item);
   });
 }
@@ -1257,6 +1268,10 @@ function renderLeaderboardHighlights(message = '') {
   };
   setHighlight('leaderboard-champion-name', 'leaderboard-champion-points');
   setHighlight('mobile-leaderboard-champion-name', 'mobile-leaderboard-champion-points');
+  const current = globalLeaderboard.find((row) => row.isCurrentUser);
+  const bestStreak = globalLeaderboard.reduce((best, row) => Math.max(best, Number(row.streakDays) || 0), 0);
+  const statsMarkup = `<span><b>${leaderboardParticipantCount || globalLeaderboard.length}</b> participantes</span><span><b>${current ? `#${current.position}` : '—'}</b> sua posição</span><span><b>${bestStreak}</b> melhor sequência</span>`;
+  ['leaderboard-stats', 'mobile-leaderboard-stats'].forEach((id) => { if (el(id)) el(id).innerHTML = statsMarkup; });
   renderLeaderboardCollection('leaderboard-list', globalLeaderboard, emptyMessage);
   renderLeaderboardCollection('mobile-leaderboard-list', globalLeaderboard, emptyMessage);
 }
@@ -1271,13 +1286,18 @@ function scheduleLeaderboardRefresh(delay = 45000) {
 }
 async function loadGlobalLeaderboard(options = {}) {
   const { silent = false, delay = 45000 } = options;
-  if (!activeSupabaseUser || !supabaseClient) { globalLeaderboard = []; renderLeaderboardHighlights(); return []; }
+  if (!activeSupabaseUser || !supabaseClient) { globalLeaderboard = []; leaderboardParticipantCount = 0; renderLeaderboardHighlights(); return []; }
   if (!leaderboardBackendReady) { renderLeaderboardHighlights('Ranking geral sendo preparado para todos os estudantes.'); return globalLeaderboard; }
   if (leaderboardRequestInFlight) return globalLeaderboard;
   leaderboardRequestInFlight = true;
   try {
-    const { data, error } = await supabaseClient.from('public_leaderboard').select('user_id, display_name, avatar, points, school_year').order('points', { ascending: false }).order('display_name', { ascending: true }).limit(6);
-    if (error) throw error;
+    let result = await supabaseClient.from('public_leaderboard').select('user_id, display_name, avatar, points, school_year, answered_total, correct_total, streak_days', { count: 'exact' }).order('points', { ascending: false }).order('correct_total', { ascending: false }).order('display_name', { ascending: true }).limit(10);
+    if (result.error && /answered_total|correct_total|streak_days/i.test(String(result.error.message || ''))) {
+      result = await supabaseClient.from('public_leaderboard').select('user_id, display_name, avatar, points, school_year', { count: 'exact' }).order('points', { ascending: false }).order('display_name', { ascending: true }).limit(10);
+    }
+    if (result.error) throw result.error;
+    const { data, count } = result;
+    leaderboardParticipantCount = Math.max(0, Number(count) || 0);
     globalLeaderboard = (data || []).map((item, index) => ({
       position: index + 1,
       userId: item.user_id,
@@ -1285,9 +1305,13 @@ async function loadGlobalLeaderboard(options = {}) {
       avatar: item.avatar || '🧑‍🚀',
       points: Math.max(0, Number(item.points) || 0),
       schoolYear: item.school_year || '',
+      answeredTotal: Math.max(0, Number(item.answered_total) || 0),
+      correctTotal: Math.max(0, Number(item.correct_total) || 0),
+      streakDays: Math.max(0, Number(item.streak_days) || 0),
       isCurrentUser: item.user_id === activeSupabaseUser?.id
     }));
     renderLeaderboardHighlights();
+    if (activeScreenId() === 'dashboard-screen') renderDashboard();
   } catch (error) {
     const rawMessage = String(error?.message || '');
     console.warn('Não foi possível carregar o ranking global:', rawMessage || error);
@@ -1661,6 +1685,12 @@ function renderDashboard() {
   topics.forEach(([topic, mistakes]) => { const row = document.createElement('div'); row.className = 'review-item'; const label = document.createElement('span'); label.textContent = topic; const value = document.createElement('span'); value.textContent = `${mistakes} erro${mistakes > 1 ? 's' : ''}`; row.append(label, value); review.append(row); });
   renderPlan(); renderNotebook(); renderSavedQuestions(); renderTeacherMaterials();
   const leader = globalLeaderboard[0];
+  const currentRanking = globalLeaderboard.find((row) => row.isCurrentUser);
+  if (el('profile-ranking-position')) el('profile-ranking-position').textContent = currentRanking ? `#${currentRanking.position}` : '—';
+  if (el('profile-ranking-points')) el('profile-ranking-points').textContent = state.totalPoints || 0;
+  if (el('profile-ranking-answered')) el('profile-ranking-answered').textContent = totals.total;
+  if (el('profile-ranking-accuracy')) el('profile-ranking-accuracy').textContent = accuracy;
+  if (el('profile-ranking-streak')) el('profile-ranking-streak').textContent = state.streakDays || 0;
   const personalBest = state.rounds ? `Seu melhor resultado é ${state.bestScore} pontos em ${state.rounds} desafio${state.rounds > 1 ? 's' : ''}.` : 'Complete sua primeira rodada para criar seu recorde.';
   const leaderboardNote = leader ? (leader.isCurrentUser ? ` Você também lidera o ranking geral com ${leader.points} pontos.` : ` Líder atual: ${leader.displayName} com ${leader.points} pontos.`) : ' O ranking geral aparece na lateral da trilha.';
   el('personal-ranking').textContent = `${personalBest}${leaderboardNote}`;
@@ -1792,7 +1822,7 @@ function show(id, options = {}) {
   const nav = el('app-nav');
   if (nav) {
     nav.hidden = ['auth-screen', 'quiz-screen'].includes(id);
-    const moreDestinations = new Set(['avatar', 'essay', 'review', 'plans']);
+    const moreDestinations = new Set(['avatar', 'essay', 'review', 'plans', 'admin']);
     nav.querySelectorAll('button').forEach((button) => {
       const active = button.dataset.nav === activeNavigation || (button.dataset.nav === 'more' && moreDestinations.has(activeNavigation));
       button.classList.toggle('active', active);
@@ -1824,6 +1854,7 @@ async function openMaterialQuiz() {
   const limit = activePaymentEntitlements.materialMonthlyLimit;
   const used = activePaymentEntitlements.materialUsedThisMonth || 0;
   if (el('material-plan-usage')) el('material-plan-usage').textContent = limit == null ? 'Seu acesso inclui estudos de apostila ilimitados.' : `${planAccessLabel()}: ${used} de ${limit} estudo${limit === 1 ? '' : 's'} de apostila usado${used === 1 ? '' : 's'} neste mês.`;
+  materialQuiz?.syncPlan?.();
   show('material-screen');
 }
 async function openEssay() {
@@ -2136,6 +2167,7 @@ el('app-nav').querySelectorAll('button').forEach((button) => button.addEventList
   else if (button.dataset.nav === 'plans') openPlans();
   else if (button.dataset.nav === 'review') openReview();
   else if (button.dataset.nav === 'friends') openFriends();
+  else if (button.dataset.nav === 'admin') openAdmin();
   else { renderDashboard(); show('dashboard-screen'); }
 }));
 document.addEventListener('click', (event) => {
