@@ -328,6 +328,97 @@ body:not([data-screen="auth-screen"]) .app-shell { background: var(--clean-bg) !
   .app-nav > button { font-size: 8px !important; }
   .app-nav > button > span { font-size: 17px !important; }
 }
+
+/* Navegação e administração legíveis no celular. */
+.app-nav > button > .nav-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: inherit !important;
+  font-weight: 900;
+  line-height: 1.05;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+.app-nav .material-nav-button > .nav-label {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
+}
+.mobile-more-menu button > b {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  display: block !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+.mobile-more-menu .mobile-admin-button {
+  border: 1px solid #d8ccf2 !important;
+  background: #f8f5ff !important;
+  color: #5b21b6 !important;
+}
+
+.leaderboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+.leaderboard-stats span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: 8px 5px;
+  border: 1px solid #e7ddf5;
+  border-radius: 11px;
+  background: #faf8ff;
+  color: #796b85;
+  font-size: 8px;
+  line-height: 1.2;
+  text-align: center;
+}
+.leaderboard-stats b { color: #5b21b6; font-size: 14px; }
+.leaderboard-score b small { color: #8b8094; font-size: 8px; }
+
+.ranking-profile-card { display: grid !important; gap: 13px !important; }
+.ranking-profile-card > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ranking-profile-card > header span { display: block; color: #7c3aed; font-size: 9px; font-weight: 1000; letter-spacing: .8px; }
+.ranking-profile-card > header strong { display: block; margin-top: 2px; color: #372643; font-size: 18px; }
+.ranking-profile-card > header > b { display: grid; place-items: center; min-width: 54px; height: 42px; border-radius: 13px; background: #ede9fe; color: #6d28d9; font-size: 18px; }
+.ranking-profile-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ranking-profile-stats article { display: grid; gap: 2px; padding: 12px 8px; border: 1px solid #e9e1f2; border-radius: 13px; background: #fbfaff; text-align: center; }
+.ranking-profile-stats strong { color: #4c1d95; font-size: 18px; }
+.ranking-profile-stats span { color: #81758a; font-size: 9px; }
+.ranking-profile-card > p { margin: 0; color: #716579; font-size: 11px; line-height: 1.45; }
+
+@media (max-width: 1024px) {
+  .mobile-more-menu:not([hidden]) { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
+  .app-nav > button { grid-template-rows: 30px minmax(18px, auto) !important; align-content: center !important; }
+  .app-nav > button > span:first-child { align-self: center; }
+  .app-nav > button > .nav-label { align-self: start; white-space: normal; }
+}
+
+@media (max-width: 600px) {
+  .admin-tabs { scroll-snap-type: x proximity; scrollbar-width: thin; }
+  .admin-tabs button { scroll-snap-align: start; min-height: 44px; }
+  .admin-table-wrap { -webkit-overflow-scrolling: touch; }
+  .ranking-profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 380px) {
+  .app-nav > button > .nav-label { font-size: 7.5px !important; }
+  .leaderboard-stats { grid-template-columns: 1fr; }
+}
 /* Fluxo compacto de configuração e permissões por plano */
 .selected-subject-summary {
   display: flex;

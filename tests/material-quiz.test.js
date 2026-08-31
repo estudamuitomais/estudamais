@@ -20,7 +20,9 @@ assert.strictEqual(new Set(questions.map((question) => question.q)).size, 10, 'n
 questions.forEach((question) => assert.ok(question.note.includes('Trecho conferido'), 'a correção deve mostrar o trecho da apostila'));
 assert.ok(summary.overview.length >= 1 && summary.keyPoints.length >= 1, 'o resumo deve ter visão geral e pontos principais');
 assert.ok(summary.plainText.includes('RESUMO COMPLETO — Biologia'), 'o resumo copiável deve identificar a matéria');
-[...summary.overview, ...summary.keyPoints, ...summary.numericalFacts].forEach((sentence) => assert.ok(text.includes(sentence), 'cada afirmação factual deve existir literalmente no texto conferido'));
+assert.ok(summary.definitions.length >= 1 && summary.relations.length >= 1, 'a análise deve separar conceitos e relações do conteúdo');
+assert.ok(summary.studyQuestions.length >= 3 && summary.readingTimeMinutes >= 1, 'a revisão deve incluir checagem de aprendizagem e tempo de leitura');
+[...summary.overview, ...summary.keyPoints, ...summary.definitions, ...summary.relations, ...summary.numericalFacts].forEach((sentence) => assert.ok(text.includes(sentence), 'cada afirmação factual deve existir literalmente no texto conferido'));
 assert.ok(sandbox.window.EstudaMaterialQuiz.scoreOcrResult({ text, confidence: 92 }) > sandbox.window.EstudaMaterialQuiz.scoreOcrResult({ text: '|||| � ___', confidence: 45 }), 'a pontuação deve favorecer a leitura mais confiável');
 assert.ok(mindMap.branches.length >= 3 && mindMap.branches.length <= 6, 'o mapa deve organizar entre três e seis conceitos');
 assert.strictEqual(new Set(mindMap.branches.map((branch) => branch.label.toLocaleLowerCase('pt-BR'))).size, mindMap.branches.length, 'o mapa não deve repetir conceitos');
@@ -37,13 +39,16 @@ assert.ok(html.includes('id="material-images"') && html.includes('id="material-e
 assert.ok(html.includes('id="scan-material-page"') && html.includes('id="material-camera"'), 'celular e tablet devem oferecer captura direta pela câmera');
 assert.ok(html.includes('capture="environment"') && html.includes('id="choose-material-images"'), 'a câmera traseira e a galeria devem ser opções separadas');
 assert.ok(source.includes("{ append: true, scanned: true }") && source.includes('material-remove-photo'), 'novas páginas escaneadas devem ser acumuladas e poder ser removidas');
+assert.ok(source.includes('Math.min(15') && source.includes('Premium libera até 15 páginas'), 'limites por plano devem permitir 5 páginas grátis e 15 no Premium');
 assert.ok(html.includes('id="material-text-confirmed"') && html.includes('id="generate-material-summary"') && html.includes('id="material-summary-panel"'), 'confirmação e resumo completo devem existir');
+assert.ok(html.includes('id="material-plan-badge"') && html.includes('material-analysis-steps'), 'a interface modernizada deve explicar plano e etapas da análise');
 assert.ok(html.includes('id="material-mind-map-content"') && html.includes('id="copy-material-mind-map"'), 'mapa mental interativo e opção de copiar devem existir');
 assert.ok(html.includes('data-side-nav="material"') && html.includes('data-nav="material"'), 'modo apostila deve estar disponível no menu lateral e móvel');
 assert.ok(html.includes('id="material-subject" type="hidden" value="Minha apostila"') && !html.includes('<select id="material-subject"'), 'a tela de fotos não deve pedir a escolha de matéria');
 assert.ok(!html.includes('id="material-home-title"'), 'o cartão antigo da tela inicial deve ser removido');
 assert.ok(html.includes('id="register-whatsapp"') && html.includes('id="register-whatsapp-opt-in"'), 'cadastro deve incluir WhatsApp e autorização');
 assert.ok(app.includes('whatsapp_phone: whatsapp') && app.includes('startMaterialQuiz'), 'cadastro e início do quiz precisam estar integrados');
+assert.ok(app.includes('getPageLimit: () => hasPremiumStudyAccess() ? 15 : 5'), 'o limite de páginas deve usar o acesso premium real do usuário');
 assert.ok(admin.includes("from('user_contacts')") && admin.includes('admin_log_whatsapp_contact'), 'painel deve consultar contato privado e auditar abertura');
 assert.ok(migration.includes('enable row level security') && migration.includes('current_user_is_admin()'), 'contatos precisam de RLS e proteção administrativa');
 assert.ok(app.includes('const activeAdminEmail') && !app.includes('ADMIN_AUTH_EMAIL'), 'interface administrativa deve usar o e-mail autenticado, sem endereço fixo');

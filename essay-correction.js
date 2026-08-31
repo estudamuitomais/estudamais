@@ -90,7 +90,7 @@
       try {
         const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
         if (!draft) return;
-        byId('essay-mode').value = draft.mode === 'free' ? 'free' : 'enem';
+        byId('essay-mode').value = 'enem';
         byId('essay-theme').value = String(draft.theme || '').slice(0, 300);
         byId('essay-text').value = String(draft.text || '').slice(0, 12000);
       } catch { /* rascunho inválido é ignorado */ }

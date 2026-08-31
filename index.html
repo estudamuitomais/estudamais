@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="stellar-layout.css" />
     <link rel="stylesheet" href="duolingo-learn-layout.css" />
     <link rel="stylesheet" href="purple-modern-theme.css" />
-    <link rel="stylesheet" href="clean-app-layout.css" />
+    <link rel="stylesheet" href="clean-app-layout.css?v=20260825a" />
     <link rel="stylesheet" href="essay-correction.css" />
   </head>
   <body>
@@ -25,7 +25,7 @@
           <button type="button" data-side-nav="trail"><span>★</span><b>Configure seu estudo</b></button>
           <button class="side-avatar-feature" type="button" data-side-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span><b>Meu avatar<small>PERSONALIZAR</small></b></button>
           <button class="side-material-feature" type="button" data-side-nav="material"><span>▣</span><b>Apostila<small>FOTO PARA QUIZ</small></b></button>
-          <button type="button" data-side-nav="essay"><span>✎</span><b>Redação<small>CORREÇÃO ENEM</small></b></button>
+          <button type="button" data-side-nav="essay"><span>✎</span><b>Redação<small>CORREÇÃO COM IA</small></b></button>
           <button type="button" data-side-nav="plans"><span>✦</span><b>Planos<small>ASSINAR</small></b></button>
           <button type="button" data-side-nav="review"><span>↻</span><b>Revisar</b></button>
           <button type="button" data-side-nav="friends"><span>♧</span><b>Amigos</b><i id="side-friends-badge" hidden>0</i></button>
@@ -138,10 +138,7 @@
         <div id="subject-screen" class="screen subject-screen">
           <div class="subject-welcome"><span class="eyebrow">ESTUDA+ AVENTURA</span><h2>Qual matéria vamos explorar?</h2><p class="subtitle">Escolha uma matéria para montar sua trilha de estudos.</p><button id="open-app-tutorial-home" class="tutorial-help-button is-light" type="button"><span aria-hidden="true">▷</span> Como usar o app</button></div>
           <section id="app-announcement" class="app-announcement" hidden aria-labelledby="app-announcement-title"><span aria-hidden="true">✦</span><div><strong id="app-announcement-title"></strong><p id="app-announcement-body"></p></div><button id="dismiss-announcement" type="button" aria-label="Fechar aviso">×</button></section>
-          <section class="subject-year-card" aria-label="Escolha do ano escolar">
-            <div><span>PRIMEIRO PASSO</span><strong>Em qual ano você está?</strong><small>As matérias e questões serão organizadas para essa etapa.</small></div>
-            <label>Ano escolar<select id="subject-school-year" aria-label="Ano escolar na escolha de matéria"></select></label>
-          </section>
+          <select id="subject-school-year" hidden aria-hidden="true" tabindex="-1"></select>
           <div class="subject-grid" id="subject-grid">
             <button class="subject-card math" data-subject="Matemática" type="button"><span class="subject-art" aria-hidden="true">➗</span><strong>Matemática</strong><small>Números e lógica</small><i>→</i></button>
             <button class="subject-card portuguese" data-subject="Português" type="button"><span class="subject-art" aria-hidden="true">📖</span><strong>Português</strong><small>Textos e linguagem</small><i>→</i></button>
@@ -162,8 +159,8 @@
           </section>
           <div id="lesson-creator">
           <section class="study-brief" aria-label="Seu plano de estudos">
-            <div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2 class="creator-title">Configure sua trilha</h2><p class="subtitle">A matéria já foi escolhida em Aprenda Jogando. Agora ajuste o ano, o assunto opcional e o formato do desafio.</p></div>
-            <button id="start-enem-sim" class="enem-shortcut premium-control" type="button" data-requires-plan="premium"><span>⌁</span><b>Simulado Enem</b><small>Premium · 10 questões</small></button>
+            <div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2 class="creator-title">Configure sua trilha</h2><p class="subtitle">A matéria e o ano escolar do seu perfil já estão definidos. Escolha apenas o assunto e o formato do desafio.</p></div>
+            <button id="start-enem-sim" class="enem-shortcut premium-control" type="button" data-requires-plan="premium" hidden aria-hidden="true" tabindex="-1"><span>⌁</span><b>Simulado</b><small>Premium · 10 questões</small></button>
           </section>
           <section class="daily-mission" aria-label="Missão diária">
             <div class="mission-icon">🎯</div><div><strong>Missão de hoje</strong><span id="mission-copy">Responda 5 questões</span><div class="mini-progress"><i id="mission-progress"></i></div></div><b id="mission-count">0/5</b>
@@ -183,9 +180,7 @@
                   <option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option>
                 </select>
               </section>
-              <label>Ano escolar
-                <select id="school-year" required></select>
-              </label>
+              <select id="school-year" hidden aria-hidden="true" tabindex="-1"></select>
               <label class="topic-field">Assunto <span class="optional-tag">Opcional</span>
                 <input id="topic" placeholder="Deixe em branco para uma revisão geral" aria-describedby="topic-auto-hint" />
                 <small id="topic-auto-hint" class="input-help">Se ficar vazio, o app seleciona uma revisão adequada à matéria e ao ano.</small>
@@ -237,6 +232,7 @@
             </section>
             <section class="rail-card rail-leaderboard" aria-labelledby="global-leaderboard-title">
               <div class="rail-card-title"><strong id="global-leaderboard-title">Ranking geral</strong><span>VISÍVEL A TODOS</span></div>
+              <div id="leaderboard-stats" class="leaderboard-stats" aria-live="polite"><span><b>—</b> participantes</span><span><b>—</b> sua posição</span><span><b>—</b> melhor sequência</span></div>
               <div class="leaderboard-champion">
                 <span class="leaderboard-crown" aria-hidden="true">♛</span>
                 <div><b id="leaderboard-champion-name">Carregando ranking...</b><small id="leaderboard-champion-points">Quem estiver em 1º lugar aparece aqui.</small></div>
@@ -249,6 +245,7 @@
           </aside>
           <section class="setup-mobile-leaderboard rail-card" aria-labelledby="mobile-global-leaderboard-title">
             <div class="rail-card-title"><strong id="mobile-global-leaderboard-title">Ranking geral</strong><span>VISÍVEL A TODOS</span></div>
+            <div id="mobile-leaderboard-stats" class="leaderboard-stats" aria-live="polite"><span><b>—</b> participantes</span><span><b>—</b> sua posição</span><span><b>—</b> melhor sequência</span></div>
             <div class="leaderboard-champion">
               <span class="leaderboard-crown" aria-hidden="true">♛</span>
               <div><b id="mobile-leaderboard-champion-name">Carregando ranking...</b><small id="mobile-leaderboard-champion-points">Quem estiver em 1º lugar aparece aqui.</small></div>
@@ -303,6 +300,8 @@
               <article><span>E-MAIL</span><strong id="profile-data-email">—</strong></article>
               <article><span>FORMA DE ENTRADA</span><strong id="profile-data-access">E-mail</strong></article>
               <article><span>ANO ESCOLAR</span><strong id="profile-data-year">—</strong></article>
+              <article><span>TRILHA PADRÃO</span><strong id="profile-study-summary">Matemática · Fácil · Guiado</strong><small id="profile-study-topic-summary">Revisão geral</small></article>
+              <article><span>VIDAS</span><strong id="profile-lives-count">5 de 5</strong><small id="profile-lives-recharge">Uma vida volta a cada 20 minutos.</small></article>
               <article id="profile-data-whatsapp-card"><span>WHATSAPP</span><strong id="profile-data-whatsapp">Não informado</strong><small id="profile-data-whatsapp-consent">Cadastre um número para suporte.</small></article>
               <article id="profile-payment-card"><span>PLANO E CRÉDITOS</span><strong id="profile-payment-plan">Plano grátis</strong><small id="profile-payment-credits">0 créditos de apostila</small></article>
             </div>
@@ -311,6 +310,10 @@
                 <label>Nome ou apelido<input id="profile-edit-name" maxlength="80" autocomplete="name" required></label>
                 <label>E-mail da conta<input id="profile-edit-email" type="email" readonly aria-readonly="true"></label>
                 <label>Ano escolar<select id="profile-school-year"></select></label>
+                <label>Matéria padrão<select id="profile-study-subject"><option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option></select></label>
+                <label>Assunto preferido <span class="optional-tag">Opcional</span><input id="profile-study-topic" maxlength="120" placeholder="Em branco para revisão geral"></label>
+                <label>Dificuldade<select id="profile-study-difficulty"><option>Fácil</option><option>Médio</option><option data-requires-plan="premium">Difícil — Premium</option></select></label>
+                <label>Formato do desafio<select id="profile-study-mode"><option value="Guiado">Quiz guiado</option><option value="Prova" data-requires-plan="premium">Modo prova — Premium</option><option value="Misto" data-requires-plan="premium">Desafio misto — Premium</option></select></label>
                 <label>WhatsApp do usuário ou responsável<input id="profile-edit-whatsapp" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999"></label>
               </div>
               <label class="profile-contact-consent"><input id="profile-edit-whatsapp-opt-in" type="checkbox"> Autorizo receber avisos importantes e novidades do Estuda+ pelo WhatsApp.</label>
@@ -328,7 +331,7 @@
             <p id="profile-data-status" class="profile-data-status" role="status" aria-live="polite"></p>
           </section>
           <section class="dashboard-stats" aria-label="Resumo de desempenho"><article><span>PRECISÃO</span><strong id="accuracy-stat">—</strong><small>acertos gerais</small></article><article><span>REVISÕES</span><strong id="due-review-stat">0</strong><small>para hoje</small></article><article><span>SEMANA</span><strong id="weekly-stat">0</strong><small>questões feitas</small></article></section>
-          <section class="focus-card"><div><span class="eyebrow">PLANO ENEM</span><strong>Ritmo consistente vence a pressa.</strong><p id="focus-goal-copy">Faça um pouco por dia e use os erros para decidir o que revisar.</p></div><button id="open-review-from-dashboard" type="button">Ver revisões</button></section>
+          <section class="focus-card"><div><span class="eyebrow">PLANO DE ESTUDO</span><strong>Ritmo consistente vence a pressa.</strong><p id="focus-goal-copy">Faça um pouco por dia e use os erros para decidir o que revisar.</p></div><button id="open-review-from-dashboard" type="button">Ver revisões</button></section>
           <h3>Meu avatar</h3>
           <section class="avatar-profile-card" aria-labelledby="avatar-profile-title">
             <div id="dashboard-avatar-preview" class="dashboard-avatar-preview"></div>
@@ -344,7 +347,7 @@
           <section class="review-card" data-premium-report><p>Assuntos com mais erros nesta conta:</p><div id="review-list"></div><small>Os dados são privados e acompanham o estudante quando ele entra na conta.</small></section>
           <h3>Plano da semana</h3>
           <section class="plan-card"><div id="week-picker" class="week-picker"></div><label>Meta por dia <select id="daily-minutes"><option value="10">10 minutos</option><option value="20">20 minutos</option><option value="30">30 minutos</option></select></label><button id="save-plan" class="small-action" type="button">Salvar plano</button></section>
-          <section class="ranking-card"><strong>Meu recorde</strong><span id="personal-ranking">Complete sua primeira rodada para criar seu recorde.</span></section>
+          <section class="ranking-card ranking-profile-card"><header><div><span>DESEMPENHO NO RANKING</span><strong>Minhas estatísticas</strong></div><b id="profile-ranking-position">—</b></header><div class="ranking-profile-stats"><article><strong id="profile-ranking-points">0</strong><span>pontos</span></article><article><strong id="profile-ranking-answered">0</strong><span>questões</span></article><article><strong id="profile-ranking-accuracy">—</strong><span>acertos</span></article><article><strong id="profile-ranking-streak">0</strong><span>dias seguidos</span></article></div><p id="personal-ranking">Complete sua primeira rodada para entrar no ranking.</p></section>
           <h3>Caderno de erros</h3>
           <section class="notebook-card"><div id="error-notebook"></div><button id="practice-notebook" class="small-action" type="button">Praticar erros</button></section>
           <h3>Itens que você marcou</h3>
@@ -394,11 +397,12 @@
         </div>
 
         <div id="material-screen" class="screen material-screen">
-          <header class="dashboard-header material-header"><button id="close-material-quiz" class="icon-button" type="button" aria-label="Voltar">←</button><div><span class="eyebrow">MODO APOSTILA</span><h2>Da foto para o quiz</h2></div></header>
+          <header class="dashboard-header material-header"><button id="close-material-quiz" class="icon-button" type="button" aria-label="Voltar">←</button><div><span class="eyebrow">APOSTILA INTELIGENTE</span><h2>Escaneie, entenda e revise</h2><p>Transforme páginas reais em uma leitura organizada, um resumo profundo e atividades de fixação.</p></div><span id="material-plan-badge" class="material-plan-badge">Grátis · 5 páginas</span></header>
           <section class="material-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Processamento privado no seu aparelho</strong><p>As imagens não são salvas no Estuda+. Evite fotografar nomes, rostos, escola ou outros dados pessoais.</p></div></section>
           <form id="material-quiz-form" class="material-quiz-form">
             <input id="material-subject" type="hidden" value="Minha apostila" />
-            <section class="material-upload-callout"><span aria-hidden="true">▣</span><div><strong>Transforme sua apostila em estudo ativo</strong><p>Envie as páginas e o app preparará questões, resumo e mapa mental sobre o conteúdo encontrado.</p><small id="material-plan-usage">Conferindo a cota do seu plano…</small></div></section>
+            <section class="material-upload-callout"><span aria-hidden="true">✦</span><div><strong>Análise que organiza o conteúdo para você aprender</strong><p>O app identifica conceitos, relações, definições, datas e fórmulas antes de montar uma revisão clara.</p><small id="material-plan-usage">Conferindo a cota do seu plano…</small></div></section>
+            <section class="material-analysis-steps" aria-label="Etapas da análise"><article><span>01</span><div><strong>Leitura reforçada</strong><small>Duas passagens de OCR por página</small></div></article><article><span>02</span><div><strong>Análise do conteúdo</strong><small>Ideias centrais, conceitos e relações</small></div></article><article><span>03</span><div><strong>Revisão ativa</strong><small>Resumo, mapa e questões de fixação</small></div></article></section>
             <div class="material-form-grid">
               <section class="material-capture-panel" aria-labelledby="material-capture-title">
                 <header><div><span>ADICIONE AS PÁGINAS</span><strong id="material-capture-title">Como você quer enviar sua apostila?</strong></div><b id="material-photo-counter">0 de 5 páginas</b></header>
@@ -408,7 +412,7 @@
                 </div>
                 <input id="material-images" class="material-native-input" type="file" accept="image/jpeg,image/png,image/webp" multiple tabindex="-1" aria-hidden="true" />
                 <input id="material-camera" class="material-native-input" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true" />
-                <small class="material-capture-hint">No celular ou tablet, use “Escanear apostila” para fotografar uma página por vez. Você pode adicionar até 5 páginas nítidas.</small>
+                <small id="material-capture-hint" class="material-capture-hint">No celular ou tablet, fotografe uma página por vez. O plano Grátis aceita até 5 páginas; Premium e Família, até 15.</small>
               </section>
             </div>
             <div id="material-image-preview" class="material-image-preview" aria-live="polite"></div>
@@ -416,9 +420,9 @@
             <label id="material-text-label" class="material-text-label" hidden><span>Confira o texto reconhecido <em>etapa obrigatória</em></span><textarea id="material-extracted-text" minlength="250" rows="12" spellcheck="true" placeholder="O texto extraído aparecerá aqui para você corrigir antes de gerar as perguntas."></textarea><small>Compare com as fotos e corrija nomes, acentos, datas, fórmulas e números. O app usará somente este texto.</small></label>
             <label id="material-confirm-wrap" class="material-confirm-wrap" hidden><input id="material-text-confirmed" type="checkbox" /> <span><strong>Conferi a transcrição com as fotos</strong><small>Se você editar o texto depois, será necessário conferir novamente.</small></span></label>
             <p id="material-status" class="material-status" role="status" aria-live="polite"></p>
-            <div class="material-actions"><button id="read-material-images" class="modal-secondary" type="button">Ler com precisão</button><button id="generate-material-summary" class="material-summary-button" type="button" disabled>Criar resumo + mapa mental</button><button id="generate-material-quiz" class="start-button" type="submit" disabled>Criar 10 questões <span>→</span></button></div>
+            <div class="material-actions"><button id="read-material-images" class="modal-secondary" type="button">Analisar páginas</button><button id="generate-material-summary" class="material-summary-button" type="button" disabled>Gerar revisão inteligente</button><button id="generate-material-quiz" class="start-button" type="submit" disabled>Criar 10 questões <span>→</span></button></div>
           </form>
-          <section id="material-summary-panel" class="material-summary-panel" hidden><header><div><span>REVISÃO DA APOSTILA</span><h3>Resumo completo e mapa mental</h3><p id="material-summary-meta"></p></div><div class="material-summary-tools"><button id="copy-material-summary" type="button">Copiar resumo</button><button id="copy-material-mind-map" type="button">Copiar mapa</button></div></header><div id="material-summary-content" class="material-summary-content"></div><section class="material-mind-map" aria-labelledby="material-mind-map-title"><header><div><span>CONEXÕES DO CONTEÚDO</span><h3 id="material-mind-map-title">Mapa mental</h3><p>Toque em cada conceito para revisar as informações relacionadas.</p></div><span class="material-mind-map-hint">Explore os ramos</span></header><div id="material-mind-map-content" class="material-mind-map-content"></div></section><footer>O resumo e o mapa são extrativos: usam o texto que você conferiu, sem acrescentar fatos externos.</footer></section>
+          <section id="material-summary-panel" class="material-summary-panel" hidden><header><div><span>REVISÃO INTELIGENTE</span><h3>Seu guia de estudo da apostila</h3><p id="material-summary-meta"></p></div><div class="material-summary-tools"><button id="copy-material-summary" type="button">Copiar revisão</button><button id="copy-material-mind-map" type="button">Copiar mapa</button></div></header><div id="material-summary-content" class="material-summary-content"></div><section class="material-mind-map" aria-labelledby="material-mind-map-title"><header><div><span>CONEXÕES DO CONTEÚDO</span><h3 id="material-mind-map-title">Mapa mental</h3><p>Abra os ramos para perceber como as ideias se conectam.</p></div><span class="material-mind-map-hint">Explore os ramos</span></header><div id="material-mind-map-content" class="material-mind-map-content"></div></section><footer>A revisão usa somente a transcrição que você conferiu. Nenhum fato externo é acrescentado ao conteúdo da apostila.</footer></section>
           <section class="material-photo-tips"><strong>Para uma leitura mais exata</strong><ul><li>Use luz uniforme, sem reflexos ou sombras sobre as palavras.</li><li>Fotografe uma página por imagem, paralela à câmera e sem cortes.</li><li>Evite páginas curvadas; aproxime até as letras ficarem nítidas.</li><li>Compare a transcrição com a foto antes de confirmar.</li></ul></section>
         </div>
 
@@ -429,13 +433,13 @@
             <div class="essay-credit-pill" aria-label="Acesso à correção"><span>✦</span><strong id="essay-credit-balance">0</strong><small id="essay-credit-label">créditos</small></div>
           </header>
           <section class="essay-intro-card">
-            <div><span>AVALIAÇÃO PEDAGÓGICA</span><h3>Correção inspirada nas 5 competências do Enem</h3><p>Receba uma nota estimada, comentários claros e orientações práticas para melhorar sua próxima versão.</p></div>
+            <div><span>AVALIAÇÃO PEDAGÓGICA</span><h3>Correção completa e orientação clara</h3><p>Receba uma nota estimada, comentários claros e orientações práticas para melhorar sua próxima versão.</p></div>
             <div class="essay-price-card"><strong id="essay-access-price">5 créditos</strong><small id="essay-access-price-note">por correção concluída</small></div>
           </section>
-          <section class="essay-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Proteja seus dados</strong><p>Não escreva nome completo, telefone, endereço, escola ou outros dados pessoais. O texto integral é usado apenas durante a correção e não fica salvo no histórico.</p></div></section>
+          <section class="essay-privacy-card"><span aria-hidden="true">⌾</span><div><strong>Proteja seus dados</strong><p>Não escreva nome completo, telefone, endereço, escola ou outros dados pessoais. O texto integral não fica salvo no histórico do Estuda+, mas é processado pela IA do Google; na modalidade gratuita, o conteúdo pode ser usado para aprimorar os produtos do provedor.</p></div></section>
           <form id="essay-form" class="essay-form">
             <div class="essay-settings">
-              <label>Tipo de proposta<select id="essay-mode"><option value="enem">Modelo Enem</option><option value="free">Tema livre</option></select></label>
+              <select id="essay-mode" hidden aria-hidden="true" tabindex="-1"><option value="enem" selected>Correção completa</option></select>
               <label>Tema da redação<input id="essay-theme" maxlength="300" required placeholder="Ex.: Caminhos para combater a desinformação no Brasil"></label>
             </div>
             <label class="essay-editor-label" for="essay-text"><span>Sua redação</span><small id="essay-draft-status">Rascunho salvo somente neste aparelho</small></label>
@@ -451,7 +455,7 @@
             <div class="essay-feedback-grid"><article><span>✓</span><div><strong>Pontos fortes</strong><ul id="essay-strengths"></ul></div></article><article><span>↑</span><div><strong>Próximos passos</strong><ul id="essay-improvements"></ul></div></article></div>
             <section class="essay-detailed-feedback"><h4>Comentário completo</h4><p id="essay-detailed-comment"></p></section>
             <section class="essay-rewrite"><h4>Exemplo de trecho aprimorado</h4><blockquote id="essay-rewritten-excerpt"></blockquote><small>Use como referência para reescrever com suas próprias palavras.</small></section>
-            <p class="essay-disclaimer">A nota é uma estimativa pedagógica gerada por IA. Ela não substitui a correção oficial do Enem nem a avaliação de um professor.</p>
+            <p class="essay-disclaimer">A nota é uma estimativa pedagógica gerada por IA. Ela não substitui a avaliação de um professor.</p>
           </section>
           <section class="essay-history-section"><header><div><span>SEU PROGRESSO</span><h3>Correções anteriores</h3></div><button id="refresh-essay-history" type="button">Atualizar</button></header><div id="essay-history" class="essay-history"><p class="essay-empty">Suas correções concluídas aparecerão aqui.</p></div></section>
         </div>
@@ -649,17 +653,18 @@
       </section>
     </div>
     <nav id="app-nav" class="app-nav" hidden aria-label="Navegação principal">
-      <button type="button" data-nav="subjects"><span>⌂</span>Aprenda Jogando</button>
-      <button type="button" data-nav="trail"><span>⌁</span>Configurar</button>
-      <button class="material-nav-button" type="button" data-nav="material"><span>▣</span>Apostila</button>
-      <button type="button" data-nav="friends"><span>♧</span>Amigos<b id="nav-friends-badge" hidden>0</b></button>
-      <button type="button" data-nav="profile"><span>☺</span>Perfil</button>
-      <button id="mobile-more-toggle" type="button" data-nav="more" aria-expanded="false" aria-controls="mobile-more-menu"><span>•••</span>Mais</button>
+      <button type="button" data-nav="subjects"><span>⌂</span><span class="nav-label">Aprenda<br>Jogando</span></button>
+      <button type="button" data-nav="trail"><span>⌁</span><span class="nav-label">Configurar</span></button>
+      <button class="material-nav-button" type="button" data-nav="material"><span>▣</span><span class="nav-label">Apostila</span></button>
+      <button type="button" data-nav="friends"><span>♧</span><span class="nav-label">Amigos</span><b id="nav-friends-badge" hidden>0</b></button>
+      <button type="button" data-nav="profile"><span>☺</span><span class="nav-label">Perfil</span></button>
+      <button id="mobile-more-toggle" type="button" data-nav="more" aria-expanded="false" aria-controls="mobile-more-menu"><span>•••</span><span class="nav-label">Mais</span></button>
       <div id="mobile-more-menu" class="mobile-more-menu" hidden>
         <button class="avatar-nav-button" type="button" data-nav="avatar" aria-haspopup="dialog" aria-controls="avatar-studio-modal"><span>☺</span><b>Meu avatar</b><small>Personalizar</small></button>
-        <button type="button" data-nav="essay"><span>✎</span><b>Redação</b><small>Correção modelo Enem</small></button>
+        <button type="button" data-nav="essay"><span>✎</span><b>Redação</b><small>Correção com IA</small></button>
         <button type="button" data-nav="review"><span>↻</span><b>Revisar</b><small id="mobile-more-review-copy">Caderno de erros</small><i id="nav-review-badge" hidden>0</i></button>
         <button type="button" data-nav="plans"><span>✦</span><b>Planos</b><small>Ver opções</small></button>
+        <button id="mobile-admin-button" class="mobile-admin-button" type="button" data-nav="admin" hidden><span>⚙</span><b>Administração</b><small>Gerenciar o Estuda+</small></button>
       </div>
     </nav>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
@@ -670,7 +675,7 @@
     <script src="friends-chat.js"></script>
     <script src="admin-panel.js"></script>
     <script src="material-quiz.js"></script>
-    <script src="essay-correction.js?v=20260820a"></script>
-    <script src="app.js?v=20260813b"></script>
+    <script src="essay-correction.js?v=20260825a"></script>
+    <script src="app.js?v=20260825a"></script>
   </body>
 </html>
