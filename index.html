@@ -300,6 +300,8 @@
               <article><span>E-MAIL</span><strong id="profile-data-email">—</strong></article>
               <article><span>FORMA DE ENTRADA</span><strong id="profile-data-access">E-mail</strong></article>
               <article><span>ANO ESCOLAR</span><strong id="profile-data-year">—</strong></article>
+              <article><span>TRILHA PADRÃO</span><strong id="profile-study-summary">Matemática · Fácil · Guiado</strong><small id="profile-study-topic-summary">Revisão geral</small></article>
+              <article><span>VIDAS</span><strong id="profile-lives-count">5 de 5</strong><small id="profile-lives-recharge">Uma vida volta a cada 20 minutos.</small></article>
               <article id="profile-data-whatsapp-card"><span>WHATSAPP</span><strong id="profile-data-whatsapp">Não informado</strong><small id="profile-data-whatsapp-consent">Cadastre um número para suporte.</small></article>
               <article id="profile-payment-card"><span>PLANO E CRÉDITOS</span><strong id="profile-payment-plan">Plano grátis</strong><small id="profile-payment-credits">0 créditos de apostila</small></article>
             </div>
@@ -308,6 +310,10 @@
                 <label>Nome ou apelido<input id="profile-edit-name" maxlength="80" autocomplete="name" required></label>
                 <label>E-mail da conta<input id="profile-edit-email" type="email" readonly aria-readonly="true"></label>
                 <label>Ano escolar<select id="profile-school-year"></select></label>
+                <label>Matéria padrão<select id="profile-study-subject"><option>Matemática</option><option>Português</option><option>História</option><option>Geografia</option><option>Biologia</option><option>Física</option><option>Química</option></select></label>
+                <label>Assunto preferido <span class="optional-tag">Opcional</span><input id="profile-study-topic" maxlength="120" placeholder="Em branco para revisão geral"></label>
+                <label>Dificuldade<select id="profile-study-difficulty"><option>Fácil</option><option>Médio</option><option data-requires-plan="premium">Difícil — Premium</option></select></label>
+                <label>Formato do desafio<select id="profile-study-mode"><option value="Guiado">Quiz guiado</option><option value="Prova" data-requires-plan="premium">Modo prova — Premium</option><option value="Misto" data-requires-plan="premium">Desafio misto — Premium</option></select></label>
                 <label>WhatsApp do usuário ou responsável<input id="profile-edit-whatsapp" type="tel" autocomplete="tel" inputmode="tel" placeholder="(11) 99999-9999"></label>
               </div>
               <label class="profile-contact-consent"><input id="profile-edit-whatsapp-opt-in" type="checkbox"> Autorizo receber avisos importantes e novidades do Estuda+ pelo WhatsApp.</label>

@@ -182,11 +182,20 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function weekKey() { const date = new Date(); const first = new Date(date.getFullYear(), 0, 1); return `${date.getFullYear()}-${Math.ceil((((date - first) / 86400000) + first.getDay() + 1) / 7)}`; }
 function futureDate(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }
 function completedPhaseCountFrom(progress = {}) { return Object.values(progress || {}).reduce((total, item) => total + Math.max(0, Math.min(4, Number(item?.completed) || 0)), 0); }
-function blankState() { return { stateVersion: 6, totalPoints: 0, avatar: '🧑‍🚀', avatarDesign: avatarStudio.copyDefaults(), avatarNickname: '', avatarDesignUpdatedAt: '', avatarCreated: false, tutorialSeenVersion: 0, tutorialSeenAt: '', tutorialOutcome: '', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: 5, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, questionSequences: {}, seenQuestionIds: [], seenQuestionFingerprints: [], plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
+const MAX_LIVES = 5;
+const LIFE_RECHARGE_MS = 20 * 60 * 1000;
+function blankState() { return { stateVersion: 7, totalPoints: 0, avatar: '🧑‍🚀', avatarDesign: avatarStudio.copyDefaults(), avatarNickname: '', avatarDesignUpdatedAt: '', avatarCreated: false, tutorialSeenVersion: 0, tutorialSeenAt: '', tutorialOutcome: '', schoolYear: '6EF', answeredToday: 0, day: today(), bestStreak: 0, streakDays: 0, lastStudyDay: '', energy: MAX_LIVES, energyUpdatedAt: new Date().toISOString(), studyPreferences: { subject: 'Matemática', topic: '', difficulty: 'Fácil', quizMode: 'Guiado' }, medals: [], subjectStats: {}, yearStats: {}, topicErrors: {}, notebook: [], savedQuestions: [], phaseProgress: {}, questionSequences: {}, seenQuestionIds: [], seenQuestionFingerprints: [], plan: { days: ['1', '2', '3'], minutes: '10' }, weekly: { id: weekKey(), answered: 0, goal: 50 }, accessibility: { font: false, contrast: false, calm: false }, materials: [], bestScore: 0, rounds: 0, reviewCount: 0 }; }
 function mergeState(saved) {
   const base = blankState(), phaseProgress = saved?.phaseProgress && typeof saved.phaseProgress === 'object' && !Array.isArray(saved.phaseProgress) ? saved.phaseProgress : {};
   const migratedAvatar = saved?.avatarDesign ? avatarStudio.normalize(saved.avatarDesign) : avatarStudio.migrateLegacy(saved?.avatar);
-  return { ...base, ...(saved || {}), stateVersion: 6, avatarDesign: avatarStudio.fitToUnlocks(migratedAvatar, completedPhaseCountFrom(phaseProgress)), avatarNickname: String(saved?.avatarNickname || '').trim().slice(0, 24), avatarDesignUpdatedAt: String(saved?.avatarDesignUpdatedAt || ''), avatarCreated: Boolean(saved?.avatarCreated), tutorialSeenVersion: Math.max(0, Number(saved?.tutorialSeenVersion) || 0), tutorialSeenAt: String(saved?.tutorialSeenAt || ''), tutorialOutcome: saved?.tutorialOutcome === 'completed' ? 'completed' : saved?.tutorialOutcome === 'skipped' ? 'skipped' : '', subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], phaseProgress, questionSequences: saved?.questionSequences && typeof saved.questionSequences === 'object' && !Array.isArray(saved.questionSequences) ? saved.questionSequences : {}, seenQuestionIds: [...new Set(Array.isArray(saved?.seenQuestionIds) ? saved.seenQuestionIds : [])], seenQuestionFingerprints: [...new Set(Array.isArray(saved?.seenQuestionFingerprints) ? saved.seenQuestionFingerprints : [])], weekly: { ...base.weekly, ...(saved?.weekly || {}) } };
+  const storedPreferences = saved?.studyPreferences || {};
+  const studyPreferences = {
+    subject: ['Matemática', 'Português', 'História', 'Geografia', 'Biologia', 'Física', 'Química'].includes(storedPreferences.subject) ? storedPreferences.subject : 'Matemática',
+    topic: String(storedPreferences.topic || '').trim().slice(0, 120),
+    difficulty: ['Fácil', 'Médio', 'Difícil'].includes(storedPreferences.difficulty) ? storedPreferences.difficulty : 'Fácil',
+    quizMode: ['Guiado', 'Prova', 'Misto'].includes(storedPreferences.quizMode) ? storedPreferences.quizMode : 'Guiado'
+  };
+  return { ...base, ...(saved || {}), stateVersion: 7, energy: Math.max(0, Math.min(MAX_LIVES, Number(saved?.energy ?? MAX_LIVES) || 0)), energyUpdatedAt: String(saved?.energyUpdatedAt || new Date().toISOString()), studyPreferences, avatarDesign: avatarStudio.fitToUnlocks(migratedAvatar, completedPhaseCountFrom(phaseProgress)), avatarNickname: String(saved?.avatarNickname || '').trim().slice(0, 24), avatarDesignUpdatedAt: String(saved?.avatarDesignUpdatedAt || ''), avatarCreated: Boolean(saved?.avatarCreated), tutorialSeenVersion: Math.max(0, Number(saved?.tutorialSeenVersion) || 0), tutorialSeenAt: String(saved?.tutorialSeenAt || ''), tutorialOutcome: saved?.tutorialOutcome === 'completed' ? 'completed' : saved?.tutorialOutcome === 'skipped' ? 'skipped' : '', subjectStats: saved?.subjectStats || {}, yearStats: saved?.yearStats || {}, topicErrors: saved?.topicErrors || {}, medals: saved?.medals || [], notebook: saved?.notebook || [], savedQuestions: saved?.savedQuestions || [], phaseProgress, questionSequences: saved?.questionSequences && typeof saved.questionSequences === 'object' && !Array.isArray(saved.questionSequences) ? saved.questionSequences : {}, seenQuestionIds: [...new Set(Array.isArray(saved?.seenQuestionIds) ? saved.seenQuestionIds : [])], seenQuestionFingerprints: [...new Set(Array.isArray(saved?.seenQuestionFingerprints) ? saved.seenQuestionFingerprints : [])], weekly: { ...base.weekly, ...(saved?.weekly || {}) } };
 }
 function mergePhaseProgress(local = {}, cloud = {}) {
   const merged = { ...local };
@@ -210,7 +219,47 @@ function ensureFeedbackPreferences(target = state) {
 }
 ensureFeedbackPreferences(state);
 schoolYear = state.schoolYear || '6EF';
-function normalizeDay() { if (state.day !== today()) { state.day = today(); state.answeredToday = 0; state.energy = 5; saveState(); } }
+difficulty = state.studyPreferences?.difficulty || 'Fácil';
+quizMode = state.studyPreferences?.quizMode || 'Guiado';
+function normalizeEnergy(now = Date.now(), persist = true) {
+  if (hasPremiumStudyAccess()) return MAX_LIVES;
+  const currentEnergy = Math.max(0, Math.min(MAX_LIVES, Number(state.energy ?? MAX_LIVES) || 0));
+  let updatedAt = Date.parse(state.energyUpdatedAt || '');
+  if (!Number.isFinite(updatedAt) || updatedAt > now) updatedAt = now;
+  let nextEnergy = currentEnergy;
+  let nextUpdatedAt = updatedAt;
+  if (currentEnergy < MAX_LIVES) {
+    const recovered = Math.floor((now - updatedAt) / LIFE_RECHARGE_MS);
+    if (recovered > 0) {
+      nextEnergy = Math.min(MAX_LIVES, currentEnergy + recovered);
+      nextUpdatedAt = nextEnergy === MAX_LIVES ? now : updatedAt + recovered * LIFE_RECHARGE_MS;
+    }
+  }
+  const iso = new Date(nextUpdatedAt).toISOString();
+  const changed = nextEnergy !== state.energy || iso !== state.energyUpdatedAt;
+  state.energy = nextEnergy;
+  state.energyUpdatedAt = iso;
+  if (changed && persist) saveState();
+  return nextEnergy;
+}
+function loseLife() {
+  if (hasPremiumStudyAccess()) return;
+  const lives = normalizeEnergy();
+  if (lives <= 0) return;
+  if (lives === MAX_LIVES || !Number.isFinite(Date.parse(state.energyUpdatedAt || ''))) state.energyUpdatedAt = new Date().toISOString();
+  state.energy = lives - 1;
+}
+function lifeRechargeCopy(now = Date.now()) {
+  if (hasPremiumStudyAccess()) return 'Vidas ilimitadas no Premium.';
+  const lives = normalizeEnergy(now, false);
+  if (lives >= MAX_LIVES) return 'Todas as vidas estão disponíveis.';
+  const elapsed = Math.max(0, now - Date.parse(state.energyUpdatedAt || new Date(now).toISOString()));
+  const minutes = Math.max(1, Math.ceil((LIFE_RECHARGE_MS - (elapsed % LIFE_RECHARGE_MS)) / 60000));
+  return `Próxima vida em cerca de ${minutes} min.`;
+}
+function hasLifeAvailable() { return hasPremiumStudyAccess() || normalizeEnergy() > 0; }
+function showNoLivesMessage() { showPlanUpgradeMessage(`Suas vidas acabaram. ${lifeRechargeCopy()} No Premium, as vidas são ilimitadas.`); }
+function normalizeDay() { if (state.day !== today()) { state.day = today(); state.answeredToday = 0; saveState(); } normalizeEnergy(); }
 function normalizeWeek() { if (!state.weekly || state.weekly.id !== weekKey()) { state.weekly = { id: weekKey(), answered: 0, goal: state.weekly?.goal || 50 }; saveState(); } }
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
@@ -509,6 +558,7 @@ async function loginUser(event) {
 }
 function passwordRecoveryRedirect() {
   if (window.location.protocol === 'file:') return null;
+  if (window.ESTUDA_MAIS_MOBILE?.isNative) return 'https://estudamais.net/';
   const redirect = new URL(window.location.href);
   redirect.hash = '';
   redirect.search = '';
@@ -1329,10 +1379,13 @@ async function loadGlobalLeaderboard(options = {}) {
   return globalLeaderboard;
 }
 function updateHome() {
+  normalizeEnergy();
   el('top-name').textContent = learnerName();
   if (el('avatar-name')) el('avatar-name').textContent = learnerName();
   el('streak-days').textContent = state.streakDays || 1;
-  el('energy-count').textContent = state.energy ?? 5;
+  el('energy-count').textContent = hasPremiumStudyAccess() ? '∞' : state.energy ?? MAX_LIVES;
+  if (el('profile-lives-count')) el('profile-lives-count').textContent = hasPremiumStudyAccess() ? 'Ilimitadas' : `${state.energy} de ${MAX_LIVES}`;
+  if (el('profile-lives-recharge')) el('profile-lives-recharge').textContent = lifeRechargeCopy();
   el('gem-count').textContent = Math.floor(state.totalPoints / 100);
   renderAvatarSurfaces();
   updateLearningRail();
@@ -1371,6 +1424,7 @@ function updatePlanAccessUI() {
   });
   document.querySelectorAll('[data-premium-report]').forEach((section) => { section.hidden = !hasDetailedReportsAccess(); });
   if (el('premium-report-upgrade')) el('premium-report-upgrade').hidden = hasDetailedReportsAccess();
+  updateHome();
 }
 function showPlanUpgradeMessage(message = 'Este recurso está disponível nos planos Premium e Família.') {
   openPlans();
@@ -1430,7 +1484,13 @@ function friendlyCheckoutError(code = '') {
   if (code === 'MISSING_SERVER_SECRETS') return 'A conexão segura com a Stripe ainda não foi concluída. Nenhum valor foi cobrado.';
   return 'Não foi possível abrir o pagamento agora. Nenhum valor foi cobrado. Atualize a página e tente novamente.';
 }
+function blockExternalPaymentInsideStoreApp() {
+  if (!window.ESTUDA_MAIS_MOBILE?.isNative) return false;
+  showPlansPaymentNotice('As compras no aplicativo Android serão liberadas após a integração segura com a Google Play. Você pode continuar usando normalmente um plano já ativo.', 'error');
+  return true;
+}
 async function openStripeCheckout(offer, kind = 'checkout') {
+  if (blockExternalPaymentInsideStoreApp()) return;
   if (!offer?.id || !supabaseClient) {
     showPlansPaymentNotice('O serviço de pagamento não carregou. Atualize a página e tente novamente. Nenhum valor foi cobrado.', 'error');
     return;
@@ -1472,6 +1532,7 @@ async function openStripeCheckout(offer, kind = 'checkout') {
   }
 }
 async function openStripePortal() {
+  if (blockExternalPaymentInsideStoreApp()) return;
   if (!activeSupabaseUser || !supabaseClient) {
     showPlansPaymentNotice('Entre novamente para gerenciar sua assinatura.', 'error');
     return;
@@ -1567,6 +1628,9 @@ function renderProfileData() {
   el('profile-data-email').textContent = activeSupabaseUser.email || 'Não informado';
   el('profile-data-access').textContent = activeUserIsAdmin ? activeAdminEmail() : 'E-mail e senha';
   el('profile-data-year').textContent = schoolYearLabel(state.schoolYear || '6EF');
+  const preferences = state.studyPreferences || blankState().studyPreferences;
+  if (el('profile-study-summary')) el('profile-study-summary').textContent = `${preferences.subject} · ${preferences.difficulty} · ${preferences.quizMode}`;
+  if (el('profile-study-topic-summary')) el('profile-study-topic-summary').textContent = preferences.topic || 'Revisão geral';
   el('profile-data-whatsapp').textContent = phone ? formattedWhatsapp(phone) : 'Não informado';
   el('profile-data-whatsapp-consent').textContent = phone ? (activeUserContact.whatsapp_opt_in ? 'Avisos importantes autorizados.' : 'Apenas suporte da conta; novidades não autorizadas.') : 'Adicione um número para suporte da conta.';
   el('profile-data-whatsapp-card').classList.toggle('missing', !phone);
@@ -1577,6 +1641,12 @@ function renderProfileData() {
   el('profile-edit-name').value = learnerName();
   el('profile-edit-email').value = activeSupabaseUser.email || '';
   el('profile-school-year').value = state.schoolYear || '6EF';
+  el('profile-study-subject').value = preferences.subject;
+  el('profile-study-topic').value = preferences.topic;
+  el('profile-study-difficulty').value = preferences.difficulty === 'Difícil' && hasPremiumStudyAccess() ? 'Difícil — Premium' : preferences.difficulty === 'Difícil' ? 'Fácil' : preferences.difficulty;
+  el('profile-study-mode').value = ['Prova', 'Misto'].includes(preferences.quizMode) && !hasPremiumStudyAccess() ? 'Guiado' : preferences.quizMode;
+  el('profile-study-difficulty').querySelectorAll('[data-requires-plan="premium"]').forEach((option) => { option.disabled = !hasPremiumStudyAccess(); });
+  el('profile-study-mode').querySelectorAll('[data-requires-plan="premium"]').forEach((option) => { option.disabled = !hasPremiumStudyAccess(); });
   el('profile-edit-whatsapp').value = phone ? formattedWhatsapp(phone) : '';
   el('profile-edit-whatsapp-opt-in').checked = Boolean(activeUserContact?.whatsapp_opt_in);
 }
@@ -1598,6 +1668,10 @@ async function saveProfileData(event) {
   if (!activeSupabaseUser || !supabaseClient) return;
   const name = el('profile-edit-name').value.trim();
   const year = schoolYearProfile(el('profile-school-year').value).code;
+  const preferredSubject = el('profile-study-subject').value;
+  const preferredTopic = el('profile-study-topic').value.trim().slice(0, 120);
+  const preferredDifficulty = el('profile-study-difficulty').value.replace(' — Premium', '');
+  const preferredQuizMode = el('profile-study-mode').value;
   const rawPhone = el('profile-edit-whatsapp').value.trim();
   const phone = normalizedWhatsapp(rawPhone);
   const optIn = el('profile-edit-whatsapp-opt-in').checked;
@@ -1623,6 +1697,13 @@ async function saveProfileData(event) {
     if (metadataError) console.warn('Os dados principais foram salvos, mas os metadados da conta não foram atualizados:', metadataError.message);
     if (updatedAuth?.user) activeSupabaseUser = updatedAuth.user;
     state.userName = name;
+    state.studyPreferences = { subject: preferredSubject, topic: preferredTopic, difficulty: preferredDifficulty, quizMode: preferredQuizMode };
+    difficulty = preferredDifficulty;
+    quizMode = preferredQuizMode;
+    el('subject').value = preferredSubject;
+    el('topic').value = preferredTopic;
+    setChoice('difficulty', preferredDifficulty);
+    setChoice('quiz-mode', preferredQuizMode);
     setSchoolYear(year, false);
     saveState();
     toggleProfileDataEditor(false);
@@ -1748,7 +1829,7 @@ function recordAnswer(question, right) {
   if (state.lastStudyDay !== today()) { const yesterday = futureDate(-1); state.streakDays = state.lastStudyDay === yesterday ? (state.streakDays || 0) + 1 : 1; state.lastStudyDay = today(); }
   const subject = question.subject; state.subjectStats[subject] ||= { correct: 0, total: 0 }; state.subjectStats[subject].total++; if (right) state.subjectStats[subject].correct++;
   const yearKey = question.schoolYear || schoolYear; state.yearStats[yearKey] ||= { correct: 0, total: 0 }; state.yearStats[yearKey].total++; if (right) state.yearStats[yearKey].correct++;
-  if (right) { roundStreak++; state.bestStreak = Math.max(state.bestStreak, roundStreak); } else { const topic = topicForEntry(question); state.energy = Math.max(0, (state.energy ?? 5) - 1); roundStreak = 0; state.topicErrors[topic] = (state.topicErrors[topic] || 0) + 1; scheduleReview(question); }
+  if (right) { roundStreak++; state.bestStreak = Math.max(state.bestStreak, roundStreak); } else { const topic = topicForEntry(question); loseLife(); roundStreak = 0; state.topicErrors[topic] = (state.topicErrors[topic] || 0) + 1; scheduleReview(question); }
   const earned = checkAchievements(); saveState(); updateMission(); updateHome(); return earned;
 }
 
@@ -1888,6 +1969,7 @@ function setQuestionBankStatus(message = '', error = false) {
 }
 async function begin(phaseOverride) {
   materialQuizSession = false;
+  if (!hasLifeAvailable()) { showNoLivesMessage(); return; }
   const route = currentRoute(), subject = route.subject, topic = route.topic;
   curriculum = el('curriculum').value;
   if (!el('subject').value) { el('subject').focus(); return; }
@@ -1936,7 +2018,7 @@ function revealFeedback(feedback) {
     feedback.focus({ preventScroll: true });
   });
 }
-function completeAlternate(right, question, open) { if (open) { const text = el('open-response').value.trim(); if (!text) return; } const rewards = recordAnswer(question, right); playQuizFeedbackSound(right ? 'correct' : 'wrong'); triggerQuizVibration(right ? 'correct' : 'wrong'); if (right) { score += 100; hits++; } el('score').textContent = score; const feedback = el('feedback'); feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`; feedback.innerHTML = `<strong>${open ? 'Guia de resposta' : right ? '✓ Ordem correta!' : '↗ Quase lá!'}</strong>${question.note}`; if (rewards.length) showToast(rewards); el('next-question').hidden = false; el('next-question').innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>'; revealFeedback(feedback); }
+function completeAlternate(right, question, open) { if (!hasLifeAvailable()) { showNoLivesMessage(); return; } if (open) { const text = el('open-response').value.trim(); if (!text) return; } const rewards = recordAnswer(question, right); playQuizFeedbackSound(right ? 'correct' : 'wrong'); triggerQuizVibration(right ? 'correct' : 'wrong'); if (right) { score += 100; hits++; } el('score').textContent = score; const feedback = el('feedback'); feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`; feedback.innerHTML = `<strong>${open ? 'Guia de resposta' : right ? '✓ Ordem correta!' : '↗ Quase lá!'}</strong>${question.note}`; if (rewards.length) showToast(rewards); el('next-question').hidden = false; el('next-question').innerHTML = current === 9 ? 'Ver meu resultado <span>→</span>' : 'Próxima questão <span>→</span>'; revealFeedback(feedback); }
 function showFeedback(question, right, rewards, selectedIndex) {
   const feedback = el('feedback'), source = question.source || curriculumSources[question.curriculum]; feedback.hidden = false; feedback.className = `feedback ${right ? 'good' : ''}`;
   const optionComment = question.optionNotes?.[selectedIndex];
@@ -1949,6 +2031,7 @@ function showFeedback(question, right, rewards, selectedIndex) {
   if (rewards.length) showToast(rewards); revealFeedback(feedback);
 }
 function answer(index) {
+  if (!hasLifeAvailable()) { showNoLivesMessage(); return; }
   const question = questions[current], right = index === question.correct;
   document.querySelectorAll('.answer').forEach((button, answerIndex) => { button.disabled = true; if (answerIndex === question.correct) button.classList.add('correct'); if (answerIndex === index && !right) button.classList.add('wrong'); if (quizMode === 'Prova' && answerIndex === index) button.classList.add('selected-answer'); });
   if (right) { score += difficulty === 'Difícil' ? 150 : difficulty === 'Médio' ? 120 : 100; hits++; }
@@ -1957,7 +2040,7 @@ function answer(index) {
 }
 el('quiz-form').addEventListener('submit', (event) => { event.preventDefault(); openAdventure(); });
 el('next-question').addEventListener('click', () => {
-  if (current !== 9) { current++; renderQuestion(); return; }
+  if (current !== 9) { if (!hasLifeAvailable()) { showNoLivesMessage(); return; } current++; renderQuestion(); return; }
 
   if (materialQuizSession) {
     const passed = hits >= 7;
@@ -2199,8 +2282,28 @@ function applyAccessibility() { document.body.classList.toggle('a11y-large', sta
 document.querySelectorAll('.access-control').forEach((button) => button.addEventListener('click', () => { const key = button.dataset.access; state.accessibility[key] = !state.accessibility[key]; saveState(); applyAccessibility(); }));
 el('toggle-accessibility').addEventListener('click', () => { state.accessibility.font = !state.accessibility.font; saveState(); applyAccessibility(); });
 el('save-teacher-material').addEventListener('click', () => { const title = el('teacher-material-title').value.trim(), note = el('teacher-material-note').value.trim(); if (!title && !note) return; state.materials.unshift({ title: title || 'Orientação de estudo', note: note || 'Sem observações.' }); state.materials = state.materials.slice(0, 10); el('teacher-material-title').value = ''; el('teacher-material-note').value = ''; saveState(); renderTeacherMaterials(); });
-el('toggle-creator').addEventListener('click', () => { el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; });
-document.querySelectorAll('.subject-card').forEach((card) => card.addEventListener('click', () => { const subject = card.dataset.subject; syncAutomaticCurriculum(); el('subject').value = subject; el('topic').value = ''; el('adventure-overview').hidden = true; el('lesson-creator').hidden = false; renderTopicExamples(); renderPhaseMap(); show('setup-screen'); }));
+el('toggle-creator').textContent = 'Configurar no perfil';
+el('toggle-creator').addEventListener('click', () => { renderDashboard(); show('dashboard-screen'); toggleProfileDataEditor(true); });
+document.querySelectorAll('.subject-card').forEach((card) => card.addEventListener('click', () => {
+  const subject = card.dataset.subject;
+  const previousSubject = state.studyPreferences?.subject;
+  state.studyPreferences ||= blankState().studyPreferences;
+  state.studyPreferences.subject = subject;
+  if (previousSubject !== subject) state.studyPreferences.topic = '';
+  syncAutomaticCurriculum();
+  el('subject').value = subject;
+  el('topic').value = state.studyPreferences.topic || '';
+  difficulty = state.studyPreferences.difficulty === 'Difícil' && !hasPremiumStudyAccess() ? 'Fácil' : state.studyPreferences.difficulty || 'Fácil';
+  quizMode = ['Prova', 'Misto'].includes(state.studyPreferences.quizMode) && !hasPremiumStudyAccess() ? 'Guiado' : state.studyPreferences.quizMode || 'Guiado';
+  setChoice('difficulty', difficulty);
+  setChoice('quiz-mode', quizMode);
+  el('adventure-overview').hidden = false;
+  el('lesson-creator').hidden = true;
+  renderTopicExamples();
+  renderPhaseMap();
+  saveState();
+  show('setup-screen');
+}));
 el('change-selected-subject')?.addEventListener('click', goToSubjects);
 el('back-to-subjects').addEventListener('click', goToSubjects);
 el('result-home').addEventListener('click', () => goToSubjects({ historyMode: 'replace' }));
@@ -2325,7 +2428,13 @@ el('new-password-form').addEventListener('submit', updateRecoveredPassword);
 el('logout-user').addEventListener('click', logoutUser);
 async function initializeApp() {
   normalizePlansUi();
-  populateSchoolYearControls(); setSchoolYear(state.schoolYear || '6EF', false); normalizeDay(); updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); applyAccessibility();
+  populateSchoolYearControls();
+  setSchoolYear(state.schoolYear || '6EF', false);
+  el('subject').value = state.studyPreferences?.subject || 'Matemática';
+  el('topic').value = state.studyPreferences?.topic || '';
+  setChoice('difficulty', state.studyPreferences?.difficulty === 'Difícil' ? 'Fácil' : state.studyPreferences?.difficulty || 'Fácil');
+  setChoice('quiz-mode', ['Prova', 'Misto'].includes(state.studyPreferences?.quizMode) ? 'Guiado' : state.studyPreferences?.quizMode || 'Guiado');
+  normalizeDay(); updateMission(); updateHome(); renderTopicExamples(); renderPhaseMap(); applyAccessibility();
   if (!supabaseClient) { showAuthNotice('Não foi possível carregar o serviço de acesso. Verifique sua conexão e atualize a página.', true); return; }
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event !== 'PASSWORD_RECOVERY') return;
@@ -2351,3 +2460,4 @@ async function initializeApp() {
 }
 updateScreenHistory('auth-screen', 'reset');
 initializeApp();
+setInterval(() => { const before = state.energy; normalizeEnergy(); if (state.energy !== before || el('profile-lives-count')) updateHome(); }, 30 * 1000);
