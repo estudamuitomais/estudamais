@@ -5,6 +5,7 @@ const path = require('path');
 const app = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
+assert.ok(html.includes('data-nav="trail"><span>⌁</span><span class="nav-label">Trilha</span>'), 'a aba principal deve se chamar Trilha');
 assert.ok(app.includes('const MAX_LIVES = 5') && app.includes('20 * 60 * 1000'), 'o plano grátis deve ter 5 vidas e recuperar uma a cada 20 minutos');
 assert.ok(app.includes('function loseLife()') && app.includes("if (hasPremiumStudyAccess()) return;"), 'Premium e Família não devem perder vidas');
 assert.ok(app.includes('function normalizeEnergy') && app.includes('Math.floor((now - updatedAt) / LIFE_RECHARGE_MS)'), 'a recuperação precisa considerar o tempo transcorrido');
